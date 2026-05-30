@@ -16,8 +16,10 @@ import { Plus, Eye, EyeOff, Youtube, AlertTriangle } from 'lucide-react'
 import { Category, StorageData, Video } from '../src/types'
 import { getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
+import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
+import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
 
 const STORAGE_LIMIT = 102_400 // chrome.storage.sync quota in bytes
 const WARN_RATIO = 0.8
@@ -126,6 +128,10 @@ export default function App() {
     return map
   }, [data, showWatched])
 
+  // Derived, cross-cutting sections (watched always excluded — see the spec).
+  const recentlyAdded = useMemo(() => (data ? selectRecentlyAdded(data.videos) : []), [data])
+  const gatheringDust = useMemo(() => (data ? selectGatheringDust(data.videos) : []), [data])
+
   if (!data) {
     return <div className="flex h-full items-center justify-center text-yt-muted">Carregando…</div>
   }
@@ -171,27 +177,49 @@ export default function App() {
         {isEmpty ? (
           <WelcomeScreen />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onCategoryDragEnd}>
-            <SortableContext
-              items={data.categories.map((c) => `cat:${c.name}`)}
-              strategy={verticalListSortingStrategy}
-            >
-              {data.categories.map((cat) => (
-                <CategorySection
-                  key={cat.name}
-                  category={cat}
-                  videos={videosByCategory.get(cat.name) ?? []}
-                  onOpenVideo={openVideo}
-                  onMoveVideo={setMoving}
-                  onToggleWatched={toggleWatched}
-                  onDeleteVideo={deleteVideo}
-                  onReorderVideos={reorderVideos}
-                  onEditCategory={setEditing}
-                  onDeleteCategory={deleteCategory}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+          <>
+            <SmartSection
+              emoji="🆕"
+              title="Recentemente adicionados"
+              videos={recentlyAdded}
+              onOpenVideo={openVideo}
+              onMoveVideo={setMoving}
+              onToggleWatched={toggleWatched}
+              onDeleteVideo={deleteVideo}
+            />
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onCategoryDragEnd}>
+              <SortableContext
+                items={data.categories.map((c) => `cat:${c.name}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {data.categories.map((cat) => (
+                  <CategorySection
+                    key={cat.name}
+                    category={cat}
+                    videos={videosByCategory.get(cat.name) ?? []}
+                    onOpenVideo={openVideo}
+                    onMoveVideo={setMoving}
+                    onToggleWatched={toggleWatched}
+                    onDeleteVideo={deleteVideo}
+                    onReorderVideos={reorderVideos}
+                    onEditCategory={setEditing}
+                    onDeleteCategory={deleteCategory}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            <SmartSection
+              emoji="🕸️"
+              title="Pegando poeira"
+              videos={gatheringDust}
+              onOpenVideo={openVideo}
+              onMoveVideo={setMoving}
+              onToggleWatched={toggleWatched}
+              onDeleteVideo={deleteVideo}
+            />
+          </>
         )}
       </main>
 

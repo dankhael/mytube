@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Check, MoreVertical, Play, Trash2, FolderInput, Eye, EyeOff } from 'lucide-react'
 import { Video } from '../../src/types'
 
-interface Props {
+interface CardActions {
   video: Video
   onOpen: (id: string) => void
   onMove: (video: Video) => void
@@ -12,10 +12,25 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-export default function VideoCard({ video, onOpen, onMove, onToggleWatched, onDelete }: Props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: video.id,
-  })
+interface ViewProps extends CardActions {
+  // Optional drag wiring — supplied by the sortable wrapper, omitted in read-only
+  // (smart) sections so those cards are not draggable.
+  innerRef?: (node: HTMLElement | null) => void
+  rootProps?: React.HTMLAttributes<HTMLElement>
+  style?: React.CSSProperties
+}
+
+// Presentational card (thumbnail / title / channel + context menu). No DnD itself.
+export function VideoCardView({
+  video,
+  onOpen,
+  onMove,
+  onToggleWatched,
+  onDelete,
+  innerRef,
+  rootProps,
+  style,
+}: ViewProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -28,18 +43,11 @@ export default function VideoCard({ video, onOpen, onMove, onToggleWatched, onDe
     return () => document.removeEventListener('mousedown', close)
   }, [menuOpen])
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
-
   return (
     <div
-      ref={setNodeRef}
+      ref={innerRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...rootProps}
       onContextMenu={(e) => {
         e.preventDefault()
         setMenuOpen(true)
@@ -108,6 +116,26 @@ export default function VideoCard({ video, onOpen, onMove, onToggleWatched, onDe
         </div>
       )}
     </div>
+  )
+}
+
+// Draggable card used inside category sections (sortable within a DndContext).
+export default function VideoCard(props: CardActions) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.video.id,
+  })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+  return (
+    <VideoCardView
+      {...props}
+      innerRef={setNodeRef}
+      rootProps={{ ...attributes, ...listeners }}
+      style={style}
+    />
   )
 }
 
