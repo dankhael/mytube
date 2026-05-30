@@ -106,6 +106,8 @@ async function handle(message: Message): Promise<MessageResponse> {
         return { ok: true, data: await store.reorderCategories(message.order) }
       case 'REORDER_VIDEOS':
         return { ok: true, data: await store.reorderVideos(message.category, message.order) }
+      case 'UPDATE_SETTINGS':
+        return { ok: true, data: await store.updateSettings(message.settings) }
       case 'GET_SAVED_IDS': {
         const data = await store.getData()
         return { ok: true, ids: data.videos.map((v) => ({ id: v.id, category: v.category })) }

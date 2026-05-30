@@ -4,12 +4,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FakeStorageBackend } from '../test/fake-storage'
 import { MyTubeStore, unwatchedCount } from './storage'
-import { Category, StorageData, UNCATEGORIZED, Video } from './types'
+import { Category, DEFAULT_SETTINGS, StorageData, UNCATEGORIZED, Video } from './types'
 
 const VIDEO = { id: 'aaaaaaaaaaa', title: 'A', thumbnail: 't', channelName: 'C' }
 
 function seed(categories: Category[], videos: Video[]): StorageData {
-  return { categories, videos }
+  return { categories, videos, settings: { ...DEFAULT_SETTINGS } }
 }
 
 function vid(id: string, category: string, watched = false): Video {
@@ -155,5 +155,22 @@ describe('watched-quota.spec', () => {
     await store.saveVideo(VIDEO, 'A')
     const after = await store.getBytesInUse()
     expect(after).toBeGreaterThan(before)
+  })
+})
+
+describe('popup-config.spec (settings)', () => {
+  it('CFG-9a: an empty store defaults to sound effects off', async () => {
+    const store = new MyTubeStore(new FakeStorageBackend())
+    const data = await store.getData()
+    expect(data.settings.soundEffects).toBe(false)
+  })
+
+  it('CFG-8/9: updateSettings persists and merges over defaults', async () => {
+    const backend = new FakeStorageBackend()
+    const store = new MyTubeStore(backend)
+    await store.updateSettings({ soundEffects: true })
+    // re-read through a fresh store to prove it persisted, not just in memory
+    const persisted = await new MyTubeStore(backend).getData()
+    expect(persisted.settings.soundEffects).toBe(true)
   })
 })

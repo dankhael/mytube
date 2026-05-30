@@ -23,6 +23,18 @@
       }
       header .logo { color: #ff0000; font-weight: 700; font-size: 18px; }
       header .total { margin-left: auto; font-size: 12px; color: #aaa; }
+      #config {
+        margin-left: 10px;
+        background: transparent;
+        border: 0;
+        color: #aaa;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 6px;
+      }
+      #config:hover { color: #f1f1f1; background: #272727; }
 
       ul { list-style: none; margin: 0; padding: 6px; max-height: 440px; overflow-y: auto; }
       li.cat { border-radius: 8px; }
@@ -124,12 +136,107 @@
         cursor: pointer;
       }
       #open:hover { background: #cc0000; }
+
+      /* ---- Config modal ---- */
+      .cfg-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 100;
+      }
+      .cfg-modal {
+        width: 100%;
+        background: #1a1a1a;
+        border: 1px solid #303030;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .cfg-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 14px;
+        border-bottom: 1px solid #272727;
+      }
+      .cfg-title { margin: 0; font-size: 15px; font-weight: 600; }
+      .cfg-close {
+        margin-left: auto;
+        background: transparent;
+        border: 0;
+        color: #aaa;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 6px;
+      }
+      .cfg-close:hover { color: #f1f1f1; background: #272727; }
+      .cfg-body { padding: 8px 14px; }
+      .cfg-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+      }
+      .cfg-row-label { font-size: 14px; }
+      .cfg-toggle {
+        margin-left: auto;
+        position: relative;
+        width: 42px;
+        height: 24px;
+        border: 0;
+        border-radius: 999px;
+        background: #3a3a3a;
+        cursor: pointer;
+        transition: background 0.15s;
+        flex-shrink: 0;
+      }
+      .cfg-toggle::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #f1f1f1;
+        transition: transform 0.15s;
+      }
+      .cfg-toggle.on { background: #ff0000; }
+      .cfg-toggle.on::after { transform: translateX(18px); }
+      .cfg-footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 14px;
+        border-top: 1px solid #272727;
+      }
+      .cfg-donate {
+        flex: 1;
+        background: #272727;
+        border: 1px dashed #444;
+        color: #ddd;
+        border-radius: 8px;
+        padding: 9px;
+        font-size: 13px;
+        cursor: not-allowed;
+        opacity: 0.85;
+      }
+      .cfg-soon {
+        font-size: 11px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
     </style>
   </head>
   <body>
     <header>
       <span class="logo">▶ MyTube</span>
       <span class="total" id="total"></span>
+      <button id="config" aria-label="Configurações" title="Configurações">⚙</button>
     </header>
     <ul id="list"></ul>
     <footer>

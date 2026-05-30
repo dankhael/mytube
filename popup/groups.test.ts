@@ -2,14 +2,14 @@
 
 import { describe, expect, it } from 'vitest'
 import { VIDEO_CAP, groupVideosByCategory, watchUrl } from './groups'
-import { Category, StorageData, Video } from '../src/types'
+import { Category, DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
 
 function vid(id: string, category: string): Video {
   return { id, title: id, thumbnail: 't', channelName: 'C', category, addedAt: 1, watched: false }
 }
 
 function data(categories: Category[], videos: Video[]): StorageData {
-  return { categories, videos }
+  return { categories, videos, settings: { ...DEFAULT_SETTINGS } }
 }
 
 describe('popup-categories.spec (grouping)', () => {

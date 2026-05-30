@@ -16,9 +16,20 @@ export interface Category {
   emoji: string
 }
 
+// User preferences. New options should be added here with a default so that
+// missing/unknown keys fall back gracefully (no schema migration needed).
+export interface Settings {
+  soundEffects: boolean
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  soundEffects: false, // opt-in: no surprise audio on first install
+}
+
 export interface StorageData {
   categories: Category[] // category order
   videos: Video[]
+  settings: Settings
 }
 
 export const UNCATEGORIZED = 'Sem categoria'
@@ -30,6 +41,7 @@ export const DEFAULT_DATA: StorageData = {
     { name: UNCATEGORIZED, emoji: '📁' },
   ],
   videos: [],
+  settings: DEFAULT_SETTINGS,
 }
 
 // ---- Messaging contract ----
@@ -46,6 +58,7 @@ export type Message =
   | { action: 'REORDER_CATEGORIES'; order: string[] }
   | { action: 'REORDER_VIDEOS'; category: string; order: string[] }
   | { action: 'GET_SAVED_IDS' }
+  | { action: 'UPDATE_SETTINGS'; settings: Partial<Settings> }
 
 export interface SavedIdInfo {
   id: string

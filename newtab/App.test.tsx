@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
-import { StorageData, Video } from '../src/types'
+import { DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
 
 function video(id: string, category: string, title: string, watched = false): Video {
   return {
@@ -21,9 +21,10 @@ function video(id: string, category: string, title: string, watched = false): Vi
 }
 
 // Script the service-worker reply for GET_ALL (and any other action) with `data`.
-function scriptStore(data: StorageData) {
+function scriptStore(data: Omit<StorageData, 'settings'>) {
+  const full: StorageData = { ...data, settings: { ...DEFAULT_SETTINGS } }
   vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
-    ((_msg: unknown, cb: (r: unknown) => void) => cb({ ok: true, data })) as never,
+    ((_msg: unknown, cb: (r: unknown) => void) => cb({ ok: true, data: full })) as never,
   )
 }
 

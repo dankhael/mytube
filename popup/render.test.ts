@@ -3,7 +3,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderPopup, PopupCallbacks } from './render'
-import { StorageData, Video } from '../src/types'
+import { DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
 
 function vid(id: string, title: string, channel: string): Video {
   return {
@@ -17,11 +17,11 @@ function vid(id: string, title: string, channel: string): Video {
   }
 }
 
-function mount(data: StorageData, cb?: Partial<PopupCallbacks>) {
+function mount(data: Omit<StorageData, 'settings'>, cb?: Partial<PopupCallbacks>) {
   const root = document.createElement('ul')
   document.body.appendChild(root)
   const callbacks: PopupCallbacks = { openVideo: vi.fn(), openHome: vi.fn(), ...cb }
-  renderPopup(root, data, callbacks)
+  renderPopup(root, { ...data, settings: { ...DEFAULT_SETTINGS } }, callbacks)
   return { root, callbacks }
 }
 

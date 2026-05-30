@@ -8,6 +8,9 @@ import { CategoryGroup, VIDEO_CAP, groupVideosByCategory } from './groups'
 export interface PopupCallbacks {
   openVideo: (id: string) => void
   openHome: () => void
+  // Fired on any click interaction (expand a category, click a video) — used to
+  // play the optional click sound. Optional so tests can omit it.
+  onInteract?: () => void
 }
 
 export function renderPopup(root: HTMLElement, data: StorageData, cb: PopupCallbacks): void {
@@ -39,6 +42,7 @@ function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement 
 
   let built = false
   row.addEventListener('click', () => {
+    cb.onInteract?.()
     const open = section.classList.toggle('open')
     row.querySelector('.chev')!.textContent = open ? '▾' : '▸'
     if (open && !built) {
@@ -83,7 +87,10 @@ function videoItem(video: Video, cb: PopupCallbacks): HTMLElement {
   meta.appendChild(textDiv('vid-channel', video.channelName))
 
   item.append(thumb, meta)
-  item.addEventListener('click', () => cb.openVideo(video.id))
+  item.addEventListener('click', () => {
+    cb.onInteract?.()
+    cb.openVideo(video.id)
+  })
   return item
 }
 

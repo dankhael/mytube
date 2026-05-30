@@ -3,7 +3,7 @@
 // The backend is injected (constructor) so this is unit-testable with a fake.
 
 import { StorageBackend } from './storage-backend'
-import { DEFAULT_DATA, StorageData, UNCATEGORIZED, Video } from './types'
+import { DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, UNCATEGORIZED, Video } from './types'
 
 export class MyTubeStore {
   constructor(private readonly backend: StorageBackend) {}
@@ -17,6 +17,8 @@ export class MyTubeStore {
         ? stored.categories
         : structuredClone(DEFAULT_DATA.categories),
       videos: stored.videos ?? [],
+      // Merge so options added after this data was saved fall back to defaults.
+      settings: { ...DEFAULT_SETTINGS, ...stored.settings },
     }
   }
 
@@ -143,6 +145,12 @@ export class MyTubeStore {
         v.channelName = u.channelName
       }
     })
+    return this.commit(data)
+  }
+
+  async updateSettings(patch: Partial<Settings>): Promise<StorageData> {
+    const data = await this.getData()
+    data.settings = { ...data.settings, ...patch }
     return this.commit(data)
   }
 
