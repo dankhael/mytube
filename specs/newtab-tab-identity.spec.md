@@ -7,47 +7,46 @@ The handshake (see CLAUDE.md → "Spec handshake"):
 Do not implement against a Draft. Do not edit Approved criteria without the human.
 -->
 
-# Spec: Nome e ícone na aba da home
+# Spec: Name and icon on the home tab
 
 - **Status:** Approved  <!-- Draft → Approved (only a human sets Approved) -->
 - **Owner:** dankhael
-- **Contract:** página estática [newtab/index.html](../newtab/index.html) + ícones em [icons/](../icons/). Não toca no `Message`/`StorageData` de `src/types.ts`.
-- **Tests:** [newtab/index.html.test.ts](../newtab/index.html.test.ts) (novo — lê o HTML como texto)
+- **Contract:** static page [newtab/index.html](../newtab/index.html) + icons in [icons/](../icons/). Does not touch the `Message`/`StorageData` contract in `src/types.ts`.
+- **Tests:** [newtab/index.html.test.ts](../newtab/index.html.test.ts) (new — reads the HTML as text)
 
 ## Why
 
-Quando o usuário abre a home da extensão (nova aba), a aba do navegador mostra um
-título genérico e **nenhum favicon** (`newtab/index.html` não tem `<link rel="icon">`).
-A aba fica indistinguível das outras. Queremos que ela mostre o nome "MyTube" e o
-ícone da extensão, para o usuário reconhecer a aba de relance.
+When the user opens the extension's home (new tab), the browser tab shows a generic
+title and **no favicon** (`newtab/index.html` has no `<link rel="icon">`). The tab is
+indistinguishable from any other. We want it to show the name "MyTube" and the
+extension icon, so the user recognizes the tab at a glance.
 
 ## Acceptance criteria
 
-IDs estáveis (`TAB-N`). Cada linha vira um `it('<ID>: …')`. Os critérios abaixo
-são observáveis lendo o conteúdo de `newtab/index.html` (e o asset referenciado),
-sem precisar de navegador.
+Stable IDs (`TAB-N`). Each row becomes one `it('<ID>: …')`. The criteria below are
+observable by reading the contents of `newtab/index.html` (and the referenced
+asset), with no browser involved.
 
 | ID | Given | When | Then |
 |---|---|---|---|
-| **TAB-1** | `newtab/index.html` | o HTML é lido | a tag `<title>` contém exatamente `MyTube` |
-| **TAB-2** | `newtab/index.html` | o HTML é lido | existe um `<link rel="icon">` cujo `href` aponta para um arquivo de ícone que existe no repo (ex.: `/icons/icon48.png`) |
-| **TAB-3** | o `href` do favicon de TAB-2 | resolvido contra o repo | o arquivo de ícone referenciado existe em `icons/` (sem href quebrado) |
+| **TAB-1** | `newtab/index.html` | the HTML is read | the `<title>` tag is exactly `MyTube` |
+| **TAB-2** | `newtab/index.html` | the HTML is read | there is a `<link rel="icon">` whose `href` points to an icon file under `/icons/` (e.g. `/icons/icon48.png`) |
+| **TAB-3** | the favicon `href` from TAB-2 | resolved against the repo | the referenced icon file exists in `icons/` (no broken href) |
 
 ## Out of scope / non-goals
 
-- Não muda o ícone da extensão na toolbar (`action.default_icon`) nem no
-  `manifest.config.ts` — esses já existem e estão corretos.
-- Não cria novos arquivos de imagem; reutiliza os `icons/icon{16,48,128}.png` existentes.
-- Não torna o título dinâmico (ex.: contar vídeos no título da aba) — isso fica
-  para uma spec futura se desejado.
-- Não altera o `<title>` do popup.
+- Does not change the extension's toolbar icon (`action.default_icon`) or
+  `manifest.config.ts` — those already exist and are correct.
+- Does not create new image files; reuses the existing `icons/icon{16,48,128}.png`.
+- Does not make the title dynamic (e.g. a video count in the tab title) — that's
+  left for a future spec if desired.
+- Does not change the popup `<title>`.
 
 ## Manual acceptance (not unit-tested)
 
-Carregar a extensão (`npm run build` → carregar `dist/` desempacotada) e abrir uma
-nova aba:
+Load the extension (`npm run build` → load the unpacked `dist/`) and open a new tab:
 
-- [x] A aba do navegador mostra o texto **MyTube** como título.
-- [x] A aba do navegador mostra o **ícone da extensão** como favicon (não o ícone
-      genérico/branco do Chrome).
-- [x] O favicon continua aparecendo após um reload da página (`Ctrl+R`).
+- [x] The browser tab shows the text **MyTube** as the title.
+- [x] The browser tab shows the **extension icon** as the favicon (not Chrome's
+      generic/blank icon).
+- [x] The favicon still shows after a page reload (`Ctrl+R`).

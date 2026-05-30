@@ -1,9 +1,9 @@
 // Shared types used across background, content script and the new tab page.
 
 export interface Video {
-  id: string // videoId do YouTube
+  id: string // YouTube videoId
   title: string
-  thumbnail: string // URL da thumbnail (mqdefault.jpg)
+  thumbnail: string // thumbnail URL (mqdefault.jpg)
   channelName: string
   category: string
   addedAt: number // timestamp
@@ -17,7 +17,7 @@ export interface Category {
 }
 
 export interface StorageData {
-  categories: Category[] // ordem das categorias
+  categories: Category[] // category order
   videos: Video[]
 }
 
