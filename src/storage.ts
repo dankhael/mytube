@@ -129,6 +129,23 @@ export class MyTubeStore {
     return this.commit(data)
   }
 
+  // Backfills title/channel for already-saved videos in a single write
+  // (used after fetching metadata for entries that were scraped incompletely).
+  async applyMetadata(
+    updates: { id: string; title: string; channelName: string }[],
+  ): Promise<StorageData> {
+    const data = await this.getData()
+    const byId = new Map(updates.map((u) => [u.id, u]))
+    data.videos.forEach((v) => {
+      const u = byId.get(v.id)
+      if (u) {
+        v.title = u.title
+        v.channelName = u.channelName
+      }
+    })
+    return this.commit(data)
+  }
+
   async reorderVideos(category: string, order: string[]): Promise<StorageData> {
     const data = await this.getData()
     const inCategory = new Map(

@@ -57,6 +57,18 @@ describe('save-video.spec', () => {
     expect(data.videos[0].category).toBe('B')
   })
 
+  it('META-3: applyMetadata updates only the listed videos', async () => {
+    backend = new FakeStorageBackend(
+      seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A'), vid('y', 'A')]),
+    )
+    store = new MyTubeStore(backend)
+    const data = await store.applyMetadata([{ id: 'x', title: 'Título real', channelName: 'Canal real' }])
+    const x = data.videos.find((v) => v.id === 'x')!
+    const y = data.videos.find((v) => v.id === 'y')!
+    expect(x).toMatchObject({ title: 'Título real', channelName: 'Canal real' })
+    expect(y.title).toBe('y') // untouched
+  })
+
   it('REORDER-VID-1: reordering a category keeps other categories intact', async () => {
     backend = new FakeStorageBackend(
       seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [

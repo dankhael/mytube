@@ -3,6 +3,7 @@
 // try/catch since the DOM structure shifts often.
 
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
+import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
 
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
@@ -30,15 +31,23 @@ function extractCard(card: HTMLElement): CardData | null {
   if (!match) return null
   const id = match[1]
 
-  const titleEl = card.querySelector<HTMLElement>('#video-title')
+  // Cover classic renderers (#video-title) and the newer lockup view-models.
+  const titleEl = card.querySelector<HTMLElement>(
+    '#video-title, #video-title-link, .yt-lockup-metadata-view-model-wiz__title, h3 a',
+  )
   const title =
-    titleEl?.getAttribute('title')?.trim() || titleEl?.textContent?.trim() || 'Sem título'
+    titleEl?.textContent?.trim() ||
+    titleEl?.getAttribute('title')?.trim() ||
+    link?.getAttribute('title')?.trim() ||
+    link?.getAttribute('aria-label')?.trim() ||
+    MISSING_TITLE
 
   const channelEl =
     card.querySelector<HTMLElement>('#channel-name a') ||
     card.querySelector<HTMLElement>('ytd-channel-name a') ||
-    card.querySelector<HTMLElement>('#channel-name #text')
-  const channelName = channelEl?.textContent?.trim() || 'Canal desconhecido'
+    card.querySelector<HTMLElement>('#channel-name #text') ||
+    card.querySelector<HTMLElement>('.yt-content-metadata-view-model-wiz__metadata-text')
+  const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
 
   // mqdefault is stable regardless of YouTube's lazy-loaded <img> state.
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
@@ -56,12 +65,12 @@ function extractWatchPage(): CardData | null {
     'ytd-watch-metadata #title h1, h1.ytd-watch-metadata, #title h1.style-scope.ytd-watch-metadata',
   )
   const title =
-    titleEl?.textContent?.trim() || document.title.replace(/ - YouTube$/, '').trim() || 'Sem título'
+    titleEl?.textContent?.trim() || document.title.replace(/ - YouTube$/, '').trim() || MISSING_TITLE
 
   const channelEl = document.querySelector<HTMLElement>(
     'ytd-watch-metadata ytd-channel-name a, #owner #channel-name a, #upload-info #channel-name a',
   )
-  const channelName = channelEl?.textContent?.trim() || 'Canal desconhecido'
+  const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
 
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
   return { id, title, thumbnail, channelName }

@@ -7,6 +7,7 @@ export default defineManifest({
   version: pkg.version,
   description: 'Sua home do YouTube curada por você',
   permissions: ['storage', 'tabs', 'activeTab'],
+  host_permissions: ['https://www.youtube.com/*'],
   action: {
     default_popup: 'popup/popup.html',
     default_icon: {

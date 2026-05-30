@@ -2,9 +2,51 @@
 
 import { ChromeSyncBackend } from '../src/storage-backend'
 import { MyTubeStore, unwatchedCount } from '../src/storage'
-import { Message, MessageResponse, StorageData } from '../src/types'
+import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
+import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
+
+type SavePayload = Omit<Video, 'category' | 'addedAt' | 'watched'>
+
+// Fill missing title/channel from oEmbed before storing (best-effort).
+async function enrichOnSave(video: SavePayload): Promise<SavePayload> {
+  if (!needsEnrichment(video)) return video
+  const meta = await fetchVideoMetadata(video.id)
+  if (!meta) return video
+  return {
+    ...video,
+    title: meta.title || video.title,
+    channelName: meta.channelName || video.channelName,
+  }
+}
+
+// One-shot pass over already-saved videos that were scraped incompletely.
+let backfilling = false
+async function backfillMetadata(): Promise<void> {
+  if (backfilling) return
+  backfilling = true
+  try {
+    const data = await store.getData()
+    const targets = data.videos.filter(needsEnrichment)
+    if (targets.length === 0) return
+
+    const updates: { id: string; title: string; channelName: string }[] = []
+    for (const v of targets) {
+      const meta = await fetchVideoMetadata(v.id)
+      if (meta && (meta.title || meta.channelName)) {
+        updates.push({
+          id: v.id,
+          title: meta.title || v.title,
+          channelName: meta.channelName || v.channelName,
+        })
+      }
+    }
+    if (updates.length > 0) await store.applyMetadata(updates)
+  } finally {
+    backfilling = false
+  }
+}
 
 async function updateBadge(data?: StorageData): Promise<void> {
   const d = data ?? (await store.getData())
@@ -15,10 +57,12 @@ async function updateBadge(data?: StorageData): Promise<void> {
 
 chrome.runtime.onInstalled.addListener(() => {
   updateBadge()
+  backfillMetadata()
 })
 
 chrome.runtime.onStartup.addListener(() => {
   updateBadge()
+  backfillMetadata()
 })
 
 // Keep the badge in sync if storage changes from another context (e.g. new tab).
@@ -32,12 +76,17 @@ async function handle(message: Message): Promise<MessageResponse> {
   try {
     switch (message.action) {
       case 'SAVE_VIDEO': {
-        const data = await store.saveVideo(message.video, message.category)
+        const enriched = await enrichOnSave(message.video)
+        const data = await store.saveVideo(enriched, message.category)
         await updateBadge(data)
         return { ok: true, data }
       }
-      case 'GET_ALL':
-        return { ok: true, data: await store.getData() }
+      case 'GET_ALL': {
+        const data = await store.getData()
+        // Fire-and-forget: the new tab updates live via storage.onChanged.
+        void backfillMetadata()
+        return { ok: true, data }
+      }
       case 'DELETE_VIDEO':
         return { ok: true, data: await store.deleteVideo(message.id) }
       case 'MOVE_VIDEO':
