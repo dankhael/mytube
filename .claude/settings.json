@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/test-hook.mjs",
+            "timeout": 120,
+            "statusMessage": "Running Vitest gate…"
+          }
+        ]
+      }
+    ]
+  }
+}
