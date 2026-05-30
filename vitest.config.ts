@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'newtab/**/*.test.tsx', 'newtab/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'newtab/**/*.test.tsx', 'newtab/**/*.test.ts', 'popup/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
   },
 })
