@@ -1,5 +1,7 @@
 # Spec: Categories
 
+**Status:** Approved (implemented)
+
 Contract: `ADD_CATEGORY`, `UPDATE_CATEGORY`, `DELETE_CATEGORY`,
 `REORDER_CATEGORIES` in [src/types.ts](../src/types.ts).
 Tests: [src/storage.test.ts](../src/storage.test.ts).

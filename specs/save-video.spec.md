@@ -1,5 +1,7 @@
 # Spec: Saving, moving & ordering videos
 
+**Status:** Approved (implemented)
+
 Contract: `SAVE_VIDEO`, `DELETE_VIDEO`, `MOVE_VIDEO`, `REORDER_VIDEOS` in
 [src/types.ts](../src/types.ts). Tests: [src/storage.test.ts](../src/storage.test.ts).
 

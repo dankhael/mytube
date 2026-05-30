@@ -1,5 +1,7 @@
 # Spec: New-tab UI & end-to-end smoke
 
+**Status:** Approved (implemented)
+
 These are the criteria that ARE worth automating at the UI level. Component-level
 behavior is proven with Vitest + Testing Library (jsdom); the full extension load
 is proven once with Playwright.

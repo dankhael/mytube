@@ -1,5 +1,7 @@
 # Spec: Watched state, badge & storage quota
 
+**Status:** Approved (implemented)
+
 Contract: `MARK_WATCHED` in [src/types.ts](../src/types.ts), `unwatchedCount` and
 `getBytesInUse` in [src/storage.ts](../src/storage.ts).
 Tests: [src/storage.test.ts](../src/storage.test.ts).

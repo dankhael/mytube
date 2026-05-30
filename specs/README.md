@@ -22,12 +22,20 @@ and a criterion with no matching test name is a visible coverage gap.
 
 ## Workflow per feature
 
-1. Write/update the `*.spec.md` (behavior + acceptance criteria with new IDs).
-2. Encode the contract in `src/types.ts` (a new `Message` variant or schema field).
-3. Write the failing test in `src/storage.test.ts` referencing the IDs.
-4. Implement in `src/storage.ts` (the `MyTubeStore` reducer) until green.
-5. For DOM/UI behavior that can't be unit-tested (content script, React page),
-   add a row to the **Manual acceptance** table at the bottom of the relevant spec.
+Copy [`_TEMPLATE.spec.md`](./_TEMPLATE.spec.md) and follow the **Spec handshake**
+(a human approves the criteria before any code is written — see `CLAUDE.md`).
+
+0. Draft `specs/<feature>.spec.md` from the template with `Status: Draft`; get it
+   reviewed and flipped to `Status: Approved` by a human.
+1. Encode the contract in `src/types.ts` (a new `Message` variant or schema field).
+2. Write the failing test referencing the IDs (`src/storage.test.ts` or
+   `newtab/*.test.tsx`).
+3. Implement (`src/storage.ts` reducer / the component) until green.
+4. For DOM/UI behavior that can't be unit-tested (content script), add a row to the
+   **Manual acceptance** table instead.
+
+Never edit an `Approved` criterion just to turn a red test green — propose it as its
+own spec diff and get sign-off.
 
 ## Why the reducer is the test target
 

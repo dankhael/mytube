@@ -30,6 +30,26 @@
   DOM/content-script and React UI use the **Manual acceptance** checklists in the
   spec files instead of unit tests. See `specs/README.md`.
 
+## Spec handshake (who owns what)
+
+The agent may draft and execute specs, but a human owns the criteria. This is the
+one boundary that keeps SDD honest — the author of success can't also be its only
+judge. Start from `specs/_TEMPLATE.spec.md`.
+
+1. **Draft** — agent writes `specs/<feature>.spec.md` with `Status: Draft` from the
+   human's feature description. Stop here and ask for approval. Do NOT write code.
+2. **Approve** — the human reviews/edits the acceptance criteria and flips
+   `Status: Approved`. Only a human sets Approved.
+3. **Implement** — only against an `Approved` spec: for each ID, write the failing
+   `it('<ID>: …')`, then implement until green.
+4. **Changing criteria** — never silently edit an `Approved` criterion to make a red
+   test pass. Propose the change as its own spec diff and get human sign-off.
+
+Rules of thumb: keep criteria **observable** (a test can assert them); if a behavior
+can't be unit-tested (YouTube DOM), it belongs in **Manual acceptance**, not faked in
+a test. For a clean separation, draft the spec in one session and implement in a fresh
+one so the implementer works only from the approved text.
+
 ## Tests
 
 - Tests run with a single command: `npm test` (watch: `npm run test:watch`).
