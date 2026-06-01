@@ -1,9 +1,10 @@
 // Popup entry — fetches the store and renders the browsable category list,
 // the settings modal (gear button) and the optional click sound.
 
+import './popup.css'
 import { Message, MessageResponse, Settings } from '../src/types'
 import { renderPopup } from './render'
-import { watchUrl } from './groups'
+import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
 
@@ -27,8 +28,9 @@ async function init(): Promise<void> {
   const player = createClickPlayer()
   const click = () => playClick(settings, player)
 
+  // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
   const total = document.getElementById('total')!
-  total.textContent = `${data.videos.filter((v) => !v.watched).length} não assistidos`
+  total.innerHTML = unwatchedLabel(data).replace(/^(\d+)/, '<b>$1</b>')
 
   document.getElementById('open')!.addEventListener('click', openHome)
 

@@ -20,7 +20,7 @@ mocked up — and make the brand color a **one-line change** in code.
 All accent color derives from two tokens in `:root`:
 
 ```css
---accent-h: 168;     /* hue — THE knob. Mint 168 · Red 25 · Violet 290 · Amber 64 */
+--accent-h: 290;     /* hue — THE knob. Mint 168 · Red 25 · Violet 290 · Amber 64 */
 --accent-c: 0.125;   /* chroma */
 ```
 

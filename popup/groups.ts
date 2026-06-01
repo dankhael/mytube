@@ -1,6 +1,7 @@
 // Pure helpers for the popup — kept separate from DOM so they're Node-testable.
 
 import { Category, StorageData, Video } from '../src/types'
+import { unwatchedCount } from '../src/storage'
 
 // Cap shown per category in the popup; the rest lives on the new-tab home.
 export const VIDEO_CAP = 10
@@ -27,4 +28,10 @@ export function groupVideosByCategory(data: StorageData): CategoryGroup[] {
 
 export function watchUrl(id: string): string {
   return `https://www.youtube.com/watch?v=${id}`
+}
+
+// Header summary shown in the popup, e.g. "13 unwatched" (spec PUI-1). The
+// number is meant to be styled distinctly from the word (accent vs muted).
+export function unwatchedLabel(data: StorageData): string {
+  return `${unwatchedCount(data)} unwatched`
 }

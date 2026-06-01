@@ -92,6 +92,35 @@ describe('popup-categories.spec (render)', () => {
     expect(root.querySelector('.cat-empty')?.textContent).toMatch(/nenhum vídeo/i)
   })
 
+  it('PUI-2: category row shows an icon tile (svg), not the emoji, with a count pill', () => {
+    const { root } = mount({
+      categories: [
+        { name: 'Tutoriais', emoji: '🎓' },
+        { name: 'Vazia', emoji: '🎮' },
+      ],
+      videos: [vid('a', 'A', 'C')], // category 'Tutoriais'
+    })
+    const ico = root.querySelector('.cat-ico')!
+    expect(ico.querySelector('svg')).not.toBeNull()
+    expect(ico.textContent).not.toContain('🎓')
+    // Count pill renders even for the zero-video category.
+    const counts = [...root.querySelectorAll('.cat-count')].map((c) => c.textContent)
+    expect(counts).toEqual(['1', '0'])
+  })
+
+  it('PUI-3: the chevron reflects collapsed vs expanded state', () => {
+    const { root } = mount({
+      categories: [{ name: 'Tutoriais', emoji: '🎓' }],
+      videos: [vid('a', 'A', 'C')],
+    })
+    const row = root.querySelector<HTMLElement>('.cat-row')!
+    expect(root.querySelector('.chev')?.textContent).toBe('▸')
+    row.click()
+    expect(root.querySelector('.chev')?.textContent).toBe('▾')
+    row.click()
+    expect(root.querySelector('.chev')?.textContent).toBe('▸')
+  })
+
   it('POPUP-7: more than 10 videos caps at 10 with a "ver todos" link', () => {
     const openHome = vi.fn()
     const videos = Array.from({ length: 12 }, (_, i) => vid(`id${i}`.padEnd(11, '0'), `T${i}`, 'C'))

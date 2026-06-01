@@ -4,6 +4,7 @@
 
 import { StorageData, Video } from '../src/types'
 import { CategoryGroup, VIDEO_CAP, groupVideosByCategory } from './groups'
+import { categorySvg } from './category-icon'
 
 export interface PopupCallbacks {
   openVideo: (id: string) => void
@@ -33,7 +34,10 @@ function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement 
   const section = el('li', 'cat')
 
   const row = el('button', 'cat-row')
-  row.appendChild(textSpan('cat-emoji', category.emoji))
+  // Monochrome icon in a tile (not the stored emoji) — see PUI-2.
+  const ico = el('span', 'cat-ico')
+  ico.innerHTML = categorySvg(category.name)
+  row.appendChild(ico)
   row.appendChild(textSpan('cat-name', category.name))
   row.appendChild(textSpan('cat-count', String(videos.length)))
   row.appendChild(textSpan('chev', '▸'))

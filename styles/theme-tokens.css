@@ -1,0 +1,50 @@
+/* ============================================================
+   THEME TOKENS — warm-cozy dark, single accent knob.
+   Shared by BOTH surfaces: the new-tab home (newtab/index.css)
+   and the toolbar popup (popup/popup.css). Change --accent-h
+   here once and the whole extension re-themes (spec PUI-8).
+   Presets:  Mint 168 · Red 25 · Violet 290 · Amber 64
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400..700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  color-scheme: dark;
+
+  --hue: 70; /* warm neutral hue */
+  --accent-h: 290; /* ← THE knob (Mint 168 · Red 25 · Violet 290 · Amber 64) */
+  --accent-c: 0.125; /* accent chroma */
+
+  --bg: oklch(0.15 0.006 var(--hue));
+  --bg-grad: oklch(0.185 0.01 var(--hue));
+  --elev: oklch(0.19 0.007 var(--hue));
+  --surface: oklch(0.214 0.008 var(--hue));
+  --surface-2: oklch(0.252 0.009 var(--hue));
+  --surface-3: oklch(0.3 0.01 var(--hue));
+  --border: oklch(0.33 0.01 var(--hue));
+  --border-soft: oklch(0.27 0.009 var(--hue));
+
+  --text: oklch(0.967 0.004 var(--hue));
+  --text-2: oklch(0.79 0.007 var(--hue));
+  --text-3: oklch(0.62 0.007 var(--hue));
+
+  --accent: oklch(0.815 var(--accent-c) var(--accent-h));
+  --accent-2: oklch(0.72 calc(var(--accent-c) + 0.01) var(--accent-h));
+  --accent-soft: oklch(0.815 var(--accent-c) var(--accent-h) / 0.14);
+  --accent-line: oklch(0.815 var(--accent-c) var(--accent-h) / 0.32);
+  --accent-ink: oklch(0.205 0.045 var(--accent-h));
+
+  --warn: oklch(0.8 0.13 64);
+
+  --radius: 16px;
+  --radius-sm: 11px;
+  --radius-lg: 22px;
+
+  --shadow-card: 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 24px 70px -16px rgba(0, 0, 0, 0.66), 0 6px 18px -8px rgba(0, 0, 0, 0.5);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', var(--font);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}

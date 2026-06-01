@@ -1,7 +1,7 @@
 // Pure grouping specs for the popup (Node). See specs/popup-categories.spec.md.
 
 import { describe, expect, it } from 'vitest'
-import { VIDEO_CAP, groupVideosByCategory, watchUrl } from './groups'
+import { VIDEO_CAP, groupVideosByCategory, unwatchedLabel, watchUrl } from './groups'
 import { Category, DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
 
 function vid(id: string, category: string): Video {
@@ -36,5 +36,13 @@ describe('popup-categories.spec (grouping)', () => {
   it('GROUP-3: watchUrl builds the canonical watch link', () => {
     expect(watchUrl('abc')).toBe('https://www.youtube.com/watch?v=abc')
     expect(VIDEO_CAP).toBe(10)
+  })
+
+  it('PUI-1: unwatchedLabel counts only unwatched videos', () => {
+    const d = data(
+      [{ name: 'A', emoji: '📁' }],
+      [vid('a', 'A'), { ...vid('b', 'A'), watched: true }, vid('c', 'A')],
+    )
+    expect(unwatchedLabel(d)).toBe('2 unwatched')
   })
 })

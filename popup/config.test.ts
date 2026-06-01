@@ -33,8 +33,28 @@ describe('popup-config.spec (modal)', () => {
     open({ soundEffects: false })
     const donate = document.querySelector<HTMLButtonElement>('.cfg-donate')!
     expect(donate.disabled).toBe(true)
-    expect(donate.textContent).toMatch(/café/i)
-    expect(document.querySelector('.cfg-soon')?.textContent).toMatch(/em breve/i)
+    expect(donate.textContent).toMatch(/coffee/i)
+    expect(document.querySelector('.cfg-soon')?.textContent).toMatch(/soon/i)
+  })
+
+  it('PUI-5: the modal title is "Settings" with a close control', () => {
+    open({ soundEffects: false })
+    expect(document.querySelector('.cfg-title')?.textContent).toBe('Settings')
+    expect(document.querySelector('.cfg-close')).not.toBeNull()
+  })
+
+  it('PUI-6: the sound row has the English label and accurate subtitle', () => {
+    open({ soundEffects: false })
+    expect(document.querySelector('.cfg-row-label')?.textContent).toBe('Sound effects')
+    expect(document.querySelector('.cfg-row-sub')?.textContent).toMatch(/as you browse/i)
+  })
+
+  it('PUI-7: the donate card has a title, subtitle and SOON badge', () => {
+    open({ soundEffects: false })
+    expect(document.querySelector('.cfg-donate-title')?.textContent).toBe('Buy me a coffee')
+    expect(document.querySelector('.cfg-donate-sub')?.textContent).toBe('Support the developer')
+    expect(document.querySelector('.cfg-soon')?.textContent).toBe('SOON')
+    expect(document.querySelector('.cfg-donate-ico svg')).not.toBeNull()
   })
 
   it('CFG-7: closes via ✕, Esc and backdrop click', () => {
