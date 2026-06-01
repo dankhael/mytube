@@ -94,11 +94,16 @@ async function handle(message: Message): Promise<MessageResponse> {
       case 'MARK_WATCHED':
         return { ok: true, data: await store.markWatched(message.id, message.watched) }
       case 'ADD_CATEGORY':
-        return { ok: true, data: await store.addCategory(message.name, message.emoji) }
+        return { ok: true, data: await store.addCategory(message.name, message.emoji, message.icon) }
       case 'UPDATE_CATEGORY':
         return {
           ok: true,
-          data: await store.updateCategory(message.oldName, message.name, message.emoji),
+          data: await store.updateCategory(
+            message.oldName,
+            message.name,
+            message.emoji,
+            message.icon,
+          ),
         }
       case 'DELETE_CATEGORY':
         return { ok: true, data: await store.deleteCategory(message.name, message.deleteVideos) }

@@ -107,6 +107,52 @@ describe('home-smart-sections.spec (home)', () => {
   })
 })
 
+describe('home-icon-tiles.spec (home)', () => {
+  it('HICON-1: a category tile renders a monochrome icon, not the emoji', async () => {
+    scriptStore({
+      categories: [{ name: 'Tutoriais', emoji: '🎓' }], // no explicit icon → auto-map (book)
+      videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
+    })
+    const { container } = render(<App />)
+    await screen.findByText('Tutoriais')
+
+    // Smart-section tiles keep their emoji (out of scope); the category tile is
+    // the one that rendered an <svg>.
+    const iconTile = [...container.querySelectorAll('.cat-ico')].find((t) => t.querySelector('svg'))
+    expect(iconTile).toBeTruthy()
+    expect(iconTile!.textContent).not.toContain('🎓')
+  })
+
+  it('HICON-2: an empty category shows the icon in its empty state', async () => {
+    scriptStore({
+      categories: [
+        { name: 'Cheia', emoji: '📁' },
+        { name: 'Vazia', emoji: '🎭' },
+      ],
+      videos: [video('aaaaaaaaaaa', 'Cheia', 'Um video')],
+    })
+    const { container } = render(<App />)
+    await screen.findByText('Vazia')
+
+    const emptyState = container.querySelector('.empty .ei')!
+    expect(emptyState.querySelector('svg')).not.toBeNull()
+    expect(emptyState.textContent).not.toContain('🎭')
+  })
+
+  it('HICON-5: the add-category modal shows an icon picker, not the emoji grid', async () => {
+    scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText(/curada por você/i)
+
+    await user.click(screen.getByRole('button', { name: /categoria/i }))
+    // Icon picker buttons are labelled by their IconKey; the old emoji chars are gone.
+    expect(screen.getByRole('button', { name: 'gamepad' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'trophy' })).toBeTruthy()
+    expect(screen.queryByText('🎮')).toBeNull()
+  })
+})
+
 describe('design-rework.spec (home)', () => {
   it('HOME-2: the greeting renders', async () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })

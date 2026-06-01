@@ -1,5 +1,7 @@
 // Shared types used across background, content script and the new tab page.
 
+import { IconKey } from './category-icon'
+
 export interface Video {
   id: string // YouTube videoId
   title: string
@@ -13,7 +15,8 @@ export interface Video {
 
 export interface Category {
   name: string
-  emoji: string
+  emoji: string // legacy: kept for back-compat, no longer displayed (see HICON spec)
+  icon?: IconKey // chosen tile icon; when unset the name auto-maps (resolveCategoryIcon)
 }
 
 // User preferences. New options should be added here with a default so that
@@ -36,9 +39,9 @@ export const UNCATEGORIZED = 'Sem categoria'
 
 export const DEFAULT_DATA: StorageData = {
   categories: [
-    { name: 'Tutoriais', emoji: '🎓' },
-    { name: 'Entretenimento', emoji: '🎭' },
-    { name: UNCATEGORIZED, emoji: '📁' },
+    { name: 'Tutoriais', emoji: '🎓', icon: 'book' },
+    { name: 'Entretenimento', emoji: '🎭', icon: 'grid' },
+    { name: UNCATEGORIZED, emoji: '📁', icon: 'inbox' },
   ],
   videos: [],
   settings: DEFAULT_SETTINGS,
@@ -52,8 +55,8 @@ export type Message =
   | { action: 'DELETE_VIDEO'; id: string }
   | { action: 'MOVE_VIDEO'; id: string; category: string }
   | { action: 'MARK_WATCHED'; id: string; watched: boolean }
-  | { action: 'ADD_CATEGORY'; name: string; emoji: string }
-  | { action: 'UPDATE_CATEGORY'; oldName: string; name: string; emoji: string }
+  | { action: 'ADD_CATEGORY'; name: string; emoji: string; icon?: IconKey }
+  | { action: 'UPDATE_CATEGORY'; oldName: string; name: string; emoji: string; icon?: IconKey }
   | { action: 'DELETE_CATEGORY'; name: string; deleteVideos: boolean }
   | { action: 'REORDER_CATEGORIES'; order: string[] }
   | { action: 'REORDER_VIDEOS'; category: string; order: string[] }

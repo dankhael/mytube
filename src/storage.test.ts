@@ -102,6 +102,29 @@ describe('categories.spec', () => {
     expect(data.videos.every((v) => v.category === 'Estudos')).toBe(true)
   })
 
+  it('HICON-6: addCategory persists the chosen icon', async () => {
+    const store = new MyTubeStore(new FakeStorageBackend(seed([], [])))
+    const data = await store.addCategory('Games', '📁', 'gamepad')
+    expect(data.categories.find((c) => c.name === 'Games')?.icon).toBe('gamepad')
+  })
+
+  it('HICON-6: updateCategory changes the icon', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'Games', emoji: '📁', icon: 'gamepad' }], [])),
+    )
+    const data = await store.updateCategory('Games', 'Games', '📁', 'trophy')
+    expect(data.categories.find((c) => c.name === 'Games')?.icon).toBe('trophy')
+  })
+
+  it('HICON-7: legacy categories without an icon load and update without error', async () => {
+    // No `icon` key (pre-feature data) must still load and stay usable.
+    const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'Velha', emoji: '🎓' }], [])))
+    const loaded = await store.getData()
+    expect(loaded.categories[0].icon).toBeUndefined()
+    const data = await store.updateCategory('Velha', 'Velha', '🎓', 'book')
+    expect(data.categories[0].icon).toBe('book')
+  })
+
   it('CAT-3: deleting a category (keep videos) moves them to "Sem categoria"', async () => {
     const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'X', emoji: '📁' }], [vid('x', 'X')])))
     const data = await store.deleteCategory('X', false)

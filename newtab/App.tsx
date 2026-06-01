@@ -12,9 +12,10 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable'
-import { Plus, Eye, EyeOff, AlertTriangle, Search } from 'lucide-react'
+import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'lucide-react'
 import Logo from './components/Logo'
 import { Category, StorageData, Video } from '../src/types'
+import { IconKey } from '../src/category-icon'
 import { getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
 import SmartSection from './components/SmartSection'
@@ -82,14 +83,15 @@ export default function App() {
   const reorderVideos = (category: string, orderedIds: string[]) =>
     apply(mutate({ action: 'REORDER_VIDEOS', category, order: orderedIds }))
 
-  const addCategory = (name: string, emoji: string) => {
+  const addCategory = (name: string, icon: IconKey) => {
     setShowAdd(false)
-    apply(mutate({ action: 'ADD_CATEGORY', name, emoji }))
+    // emoji is legacy; keep a default so stored Category stays well-formed.
+    apply(mutate({ action: 'ADD_CATEGORY', name, emoji: '📁', icon }))
   }
-  const updateCategory = (name: string, emoji: string) => {
+  const updateCategory = (name: string, icon: IconKey) => {
     if (!editing) return
     setEditing(null)
-    apply(mutate({ action: 'UPDATE_CATEGORY', oldName: editing.name, name, emoji }))
+    apply(mutate({ action: 'UPDATE_CATEGORY', oldName: editing.name, name, emoji: editing.emoji, icon }))
   }
   const deleteCategory = (cat: Category) => {
     const count = data?.videos.filter((v) => v.category === cat.name).length ?? 0
@@ -199,7 +201,7 @@ export default function App() {
         ) : (
           <>
             <SmartSection
-              emoji="🆕"
+              icon={Sparkles}
               title="Recentemente adicionados"
               videos={recentlyAdded}
               onOpenVideo={openVideo}
@@ -231,7 +233,7 @@ export default function App() {
             </DndContext>
 
             <SmartSection
-              emoji="🕸️"
+              icon={Hourglass}
               title="Pegando poeira"
               videos={gatheringDust}
               onOpenVideo={openVideo}

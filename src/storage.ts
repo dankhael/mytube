@@ -3,6 +3,7 @@
 // The backend is injected (constructor) so this is unit-testable with a fake.
 
 import { StorageBackend } from './storage-backend'
+import { IconKey } from './category-icon'
 import { DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, UNCATEGORIZED, Video } from './types'
 
 export class MyTubeStore {
@@ -75,20 +76,26 @@ export class MyTubeStore {
     return this.commit(data)
   }
 
-  async addCategory(name: string, emoji: string): Promise<StorageData> {
+  async addCategory(name: string, emoji: string, icon?: IconKey): Promise<StorageData> {
     const data = await this.getData()
     if (!data.categories.some((c) => c.name === name)) {
-      data.categories.push({ name, emoji: emoji || '📁' })
+      data.categories.push({ name, emoji: emoji || '📁', ...(icon ? { icon } : {}) })
     }
     return this.commit(data)
   }
 
-  async updateCategory(oldName: string, name: string, emoji: string): Promise<StorageData> {
+  async updateCategory(
+    oldName: string,
+    name: string,
+    emoji: string,
+    icon?: IconKey,
+  ): Promise<StorageData> {
     const data = await this.getData()
     const category = data.categories.find((c) => c.name === oldName)
     if (category) {
       category.name = name
       category.emoji = emoji
+      if (icon) category.icon = icon
     }
     if (oldName !== name) {
       data.videos.forEach((v) => {

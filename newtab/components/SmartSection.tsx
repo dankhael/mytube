@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { type LucideIcon } from 'lucide-react'
 import { Video } from '../../src/types'
 import { VideoCardView } from './VideoCard'
 
 interface Props {
-  emoji: string
+  icon: LucideIcon // monochrome header glyph (matches the category tiles)
   title: string
   videos: Video[]
   onOpenVideo: (id: string) => void
@@ -17,7 +18,7 @@ const PREVIEW_COUNT = 4
 // A derived, read-only section (e.g. "Recentemente adicionados"). Same card UI as
 // categories, but no drag handle / category menu — its order is computed.
 export default function SmartSection({
-  emoji,
+  icon: Icon,
   title,
   videos,
   onOpenVideo,
@@ -35,7 +36,9 @@ export default function SmartSection({
   return (
     <section className="cat">
       <div className="cat-head">
-        <div className="cat-ico">{emoji}</div>
+        <div className="cat-ico">
+          <Icon size={18} />
+        </div>
         <h2 className="cat-title">{title}</h2>
         <span className="cat-count">
           {videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'}

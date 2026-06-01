@@ -36,7 +36,7 @@ function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement 
   const row = el('button', 'cat-row')
   // Monochrome icon in a tile (not the stored emoji) — see PUI-2.
   const ico = el('span', 'cat-ico')
-  ico.innerHTML = categorySvg(category.name)
+  ico.innerHTML = categorySvg(category)
   row.appendChild(ico)
   row.appendChild(textSpan('cat-name', category.name))
   row.appendChild(textSpan('cat-count', String(videos.length)))

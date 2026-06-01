@@ -16,6 +16,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Category, Video } from '../../src/types'
+import { resolveCategoryIcon } from '../../src/category-icon'
+import CategoryIcon from './CategoryIcon'
 import VideoCard from './VideoCard'
 
 interface Props {
@@ -77,7 +79,9 @@ export default function CategorySection(props: Props) {
         <button {...attributes} {...listeners} className="drag" title="Arrastar categoria">
           <GripVertical size={16} />
         </button>
-        <div className="cat-ico">{category.emoji}</div>
+        <div className="cat-ico">
+          <CategoryIcon icon={resolveCategoryIcon(category)} />
+        </div>
         <h2 className="cat-title">{category.name}</h2>
         <span className="cat-count">
           {videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'}
@@ -115,7 +119,7 @@ export default function CategorySection(props: Props) {
       {videos.length === 0 ? (
         <div className="empty">
           <div className="ei">
-            <span style={{ fontSize: 20 }}>{category.emoji}</span>
+            <CategoryIcon icon={resolveCategoryIcon(category)} size={20} />
           </div>
           <div>
             <b>Nada aqui ainda</b>

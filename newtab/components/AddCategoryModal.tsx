@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { Category } from '../../src/types'
+import { ALL_ICONS, IconKey, resolveCategoryIcon } from '../../src/category-icon'
+import CategoryIcon from './CategoryIcon'
 
 interface Props {
   // When `existing` is provided the modal is in edit mode.
   existing?: Category
   onClose: () => void
-  onSubmit: (name: string, emoji: string) => void
+  onSubmit: (name: string, icon: IconKey) => void
 }
-
-const EMOJI_CHOICES = ['📁', '🎓', '🎭', '🎮', '🎵', '💻', '🏋️', '🍳', '📰', '🔬', '🎨', '⚽', '🚀', '😂']
 
 export default function AddCategoryModal({ existing, onClose, onSubmit }: Props) {
   const [name, setName] = useState(existing?.name ?? '')
-  const [emoji, setEmoji] = useState(existing?.emoji ?? '📁')
+  // Preselect the category's current (or auto-mapped) icon.
+  const [icon, setIcon] = useState<IconKey>(
+    resolveCategoryIcon({ name: existing?.name ?? '', icon: existing?.icon }),
+  )
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -26,7 +29,7 @@ export default function AddCategoryModal({ existing, onClose, onSubmit }: Props)
   const submit = () => {
     const trimmed = name.trim()
     if (!trimmed) return
-    onSubmit(trimmed, emoji)
+    onSubmit(trimmed, icon)
   }
 
   return (
@@ -43,15 +46,20 @@ export default function AddCategoryModal({ existing, onClose, onSubmit }: Props)
 
       <label className="mb-2 mt-4 block text-sm text-yt-muted">Ícone</label>
       <div className="flex flex-wrap gap-2">
-        {EMOJI_CHOICES.map((e) => (
+        {ALL_ICONS.map((key) => (
           <button
-            key={e}
-            onClick={() => setEmoji(e)}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg text-xl transition ${
-              emoji === e ? 'bg-[#3ea6ff]/20 ring-2 ring-[#3ea6ff]' : 'bg-[#121212] hover:bg-yt-hover'
+            key={key}
+            type="button"
+            aria-label={key}
+            aria-pressed={icon === key}
+            onClick={() => setIcon(key)}
+            className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+              icon === key
+                ? 'bg-accent/20 text-accent ring-2 ring-accent'
+                : 'bg-[#121212] text-yt-text hover:bg-yt-hover'
             }`}
           >
-            {e}
+            <CategoryIcon icon={key} size={20} />
           </button>
         ))}
       </div>
