@@ -13,14 +13,14 @@ interface CardActions {
 }
 
 interface ViewProps extends CardActions {
-  // Optional drag wiring — supplied by the sortable wrapper, omitted in read-only
-  // (smart) sections so those cards are not draggable.
+  // Drag wiring from the sortable wrapper; omitted in read-only smart sections.
   innerRef?: (node: HTMLElement | null) => void
   rootProps?: React.HTMLAttributes<HTMLElement>
   style?: React.CSSProperties
 }
 
-// Presentational card (thumbnail / title / channel + context menu). No DnD itself.
+// Presentational card matching the redesign (thumb + hover lift/play, avatar,
+// title/channel, hover actions + context menu). No DnD itself.
 export function VideoCardView({
   video,
   onOpen,
@@ -43,78 +43,93 @@ export function VideoCardView({
     return () => document.removeEventListener('mousedown', close)
   }, [menuOpen])
 
+  const initial = video.channelName.trim().charAt(0).toUpperCase() || '•'
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
+
   return (
     <div
       ref={innerRef}
       style={style}
       {...rootProps}
+      className="vcard"
+      onClick={() => onOpen(video.id)}
       onContextMenu={(e) => {
         e.preventDefault()
         setMenuOpen(true)
       }}
-      className="group relative cursor-pointer select-none rounded-xl bg-yt-card transition-colors hover:bg-yt-hover"
     >
-      <div className="relative aspect-video overflow-hidden rounded-lg" onClick={() => onOpen(video.id)}>
-        <img
-          src={video.thumbnail}
-          alt={video.title}
-          loading="lazy"
-          className={`h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] ${
-            video.watched ? 'opacity-40' : ''
-          }`}
-        />
-        {/* play affordance on hover */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/70">
-            <Play className="h-6 w-6 fill-white text-white" />
+      <div className="vthumb">
+        <img className="art" src={video.thumbnail} alt={video.title} loading="lazy" />
+        <div className="scrim" />
+        {video.watched ? (
+          <span className="watched-tag">
+            <Check size={12} /> Assistido
           </span>
+        ) : (
+          <span className="unwatch-dot" title="Ainda não assistido" />
+        )}
+        <div className="play">
+          <Play size={22} className="fill-current" />
         </div>
-        {video.watched && (
-          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/80 px-2 py-0.5 text-xs text-green-400">
-            <Check className="h-3 w-3" /> Assistido
-          </span>
+
+        <div className="vactions">
+          <button
+            className="vact"
+            title={video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
+            onClick={(e) => {
+              stop(e)
+              onToggleWatched(video)
+            }}
+          >
+            {video.watched ? <EyeOff size={16} /> : <Check size={17} />}
+          </button>
+          <button
+            className="vact"
+            title="Mover…"
+            onClick={(e) => {
+              stop(e)
+              onMove(video)
+            }}
+          >
+            <FolderInput size={16} />
+          </button>
+          <button
+            className="vact"
+            title="Mais"
+            onClick={(e) => {
+              stop(e)
+              setMenuOpen((v) => !v)
+            }}
+          >
+            <MoreVertical size={16} />
+          </button>
+        </div>
+
+        {menuOpen && (
+          <div className="vmenu" ref={menuRef} onClick={stop}>
+            <button onClick={() => { setMenuOpen(false); onMove(video) }}>
+              <FolderInput size={15} /> Mover para…
+            </button>
+            <button onClick={() => { setMenuOpen(false); onToggleWatched(video) }}>
+              {video.watched ? <Eye size={15} /> : <Check size={15} />}
+              {video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
+            </button>
+            <button className="danger" onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
+              <Trash2 size={15} /> Remover
+            </button>
+          </div>
         )}
       </div>
 
-      <div className="px-1 py-2">
-        <p className="line-clamp-2 text-sm font-medium leading-snug text-yt-text" title={video.title}>
-          {video.title}
-        </p>
-        <p className="mt-1 truncate text-xs text-yt-muted">{video.channelName}</p>
-      </div>
-
-      {/* ⋯ menu button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          setMenuOpen((v) => !v)
-        }}
-        className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition hover:bg-black/90 group-hover:opacity-100"
-        title="Opções"
-      >
-        <MoreVertical className="h-4 w-4" />
-      </button>
-
-      {menuOpen && (
-        <div
-          ref={menuRef}
-          className="absolute right-1 top-9 z-30 w-44 overflow-hidden rounded-lg border border-yt-border bg-[#212121] py-1 text-sm shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MenuItem icon={<FolderInput className="h-4 w-4" />} onClick={() => { setMenuOpen(false); onMove(video) }}>
-            Mover para…
-          </MenuItem>
-          <MenuItem
-            icon={video.watched ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            onClick={() => { setMenuOpen(false); onToggleWatched(video) }}
-          >
-            {video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
-          </MenuItem>
-          <MenuItem icon={<Trash2 className="h-4 w-4" />} danger onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
-            Remover
-          </MenuItem>
+      <div className="vmeta">
+        <div className="avatar">{initial}</div>
+        <div className="txt">
+          <p className="vtitle" title={video.title}>
+            {video.title}
+          </p>
+          <div className="vchan">{video.channelName}</div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -136,29 +151,5 @@ export default function VideoCard(props: CardActions) {
       rootProps={{ ...attributes, ...listeners }}
       style={style}
     />
-  )
-}
-
-function MenuItem({
-  children,
-  icon,
-  onClick,
-  danger,
-}: {
-  children: React.ReactNode
-  icon: React.ReactNode
-  onClick: () => void
-  danger?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-yt-hover ${
-        danger ? 'text-red-400' : 'text-yt-text'
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
   )
 }

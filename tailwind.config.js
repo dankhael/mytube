@@ -8,18 +8,38 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Mapped to the OKLCH token layer in newtab/index.css, so changing
+        // --accent-h there re-themes every Tailwind class too.
         yt: {
-          bg: '#0f0f0f',
-          card: '#1a1a1a',
-          border: '#272727',
-          hover: '#272727',
-          red: '#ff0000',
-          text: '#f1f1f1',
-          muted: '#aaaaaa',
+          bg: 'var(--bg)',
+          card: 'var(--surface)',
+          border: 'var(--border)',
+          hover: 'var(--surface-2)',
+          red: 'var(--accent)', // legacy name → now the brand accent
+          text: 'var(--text)',
+          muted: 'var(--text-3)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          ink: 'var(--accent-ink)',
+          soft: 'var(--accent-soft)',
+          line: 'var(--accent-line)',
+        },
+        surface: {
+          DEFAULT: 'var(--surface)',
+          2: 'var(--surface-2)',
+          3: 'var(--surface-3)',
+          elev: 'var(--elev)',
         },
       },
       fontFamily: {
-        sans: ['"YouTube Sans"', 'Roboto', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+      borderRadius: {
+        xl: 'var(--radius-sm)',
+        '2xl': 'var(--radius)',
       },
     },
   },

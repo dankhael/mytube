@@ -63,7 +63,7 @@ export default function AddCategoryModal({ existing, onClose, onSubmit }: Props)
         <button
           onClick={submit}
           disabled={!name.trim()}
-          className="rounded-full bg-yt-red px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-40"
+          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition hover:brightness-110 disabled:opacity-40"
         >
           {existing ? 'Salvar' : 'Criar'}
         </button>

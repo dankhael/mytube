@@ -106,3 +106,29 @@ describe('home-smart-sections.spec (home)', () => {
     expect(screen.queryByText('Pegando poeira')).toBeNull()
   })
 })
+
+describe('design-rework.spec (home)', () => {
+  it('HOME-2: the greeting renders', async () => {
+    scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
+    render(<App />)
+    expect(await screen.findByText('Welcome back.')).toBeTruthy()
+  })
+
+  it('HOME-4: typing in search filters videos by title', async () => {
+    scriptStore({
+      categories: [{ name: 'Tutoriais', emoji: '🎓' }],
+      videos: [
+        videoAt('keepme00000', 'Tutoriais', 'Aprenda React', Date.now() - DAY),
+        videoAt('hideme00000', 'Tutoriais', 'Receita de Bolo', Date.now() - DAY),
+      ],
+    })
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(await screen.findAllByText('Receita de Bolo')).not.toHaveLength(0)
+    await user.type(screen.getByPlaceholderText(/buscar/i), 'react')
+
+    expect(screen.queryByText('Receita de Bolo')).toBeNull()
+    expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)
+  })
+})

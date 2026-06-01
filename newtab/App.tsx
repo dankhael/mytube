@@ -12,7 +12,8 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable'
-import { Plus, Eye, EyeOff, Youtube, AlertTriangle } from 'lucide-react'
+import { Plus, Eye, EyeOff, AlertTriangle, Search } from 'lucide-react'
+import Logo from './components/Logo'
 import { Category, StorageData, Video } from '../src/types'
 import { getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
@@ -20,6 +21,7 @@ import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
 import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
+import { filterVideos } from './search'
 
 const STORAGE_LIMIT = 102_400 // chrome.storage.sync quota in bytes
 const WARN_RATIO = 0.8
@@ -27,6 +29,7 @@ const WARN_RATIO = 0.8
 export default function App() {
   const [data, setData] = useState<StorageData | null>(null)
   const [showWatched, setShowWatched] = useState(true)
+  const [query, setQuery] = useState('')
   const [bytes, setBytes] = useState(0)
 
   const [showAdd, setShowAdd] = useState(false)
@@ -116,64 +119,81 @@ export default function App() {
     apply(mutate({ action: 'REORDER_CATEGORIES', order: reordered.map((c) => c.name) }))
   }
 
+  // Videos visible after the search filter (drives every section).
+  const searched = useMemo(() => (data ? filterVideos(data.videos, query) : []), [data, query])
+
   const videosByCategory = useMemo(() => {
     const map = new Map<string, Video[]>()
     if (!data) return map
     for (const cat of data.categories) map.set(cat.name, [])
-    for (const v of data.videos) {
+    for (const v of searched) {
       if (!showWatched && v.watched) continue
       if (!map.has(v.category)) map.set(v.category, [])
       map.get(v.category)!.push(v)
     }
     return map
-  }, [data, showWatched])
+  }, [data, searched, showWatched])
 
   // Derived, cross-cutting sections (watched always excluded — see the spec).
-  const recentlyAdded = useMemo(() => (data ? selectRecentlyAdded(data.videos) : []), [data])
-  const gatheringDust = useMemo(() => (data ? selectGatheringDust(data.videos) : []), [data])
+  const recentlyAdded = useMemo(() => selectRecentlyAdded(searched), [searched])
+  const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-yt-muted">Carregando…</div>
   }
 
-  const totalVideos = data.videos.length
-  const isEmpty = totalVideos === 0
+  const isEmpty = data.videos.length === 0
+  const unwatched = data.videos.filter((v) => !v.watched).length
   const overQuota = bytes / STORAGE_LIMIT >= WARN_RATIO
 
   return (
-    <div className="min-h-full bg-yt-bg">
-      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-yt-border bg-yt-bg/95 px-6 py-3 backdrop-blur">
-        <div className="flex items-center gap-2">
-          <Youtube className="h-7 w-7 text-yt-red" />
-          <span className="text-xl font-bold tracking-tight">MyTube</span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => setShowWatched((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-yt-border px-3 py-1.5 text-sm text-yt-text transition hover:bg-yt-hover"
-            title={showWatched ? 'Ocultar assistidos' : 'Mostrar assistidos'}
-          >
-            {showWatched ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {showWatched ? 'Assistidos' : 'Ocultos'}
-          </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 rounded-full bg-yt-red px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-red-600"
-          >
-            <Plus className="h-4 w-4" /> Categoria
-          </button>
-        </div>
-      </header>
+    <div className="home">
+      <div className="home-inner">
+        {overQuota && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
+            <AlertTriangle className="h-4 w-4" />
+            Armazenamento quase cheio ({Math.round((bytes / STORAGE_LIMIT) * 100)}% de 100KB). Remova
+            alguns vídeos para continuar sincronizando.
+          </div>
+        )}
 
-      {overQuota && (
-        <div className="flex items-center gap-2 bg-amber-500/10 px-6 py-2 text-sm text-amber-400">
-          <AlertTriangle className="h-4 w-4" />
-          Armazenamento quase cheio ({Math.round((bytes / STORAGE_LIMIT) * 100)}% de 100KB). Remova
-          alguns vídeos para continuar sincronizando.
-        </div>
-      )}
+        <div className="home-head">
+          <div className="greet">
+            <div className="brand">
+              <Logo size={28} />
+              <span className="word">
+                My<b>Tube</b>
+              </span>
+            </div>
+            <h1>Welcome back.</h1>
+            <p>
+              Você tem <b>{unwatched} vídeos</b> esperando na sua biblioteca.
+            </p>
+          </div>
 
-      <main className="mx-auto max-w-[1400px] px-6 py-8">
+          <div className="head-right">
+            <label className="searchbar">
+              <Search size={18} style={{ color: 'var(--text-3)', flex: 'none' }} />
+              <input
+                placeholder="Buscar na biblioteca…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <button
+              className="ghost-btn"
+              onClick={() => setShowWatched((v) => !v)}
+              title={showWatched ? 'Ocultar assistidos' : 'Mostrar assistidos'}
+            >
+              {showWatched ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              {showWatched ? 'Assistidos' : 'Ocultos'}
+            </button>
+            <button className="accent-btn" onClick={() => setShowAdd(true)}>
+              <Plus className="h-4 w-4" /> Categoria
+            </button>
+          </div>
+        </div>
+
         {isEmpty ? (
           <WelcomeScreen />
         ) : (
@@ -221,7 +241,7 @@ export default function App() {
             />
           </>
         )}
-      </main>
+      </div>
 
       {showAdd && <AddCategoryModal onClose={() => setShowAdd(false)} onSubmit={addCategory} />}
       {editing && (
@@ -242,8 +262,10 @@ export default function App() {
 function WelcomeScreen() {
   return (
     <div className="mx-auto mt-20 max-w-xl text-center">
-      <Youtube className="mx-auto mb-6 h-16 w-16 text-yt-red" />
-      <h1 className="mb-3 text-3xl font-bold">Sua home do YouTube, curada por você.</h1>
+      <div className="mx-auto mb-6 w-fit">
+        <Logo size={64} />
+      </div>
+      <h1 className="mb-3 font-display text-3xl font-bold">Sua home do YouTube, curada por você.</h1>
       <p className="text-yt-muted">
         Navegue pelo YouTube e clique no botão{' '}
         <span className="rounded bg-yt-card px-2 py-0.5 text-yt-text">+ Salvar</span> nos vídeos para
@@ -251,7 +273,8 @@ function WelcomeScreen() {
       </p>
       <a
         href="https://www.youtube.com"
-        className="mt-8 inline-block rounded-full bg-yt-red px-6 py-2.5 font-semibold text-white transition hover:bg-red-600"
+        className="accent-btn mt-8 inline-flex"
+        style={{ display: 'inline-flex' }}
       >
         Abrir o YouTube
       </a>

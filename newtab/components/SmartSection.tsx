@@ -15,7 +15,7 @@ interface Props {
 const PREVIEW_COUNT = 4
 
 // A derived, read-only section (e.g. "Recentemente adicionados"). Same card UI as
-// categories, but no drag handle and no category menu — its order is computed.
+// categories, but no drag handle / category menu — its order is computed.
 export default function SmartSection({
   emoji,
   title,
@@ -33,18 +33,22 @@ export default function SmartSection({
   const hiddenCount = videos.length - PREVIEW_COUNT
 
   return (
-    <section className="mb-10">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="flex items-center gap-2 text-xl font-bold">
-          <span>{emoji}</span>
-          <span>{title}</span>
-        </h2>
-        <span className="text-sm text-yt-muted">
-          ({videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'})
+    <section className="cat">
+      <div className="cat-head">
+        <div className="cat-ico">{emoji}</div>
+        <h2 className="cat-title">{title}</h2>
+        <span className="cat-count">
+          {videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'}
         </span>
+        <div className="spacer" />
+        {hiddenCount > 0 && (
+          <button className="cat-action" style={{ opacity: 1 }} onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Mostrar menos' : `Ver todos (${videos.length})`}
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid">
         {visible.map((video) => (
           <VideoCardView
             key={video.id}
@@ -55,21 +59,7 @@ export default function SmartSection({
             onDelete={onDeleteVideo}
           />
         ))}
-        {!expanded && hiddenCount > 0 && (
-          <button
-            onClick={() => setExpanded(true)}
-            className="flex aspect-video items-center justify-center rounded-lg border border-yt-border bg-yt-card text-lg font-semibold text-yt-text transition hover:bg-yt-hover"
-          >
-            +{hiddenCount}
-          </button>
-        )}
       </div>
-
-      {expanded && hiddenCount > 0 && (
-        <button onClick={() => setExpanded(false)} className="mt-3 text-sm text-[#3ea6ff] hover:underline">
-          Mostrar menos
-        </button>
-      )}
     </section>
   )
 }
