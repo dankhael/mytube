@@ -21,7 +21,7 @@
         padding: 14px 16px;
         border-bottom: 1px solid #272727;
       }
-      header .logo { color: #ff0000; font-weight: 700; font-size: 18px; }
+      header .logo { display: flex; align-items: center; gap: 7px; color: #f1f1f1; font-weight: 700; font-size: 18px; }
       header .total { margin-left: auto; font-size: 12px; color: #aaa; }
       #config {
         margin-left: 10px;
@@ -234,7 +234,19 @@
   </head>
   <body>
     <header>
-      <span class="logo">▶ MyTube</span>
+      <span class="logo">
+        <svg width="22" height="22" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+          <path d="M64 24H192C202.609 24 212.783 28.2143 220.284 35.7157C227.786 43.2172 232 53.3913 232 64V168C232 178.609 227.786 188.783 220.284 196.284C212.783 203.786 202.609 208 192 208H156.8C155.33 207.997 153.5 208 152 208C150.5 208 139.5 208 138 208L129.5 218L106.8 244.24C105.906 245.407 104.755 246.353 103.438 247.005C102.12 247.656 100.67 247.997 99.2 248H64C53.3913 248 43.2172 243.786 35.7157 236.284C28.2143 228.783 24 218.609 24 208V64C24 53.3913 28.2143 43.2172 35.7157 35.7157C43.2172 28.2143 53.3913 24 64 24Z" fill="url(#mtgrad)"/>
+          <path d="M107.2 84.8L168 122.4C169 122.953 169.834 123.765 170.415 124.75C170.995 125.734 171.302 126.857 171.302 128C171.302 129.143 170.995 130.266 170.415 131.25C169.834 132.235 169 133.047 168 133.6L107.2 171.2C106.219 171.805 105.093 172.135 103.941 172.153C102.789 172.172 101.653 171.879 100.653 171.305C99.6534 170.732 98.8272 169.899 98.2617 168.895C97.6961 167.89 97.4122 166.752 97.44 165.6V90.4C97.4122 89.2479 97.6961 88.1096 98.2617 87.1054C98.8272 86.1012 99.6534 85.2683 100.653 84.6948C101.653 84.1212 102.789 83.8282 103.941 83.8467C105.093 83.8653 106.219 84.1946 107.2 84.8Z" fill="#0C2A22"/>
+          <defs>
+            <linearGradient id="mtgrad" x1="24" y1="24" x2="247.386" y2="231.43" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#A89CFF"/>
+              <stop offset="1" stop-color="#8B7BFF"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        MyTube
+      </span>
       <span class="total" id="total"></span>
       <button id="config" aria-label="Configurações" title="Configurações">⚙</button>
     </header>
