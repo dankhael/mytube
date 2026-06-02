@@ -26,9 +26,9 @@
 - The `Message` union + `StorageData` schema in `src/types.ts` are the contract.
 - All persistence flows through the `MyTubeStore` reducer over an injected
   `StorageBackend`; tests inject `FakeStorageBackend` (no Chrome runtime).
-- New feature loop: spec → contract (types) → failing test → implement → green.
-  DOM/content-script and React UI use the **Manual acceptance** checklists in the
-  spec files instead of unit tests. See `specs/README.md`.
+- New feature loop: change (OpenSpec) → spec → contract (types) → failing test →
+  implement → green. DOM/content-script and React UI use the **Manual acceptance**
+  checklists in the spec files instead of unit tests. See `specs/README.md`.
 
 ## Spec handshake (who owns what)
 
@@ -49,6 +49,27 @@ Rules of thumb: keep criteria **observable** (a test can assert them); if a beha
 can't be unit-tested (YouTube DOM), it belongs in **Manual acceptance**, not faked in
 a test. For a clean separation, draft the spec in one session and implement in a fresh
 one so the implementer works only from the approved text.
+
+## OpenSpec layer (capability baseline + change tracking)
+
+OpenSpec sits *above* the handshake, not in place of it. The two layers divide
+cleanly — keep one source of truth per concern:
+
+- `openspec/specs/<capability>/spec.md` — the durable **capability baseline**:
+  "what the system does today," in Requirement/Scenario form. Source of truth for
+  the capability map.
+- `openspec/changes/<name>/` — a **proposed change**: `/opsx:propose` drafts it,
+  `/opsx:archive` folds its delta back into the baseline.
+- `specs/*.spec.md` + the handshake above — the **implementation layer**: granular,
+  human-Approved, test-bound criteria with stable IDs. **Unchanged** — the human
+  still owns Approved.
+
+Per-feature flow: `/opsx:propose` a change → refine its delta into granular
+`specs/<feature>.spec.md` criteria (handshake applies) → failing test per ID →
+green → `/opsx:archive`. **Never edit an `openspec/specs/` baseline directly to
+describe new behavior — that change goes through an OpenSpec change.** The baselines
+carry `TODO` notes where legacy criteria IDs aren't yet reconciled 1:1; reconcile a
+capability's TODOs the first time it gets a change.
 
 ## Tests
 
