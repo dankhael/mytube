@@ -94,20 +94,90 @@ async function getCategories(): Promise<Category[]> {
   return []
 }
 
+interface LabelSpans {
+  plus: HTMLElement
+  label: HTMLElement
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+// A crisp 4-point sparkle (a real shape, not the ✨ emoji) pinned to the pill's
+// top-right corner as a decorative "extra" accent. Built via createElementNS
+// because YouTube enforces Trusted Types — innerHTML is off-limits here.
+function createSparkle(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('class', 'mytube-spark')
+  svg.setAttribute('aria-hidden', 'true')
+  const path = document.createElementNS(SVG_NS, 'path')
+  path.setAttribute(
+    'd',
+    'M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z',
+  )
+  svg.appendChild(path)
+  return svg
+}
+
+// Builds (once) the structured label so the quirky glyphs survive every
+// saved/unsaved flip and the cross-context re-sync — clobbering textContent
+// would wipe the sparkle/plus the CSS animates (spec SALVAR-ROTATE).
+function ensureLabelSpans(btn: HTMLElement): LabelSpans {
+  const existingPlus = btn.querySelector<HTMLElement>('.mytube-plus')
+  const existingLabel = btn.querySelector<HTMLElement>('.mytube-label')
+  if (existingPlus && existingLabel) return { plus: existingPlus, label: existingLabel }
+
+  btn.replaceChildren()
+  const plus = document.createElement('span')
+  plus.className = 'mytube-plus'
+  const label = document.createElement('span')
+  label.className = 'mytube-label'
+  // Sparkle is absolutely positioned, so its DOM order doesn't affect the row.
+  btn.append(createSparkle(), plus, label)
+  return { plus, label }
+}
+
 function setSavedState(btn: HTMLElement, category: string | null) {
+  const { plus, label } = ensureLabelSpans(btn)
   if (category) {
-    btn.textContent = '✓ Salvo'
     btn.classList.add('mytube-saved')
+    plus.textContent = '✓'
+    label.textContent = 'Salvo'
     btn.title = `Salvo em: ${category}`
   } else {
-    btn.textContent = '+ Salvar'
     btn.classList.remove('mytube-saved')
+    plus.textContent = '+'
+    label.textContent = 'Salvar'
     btn.title = 'Salvar no MyTube'
   }
 }
 
+// Transient, non-blocking confirmation toast. A single reused element is
+// appended lazily; re-firing resets the auto-dismiss timer (spec SALVAR-TOAST).
+let toastTimer: number | undefined
+function showToast(text: string) {
+  let toast = document.getElementById('mytube-toast')
+  if (!toast) {
+    toast = document.createElement('div')
+    toast.id = 'mytube-toast'
+    toast.className = 'mytube-toast'
+    document.documentElement.appendChild(toast)
+  }
+  toast.textContent = text
+  requestAnimationFrame(() => toast?.classList.add('mytube-toast--show'))
+  window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => toast?.classList.remove('mytube-toast--show'), 2500)
+}
+
 function closeAllDropdowns() {
   document.querySelectorAll('.mytube-dropdown').forEach((d) => d.remove())
+}
+
+// The dropdown is portaled to <html>, so anchor it to the button in viewport
+// space. Right-aligned to the button's right edge, opening downward.
+function positionDropdown(dropdown: HTMLElement, btn: HTMLElement) {
+  const r = btn.getBoundingClientRect()
+  dropdown.style.top = `${Math.round(r.bottom + 4)}px`
+  dropdown.style.right = `${Math.round(window.innerWidth - r.right)}px`
 }
 
 async function openDropdown(btn: HTMLElement, card: CardData) {
@@ -132,9 +202,9 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
     if (res.ok) {
       savedIds.set(card.id, category)
       setSavedState(btn, category)
-      btn.textContent = '✓ Salvo'
       btn.classList.add('mytube-flash')
       setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
+      showToast(`Salvo em ${category} ✨`)
     }
   }
 
@@ -172,7 +242,11 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
   })
   dropdown.appendChild(newItem)
 
-  btn.parentElement?.appendChild(dropdown)
+  // Portal to <html> with fixed positioning so the menu can't be clipped by
+  // YouTube's overflow:hidden action-bar / menu-renderer ancestors (the watch
+  // pill lives deep inside #top-level-buttons-computed).
+  document.documentElement.appendChild(dropdown)
+  positionDropdown(dropdown, btn)
 }
 
 function injectButton(card: HTMLElement) {
@@ -192,12 +266,14 @@ function injectButton(card: HTMLElement) {
 
   const btn = document.createElement('button')
   btn.className = 'mytube-btn'
+  // The dense "Up next" sidebar gets a smaller hover-revealed control (SALVAR-MINI).
+  if (card.matches('ytd-compact-video-renderer')) btn.classList.add('mytube-btn--mini')
   setSavedState(btn, savedIds.get(data.id) ?? null)
 
   btn.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    const isOpen = btn.parentElement?.querySelector('.mytube-dropdown')
+    const isOpen = document.querySelector('.mytube-dropdown')
     if (isOpen) {
       closeAllDropdowns()
     } else {
@@ -207,19 +283,51 @@ function injectButton(card: HTMLElement) {
 
   wrapper.appendChild(btn)
 
-  // Anchor to the thumbnail container so the button floats over the image.
+  // Anchor over the thumbnail. Prefer <ytd-thumbnail> (YouTube already makes it
+  // position:relative with a definite size) and only force positioning when the
+  // host is truly static — forcing it on #thumbnail's auto-height <a> makes its
+  // absolutely-positioned <img> balloon, which expanded search-result thumbnails.
   const thumbHost =
-    card.querySelector<HTMLElement>('#thumbnail') ||
     card.querySelector<HTMLElement>('ytd-thumbnail') ||
+    card.querySelector<HTMLElement>('#thumbnail') ||
     card
-  thumbHost.style.position = thumbHost.style.position || 'relative'
+  if (getComputedStyle(thumbHost).position === 'static') {
+    thumbHost.style.position = 'relative'
+  }
   thumbHost.appendChild(wrapper)
+}
+
+// Copies a real native chip's box metrics onto our pill so it lines up exactly,
+// whatever height/spacing YouTube's current layout uses (measured, not guessed).
+function matchActionBarMetrics(wrapper: HTMLElement, btn: HTMLElement, row: HTMLElement) {
+  const natives = Array.from(row.children).filter(
+    (c): c is HTMLElement => c instanceof HTMLElement && !c.classList.contains('mytube-watch-wrapper'),
+  )
+  const ref = natives.find((n) => n.offsetHeight > 0)
+  if (!ref) return
+  btn.style.height = `${ref.offsetHeight}px` // border-box; matches native chip height
+  // If the row spaces children with a flex gap, adding our own margin would
+  // double it; otherwise mirror the native per-chip left margin.
+  const rowGap = parseFloat(getComputedStyle(row).columnGap) || 0
+  if (rowGap > 0) {
+    wrapper.style.marginLeft = '0px'
+    return
+  }
+  const spaced = natives.find((n) => parseFloat(getComputedStyle(n).marginLeft) > 0)
+  wrapper.style.marginLeft = spaced ? getComputedStyle(spaced).marginLeft : '8px'
 }
 
 // Injects a "+ Salvar" pill into the action bar of the open video (/watch).
 function injectWatchButton() {
   const data = extractWatchPage()
-  const actions = document.querySelector<HTMLElement>('ytd-watch-metadata #actions')
+  // Prefer the native chip row (Like/Share/…) so we inherit its flex centering
+  // and inter-button spacing instead of fighting the outer #actions wrapper;
+  // fall back to the broader containers if YouTube's structure shifts.
+  const buttonRow = document.querySelector<HTMLElement>('ytd-watch-metadata #top-level-buttons-computed')
+  const actions =
+    buttonRow ||
+    document.querySelector<HTMLElement>('ytd-watch-metadata #actions-inner') ||
+    document.querySelector<HTMLElement>('ytd-watch-metadata #actions')
   const existing = document.querySelector<HTMLElement>('.mytube-watch-wrapper')
 
   // Not on a watch page (or bar not ready): drop any stale button.
@@ -242,13 +350,14 @@ function injectWatchButton() {
   btn.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    const isOpen = wrapper.querySelector('.mytube-dropdown')
+    const isOpen = document.querySelector('.mytube-dropdown')
     if (isOpen) closeAllDropdowns()
     else void openDropdown(btn, data)
   })
 
   wrapper.appendChild(btn)
   actions.appendChild(wrapper)
+  if (buttonRow) matchActionBarMetrics(wrapper, btn, buttonRow)
 }
 
 function scan() {
@@ -292,8 +401,21 @@ function injectStyles() {
   const style = document.createElement('style')
   style.id = 'mytube-styles'
   style.textContent = `
+    /* Accent mirrored from styles/theme-tokens.css (the --accent-h: 290 knob).
+       The content script can't @import that file into youtube.com, so these
+       values are duplicated here — keep in sync if the theme knob changes. */
+    :root {
+      --mytube-accent: oklch(0.815 0.125 290);
+      --mytube-accent-2: oklch(0.72 0.135 290);
+      --mytube-accent-ink: oklch(0.205 0.045 290);
+      --mytube-accent-line: oklch(0.815 0.125 290 / 0.32);
+      --mytube-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
     .mytube-wrapper { position: absolute; top: 8px; right: 8px; z-index: 60; }
     .mytube-btn {
+      position: relative; /* anchors the corner sparkle */
+      box-sizing: border-box; /* so a measured native height maps to total height */
+      display: inline-flex; align-items: center; gap: 6px;
       font-family: Roboto, system-ui, sans-serif;
       font-size: 12px; font-weight: 600; line-height: 1;
       color: #fff; background: rgba(0,0,0,.85);
@@ -308,18 +430,72 @@ function injectStyles() {
     .mytube-btn:hover { background: #ff0000; }
     .mytube-btn.mytube-saved { background: rgba(0,128,0,.9); opacity: 1; }
     .mytube-btn.mytube-flash { background: #2ecc71; }
-    /* Inline pill on the /watch action bar (always visible, chip-sized). */
-    .mytube-watch-wrapper { position: relative; display: inline-flex; align-items: center; margin-left: 8px; vertical-align: middle; }
-    .mytube-watch-btn {
-      opacity: 1; height: 36px; padding: 0 14px; font-size: 14px;
-      background: #272727; border-color: transparent;
+
+    /* Quirky glyphs: a 4-point sparkle pinned to the corner (shown only on the
+       themed surfaces) and a "+" that spins on hover so the control reads as an
+       "extra" you tack on (spec SALVAR-ROTATE). The sparkle is absolute so it
+       never widens the pill or fights the action-bar row height. */
+    .mytube-spark {
+      position: absolute; top: -5px; right: -4px; width: 13px; height: 13px;
+      display: none; fill: var(--mytube-accent); pointer-events: none;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+      transition: transform .3s var(--mytube-bounce);
     }
-    .mytube-watch-btn:hover { background: #3f3f3f; }
-    .mytube-watch-btn.mytube-saved { background: rgba(0,128,0,.9); }
+    .mytube-plus { display: inline-block; font-weight: 800; transition: transform .3s var(--mytube-bounce); }
+    .mytube-watch-btn .mytube-spark,
+    .mytube-btn--mini .mytube-spark { display: block; }
+    .mytube-watch-btn:hover .mytube-spark,
+    .mytube-btn--mini:hover .mytube-spark { transform: rotate(90deg) scale(1.3); }
+    .mytube-watch-btn:hover .mytube-plus,
+    .mytube-btn--mini:hover .mytube-plus { transform: rotate(90deg) scale(1.18); }
+
+    /* Themed, always-visible pill on the /watch action bar (spec SALVAR-THEME).
+       align-self + matching height keep it centered with YouTube's own chips. */
+    .mytube-watch-wrapper {
+      /* This wrapper also carries .mytube-wrapper (top:8px; right:8px) for the
+         thumbnail overlay case; reset those offsets here or the relative pill
+         lands 8px down + 8px left of the native chips. */
+      position: relative; top: auto; right: auto;
+      display: inline-flex; align-items: center; align-self: center;
+      margin-left: 8px; vertical-align: middle; /* margin is overridden by measured value */
+    }
+    .mytube-watch-btn {
+      opacity: 1; height: 36px; padding: 0 16px; font-size: 14px; font-weight: 700;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent); border-color: transparent;
+    }
+    .mytube-watch-btn:hover { background: var(--mytube-accent-2); }
+    .mytube-watch-btn.mytube-saved {
+      color: var(--mytube-accent); background: rgba(0,0,0,.55);
+      border: 1px solid var(--mytube-accent-line);
+    }
+
+    /* Mini Salvar on the dense "Up next" sidebar (spec SALVAR-MINI). */
+    ytd-compact-video-renderer .mytube-wrapper { top: 4px; right: 4px; }
+    .mytube-btn.mytube-btn--mini {
+      padding: 3px 9px; font-size: 10px; gap: 4px; font-weight: 700;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent); border-color: transparent;
+    }
+    .mytube-btn.mytube-btn--mini:hover { background: var(--mytube-accent-2); }
+    .mytube-btn.mytube-btn--mini.mytube-saved {
+      color: var(--mytube-accent); background: rgba(0,0,0,.6);
+      border: 1px solid var(--mytube-accent-line);
+    }
+
+    /* Transient confirmation toast — fixed and non-blocking (spec SALVAR-TOAST). */
+    .mytube-toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 2147483647; pointer-events: none;
+      font-family: Roboto, system-ui, sans-serif; font-size: 14px; font-weight: 700;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent);
+      padding: 12px 18px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+      opacity: 0; transform: translateY(14px);
+      transition: opacity .2s, transform .25s var(--mytube-bounce);
+    }
+    .mytube-toast.mytube-toast--show { opacity: 1; transform: translateY(0); }
     .mytube-dropdown {
-      position: absolute; top: calc(100% + 4px); right: 0; min-width: 200px;
+      /* Portaled to <html>; top/right are set inline from the button rect. */
+      position: fixed; left: auto; min-width: 200px;
       background: #212121; border: 1px solid #3f3f3f; border-radius: 10px;
-      padding: 6px; z-index: 70; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      padding: 6px; z-index: 2147483000; box-shadow: 0 8px 24px rgba(0,0,0,.5);
       font-family: Roboto, system-ui, sans-serif; max-height: 280px; overflow-y: auto;
     }
     .mytube-dropdown-header { color: #aaa; font-size: 11px; padding: 4px 8px; text-transform: uppercase; letter-spacing: .04em; }
@@ -337,9 +513,11 @@ function injectStyles() {
   document.documentElement.appendChild(style)
 }
 
-// Close dropdowns when clicking elsewhere.
+// Close dropdowns when clicking outside both the button (.mytube-wrapper) and
+// the portaled menu (.mytube-dropdown, now a child of <html>, not the wrapper).
 document.addEventListener('click', (e) => {
-  if (!(e.target as HTMLElement)?.closest?.('.mytube-wrapper')) closeAllDropdowns()
+  const t = e.target as HTMLElement
+  if (!t?.closest?.('.mytube-wrapper') && !t?.closest?.('.mytube-dropdown')) closeAllDropdowns()
 })
 
 let scanScheduled = false
