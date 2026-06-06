@@ -8,7 +8,8 @@ import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
   'ytd-video-renderer', // search results
-  'ytd-compact-video-renderer', // suggested sidebar
+  'ytd-compact-video-renderer', // suggested sidebar (legacy)
+  'yt-lockup-view-model', // watch suggestions (current lockup renderer)
 ]
 
 const PROCESSED = 'data-mytube'
@@ -46,7 +47,10 @@ function extractCard(card: HTMLElement): CardData | null {
     card.querySelector<HTMLElement>('#channel-name a') ||
     card.querySelector<HTMLElement>('ytd-channel-name a') ||
     card.querySelector<HTMLElement>('#channel-name #text') ||
-    card.querySelector<HTMLElement>('.yt-content-metadata-view-model-wiz__metadata-text')
+    card.querySelector<HTMLElement>('.yt-content-metadata-view-model-wiz__metadata-text') ||
+    // New lockup renderer (watch suggestions) uses camelCase classes; the first
+    // metadata-text span is the channel (followed by views, then date).
+    card.querySelector<HTMLElement>('.ytContentMetadataViewModelMetadataText')
   const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
 
   // mqdefault is stable regardless of YouTube's lazy-loaded <img> state.
@@ -253,6 +257,10 @@ function injectButton(card: HTMLElement) {
   if (card.hasAttribute(PROCESSED)) return
   card.setAttribute(PROCESSED, '1')
 
+  // Skip cards nested inside another card so one renderer wrapping another
+  // (e.g. a lockup inside a grid item) can't double-inject.
+  if (card.parentElement?.closest(CARD_SELECTORS.join(','))) return
+
   let data: CardData | null = null
   try {
     data = extractCard(card)
@@ -266,8 +274,11 @@ function injectButton(card: HTMLElement) {
 
   const btn = document.createElement('button')
   btn.className = 'mytube-btn'
-  // The dense "Up next" sidebar gets a smaller hover-revealed control (SALVAR-MINI).
-  if (card.matches('ytd-compact-video-renderer')) btn.classList.add('mytube-btn--mini')
+  // The mini variant is scoped to the watch sidebar by location, not renderer
+  // tag, so home/search lockups keep the normal size (spec HOME-NOSHRINK / D3).
+  if (card.closest('#secondary, ytd-watch-next-secondary-results-renderer')) {
+    btn.classList.add('mytube-btn--mini')
+  }
   setSavedState(btn, savedIds.get(data.id) ?? null)
 
   btn.addEventListener('click', (e) => {
@@ -289,6 +300,7 @@ function injectButton(card: HTMLElement) {
   // absolutely-positioned <img> balloon, which expanded search-result thumbnails.
   const thumbHost =
     card.querySelector<HTMLElement>('ytd-thumbnail') ||
+    card.querySelector<HTMLElement>('yt-thumbnail-view-model') || // new lockup (watch suggestions)
     card.querySelector<HTMLElement>('#thumbnail') ||
     card
   if (getComputedStyle(thumbHost).position === 'static') {
@@ -417,19 +429,26 @@ function injectStyles() {
       box-sizing: border-box; /* so a measured native height maps to total height */
       display: inline-flex; align-items: center; gap: 6px;
       font-family: Roboto, system-ui, sans-serif;
-      font-size: 12px; font-weight: 600; line-height: 1;
-      color: #fff; background: rgba(0,0,0,.85);
-      border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
-      padding: 6px 10px; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s;
+      font-size: 12px; font-weight: 700; line-height: 1;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent);
+      border: 1px solid rgba(0,0,0,.25); border-radius: 999px;
+      padding: 6px 11px; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, transform .15s;
     }
     ytd-rich-item-renderer:hover .mytube-btn,
     ytd-video-renderer:hover .mytube-btn,
     ytd-compact-video-renderer:hover .mytube-btn,
+    yt-lockup-view-model:hover .mytube-btn,
     .mytube-btn.mytube-saved, .mytube-dropdown ~ * .mytube-btn,
     .mytube-wrapper:hover .mytube-btn { opacity: 1; }
-    .mytube-btn:hover { background: #ff0000; }
-    .mytube-btn.mytube-saved { background: rgba(0,128,0,.9); opacity: 1; }
-    .mytube-btn.mytube-flash { background: #2ecc71; }
+    /* Overlay buttons sit on thumbnails — add a shadow for legibility (spec
+       HOME-LEGIBLE); the watch pill sits in a solid bar and stays unchanged. */
+    .mytube-btn:not(.mytube-watch-btn) { box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+    .mytube-btn:hover { background: var(--mytube-accent-2); }
+    .mytube-btn.mytube-saved {
+      color: var(--mytube-accent); background: rgba(0,0,0,.62);
+      border-color: var(--mytube-accent-line); opacity: 1;
+    }
+    .mytube-btn.mytube-flash { background: var(--mytube-accent-2); }
 
     /* Quirky glyphs: a 4-point sparkle pinned to the corner (shown only on the
        themed surfaces) and a "+" that spins on hover so the control reads as an
@@ -437,17 +456,14 @@ function injectStyles() {
        never widens the pill or fights the action-bar row height. */
     .mytube-spark {
       position: absolute; top: -5px; right: -4px; width: 13px; height: 13px;
-      display: none; fill: var(--mytube-accent); pointer-events: none;
-      filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+      display: block; fill: var(--mytube-accent); pointer-events: none;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
       transition: transform .3s var(--mytube-bounce);
     }
     .mytube-plus { display: inline-block; font-weight: 800; transition: transform .3s var(--mytube-bounce); }
-    .mytube-watch-btn .mytube-spark,
-    .mytube-btn--mini .mytube-spark { display: block; }
-    .mytube-watch-btn:hover .mytube-spark,
-    .mytube-btn--mini:hover .mytube-spark { transform: rotate(90deg) scale(1.3); }
-    .mytube-watch-btn:hover .mytube-plus,
-    .mytube-btn--mini:hover .mytube-plus { transform: rotate(90deg) scale(1.18); }
+    /* Sparkle + rotate now apply to every themed button (home/search/sidebar/watch). */
+    .mytube-btn:hover .mytube-spark { transform: rotate(90deg) scale(1.3); }
+    .mytube-btn:hover .mytube-plus { transform: rotate(90deg) scale(1.18); }
 
     /* Themed, always-visible pill on the /watch action bar (spec SALVAR-THEME).
        align-self + matching height keep it centered with YouTube's own chips. */
@@ -470,7 +486,8 @@ function injectStyles() {
     }
 
     /* Mini Salvar on the dense "Up next" sidebar (spec SALVAR-MINI). */
-    ytd-compact-video-renderer .mytube-wrapper { top: 4px; right: 4px; }
+    ytd-compact-video-renderer .mytube-wrapper,
+    yt-lockup-view-model .mytube-wrapper { top: 4px; right: 4px; }
     .mytube-btn.mytube-btn--mini {
       padding: 3px 9px; font-size: 10px; gap: 4px; font-weight: 700;
       color: var(--mytube-accent-ink); background: var(--mytube-accent); border-color: transparent;
