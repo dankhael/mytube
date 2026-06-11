@@ -1,10 +1,12 @@
 // playClick specs (Node). The injected player lets us assert without real audio.
 
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 import { playClick, ClickPlayer } from './sound'
 
-function fakePlayer(): ClickPlayer & { play: ReturnType<typeof vi.fn> } {
-  return { play: vi.fn() }
+// vitest 4 types vi.fn() as Mock<Procedure | Constructable>, which no longer
+// satisfies ClickPlayer's `() => void` — pin the signature explicitly.
+function fakePlayer(): ClickPlayer & { play: Mock<() => void> } {
+  return { play: vi.fn<() => void>() }
 }
 
 describe('popup-config.spec (sound)', () => {
