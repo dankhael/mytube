@@ -6,8 +6,24 @@ export default defineManifest({
   name: 'MyTube',
   version: pkg.version,
   description: 'Sua home do YouTube curada por você',
-  permissions: ['storage', 'tabs', 'activeTab'],
+  // chrome.tabs.create needs no permission; 'tabs'/'activeTab' were unused and
+  // triggered the "Read your browsing history" install warning (finding S1).
+  permissions: ['storage'],
   host_permissions: ['https://www.youtube.com/*'],
+  // Explicit least-privilege CSP for extension pages (finding S5): ytimg for
+  // thumbnails, www.youtube.com for the worker's oEmbed fetch, fonts vendored
+  // locally (S4). 'unsafe-inline' stays in style-src because React/dnd-kit set
+  // inline style attributes for drag transforms.
+  content_security_policy: {
+    extension_pages: [
+      "default-src 'self'",
+      "img-src 'self' https://i.ytimg.com",
+      'connect-src https://www.youtube.com',
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
+      "object-src 'none'",
+    ].join('; '),
+  },
   action: {
     default_popup: 'popup/popup.html',
     default_icon: {

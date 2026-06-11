@@ -2,7 +2,8 @@
 // lucide-react). The mapping rules live in the shared src/category-icon module;
 // here we only hold the SVG geometry per IconKey and resolve a category to one.
 
-import { IconKey, resolveCategoryIcon } from '../src/category-icon'
+import { DEFAULT_ICON, IconKey, resolveCategoryIcon } from '../src/category-icon'
+import { isIconKey } from '../src/validate-message'
 
 // Inner SVG geometry per icon (lucide path data, 24×24, currentColor stroke).
 const PATHS: Record<IconKey, string> = {
@@ -38,10 +39,14 @@ const PATHS: Record<IconKey, string> = {
 }
 
 export function iconSvg(key: IconKey): string {
+  // This string is assigned to innerHTML, so the lookup key is gated against
+  // the closed set — stored data that bypassed the types (e.g. an old sync
+  // snapshot) can never index outside PATHS (finding S3).
+  const gated = isIconKey(key) ? key : DEFAULT_ICON
   return (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    PATHS[key] +
+    PATHS[gated] +
     '</svg>'
   )
 }

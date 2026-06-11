@@ -4,7 +4,8 @@
 
 import { StorageBackend } from './storage-backend'
 import { IconKey } from './category-icon'
-import { DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, UNCATEGORIZED, Video } from './types'
+import { sanitizeStorageData } from './sanitize-storage'
+import { DEFAULT_DATA, Settings, StorageData, UNCATEGORIZED, Video } from './types'
 
 export class MyTubeStore {
   constructor(private readonly backend: StorageBackend) {}
@@ -12,15 +13,9 @@ export class MyTubeStore {
   async getData(): Promise<StorageData> {
     const stored = await this.backend.read()
     if (!stored) return structuredClone(DEFAULT_DATA)
-    // Defensive defaults in case the schema grew between versions.
-    return {
-      categories: stored.categories?.length
-        ? stored.categories
-        : structuredClone(DEFAULT_DATA.categories),
-      videos: stored.videos ?? [],
-      // Merge so options added after this data was saved fall back to defaults.
-      settings: { ...DEFAULT_SETTINGS, ...stored.settings },
-    }
+    // Sync is written by every synced device — never trust the cast. Covers the
+    // old defensive defaults (schema growth) plus malformed entries (finding S6).
+    return sanitizeStorageData(stored)
   }
 
   async getBytesInUse(): Promise<number> {
