@@ -77,13 +77,13 @@
 
 ## 8. S7 + S9 — Toolchain patch and fingerprint check
 
-- [ ] 8.1 `npm audit fix`; bump `vite`/`vitest` majors as required; move
+- [x] 8.1 `npm audit fix`; bump `vite`/`vitest` majors as required; move
       `@crxjs/vite-plugin` from `2.0.0-beta.28` to latest stable 2.x. One
       isolated commit.
-- [ ] 8.2 Verify: `npm audit` reports 0 fixable findings, `npm test` green,
+- [x] 8.2 Verify: `npm audit` reports 0 fixable findings, `npm test` green,
       `npm run test:e2e` green, PostToolUse hook (`scripts/test-hook.mjs`)
       still runs.
-- [ ] 8.3 Check whether the upgraded crxjs supports `use_dynamic_url: true` for
+- [x] 8.3 Check whether the upgraded crxjs supports `use_dynamic_url: true` for
       content-script `web_accessible_resources`; enable it if e2e stays green,
       otherwise record the limitation in the change notes (finding stays
       accepted-Info).
@@ -92,6 +92,9 @@
 
 - [ ] 9.1 Full pass: `npm test`, `npm run test:e2e`, manual acceptance
       checklist from `specs/security-hardening.spec.md`.
-- [ ] 9.2 Mark the implementation spec's criteria green and prepare the change
+      *(2026-06-10: automated half done — `npm test` 94/94 and e2e smoke green
+      on the bumped toolchain; the manual checklist in the spec awaits a human
+      with the loaded extension.)*
+- [x] 9.2 Mark the implementation spec's criteria green and prepare the change
       for `/opsx:archive` (delta folds into `extension-security`,
       `persistence-sync`, `metadata-enrichment` baselines).

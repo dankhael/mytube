@@ -1,6 +1,7 @@
 # Spec: Security hardening (findings S1–S9)
 
-- **Status:** Approved <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved (implemented — SEC-1..SEC-19 green 2026-06-10; manual
+  acceptance below still to be checked by hand)
 - **Owner:** dankhael
 - **Contract:** `Message` union + `StorageData` in [src/types.ts](../src/types.ts);
   new pure modules `src/validate-message.ts` and `src/sanitize-storage.ts`;

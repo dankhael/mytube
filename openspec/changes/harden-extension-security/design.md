@@ -98,3 +98,14 @@ S9-after-S7.
 - Does the latest `@crxjs/vite-plugin` stable support `use_dynamic_url: true`
   for content-script `web_accessible_resources`? (Resolved during S7/S9 task —
   answer determines whether S9 ships or is documented as accepted.)
+
+  **Resolved 2026-06-10 (S9 does not ship; finding stays accepted-Info).**
+  crxjs 2.5.0 hardcodes `use_dynamic_url: false` for manifest-declared
+  content-script resources (`dist/index.mjs`, the
+  `isDynamicScript ? dynamicScriptDynamicUrl : false` branch) — only scripts
+  injected via the `scripting` API with `defineDynamicResource` can opt in,
+  which MyTube doesn't use. Overriding via a manifest post-processing plugin
+  would fight the loader (it imports chunks through `chrome.runtime.getURL`,
+  the path hit by the old dynamic-URL Chromium bug crxjs guards against), and
+  the e2e smoke doesn't exercise youtube.com imports, so a green run wouldn't
+  prove safety. Revisit if crxjs exposes the flag for manifest content scripts.
