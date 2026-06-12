@@ -1,7 +1,7 @@
 # Spec: Security hardening (findings S1–S9)
 
 - **Status:** Approved (implemented — SEC-1..SEC-19 green 2026-06-10; manual
-  acceptance below still to be checked by hand)
+  acceptance verified by the owner 2026-06-12)
 - **Owner:** dankhael
 - **Contract:** `Message` union + `StorageData` in [src/types.ts](../src/types.ts);
   new pure modules `src/validate-message.ts` and `src/sanitize-storage.ts`;
@@ -63,29 +63,29 @@ Pure functions in `src/validate-message.ts` (`isYoutubeVideoId`,
 ## Manual acceptance (not unit-tested)
 
 Manifest, CSP, fonts, popup DOM and end-to-end wiring — verified by hand and by
-the Playwright e2e smoke (`npm run test:e2e`).
+the Playwright e2e smoke (`npm run test:e2e`). Checked by the owner 2026-06-12.
 
-- [ ] **S1**: built manifest has `"permissions": ["storage"]` only; a fresh
+- [x] **S1**: built manifest has `"permissions": ["storage"]` only; a fresh
       install shows no "Read your browsing history" warning; both popup
       `chrome.tabs.create` paths (open video, open home) still work.
-- [ ] **S2 (wiring)**: a watch page with a malformed `v` param (e.g. `?v=abc`)
+- [x] **S2 (wiring)**: a watch page with a malformed `v` param (e.g. `?v=abc`)
       gets no "+ Salvar" pill and sends no message; a bad-id message sent from
       the service-worker console answers `{ ok: false, error }` and writes
       nothing to storage.
-- [ ] **S6 (wiring)**: setting the `mytube` sync key to garbage from the SW
+- [x] **S6 (wiring)**: setting the `mytube` sync key to garbage from the SW
       console does not throw in the badge listener (`newValue` guard) and every
       surface recovers with sanitized defaults.
-- [ ] **S3**: popup "N unwatched" label renders identical markup with the bold
+- [x] **S3**: popup "N unwatched" label renders identical markup with the bold
       count built via DOM APIs (also locked by `popup/render.test.ts` /
       `popup-shell.test.ts`); SVG tiles render only for keys passing `isIconKey`.
-- [ ] **S4**: new tab and popup issue zero requests to `fonts.googleapis.com` /
+- [x] **S4**: new tab and popup issue zero requests to `fonts.googleapis.com` /
       `fonts.gstatic.com`; Bricolage Grotesque, Plus Jakarta Sans and JetBrains
       Mono render from bundled woff2, including offline.
-- [ ] **S5**: under the explicit `extension_pages` CSP, thumbnails load from
+- [x] **S5**: under the explicit `extension_pages` CSP, thumbnails load from
       `i.ytimg.com`, fonts render, the oEmbed backfill still works, and an
       extension-page `<img>` pointed at any other host is blocked.
-- [ ] **S7**: `npm audit` reports 0 fixable findings; `npm test` and
+- [x] **S7**: `npm audit` reports 0 fixable findings; `npm test` and
       `npm run test:e2e` green; the PostToolUse hook (`scripts/test-hook.mjs`)
       still runs.
-- [ ] **S9**: `use_dynamic_url: true` evaluated on the upgraded crxjs — enabled
+- [x] **S9**: `use_dynamic_url: true` evaluated on the upgraded crxjs — enabled
       with a green e2e, or the limitation recorded in the change notes.

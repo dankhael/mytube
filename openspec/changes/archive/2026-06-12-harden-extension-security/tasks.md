@@ -90,11 +90,11 @@
 
 ## 9. Wrap-up
 
-- [ ] 9.1 Full pass: `npm test`, `npm run test:e2e`, manual acceptance
+- [x] 9.1 Full pass: `npm test`, `npm run test:e2e`, manual acceptance
       checklist from `specs/security-hardening.spec.md`.
       *(2026-06-10: automated half done — `npm test` 94/94 and e2e smoke green
-      on the bumped toolchain; the manual checklist in the spec awaits a human
-      with the loaded extension.)*
+      on the bumped toolchain. 2026-06-12: manual checklist verified by the
+      owner with the loaded extension.)*
 - [x] 9.2 Mark the implementation spec's criteria green and prepare the change
       for `/opsx:archive` (delta folds into `extension-security`,
       `persistence-sync`, `metadata-enrichment` baselines).
