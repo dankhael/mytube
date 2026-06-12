@@ -19,12 +19,14 @@ export function needsEnrichment(v: { title?: string; channelName?: string }): bo
 }
 
 // Best-effort network lookup. Returns null on any failure (private/region-locked
-// videos answer 401) so callers can keep whatever they already have.
+// videos answer 401) so callers can keep whatever they already have. The abort
+// timeout keeps a hung response from stalling the sequential backfill loop or
+// pinning the service worker alive (finding S8); it lands in the same catch.
 export async function fetchVideoMetadata(id: string): Promise<VideoMetadata | null> {
   try {
     const target = `https://www.youtube.com/watch?v=${id}`
     const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(target)}`
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(8_000) })
     if (!res.ok) return null
     const json = (await res.json()) as { title?: string; author_name?: string }
     const title = json.title?.trim() ?? ''

@@ -3,6 +3,8 @@
 import { ChromeSyncBackend } from '../src/storage-backend'
 import { MyTubeStore, unwatchedCount } from '../src/storage'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
+import { sanitizeStorageData } from '../src/sanitize-storage'
+import { validateIncomingMessage } from '../src/validate-message'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
@@ -67,12 +69,18 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Keep the badge in sync if storage changes from another context (e.g. new tab).
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.mytube) {
-    updateBadge(changes.mytube.newValue as StorageData)
-  }
+  if (area !== 'sync' || !changes.mytube) return
+  // A removed/cleared key has no newValue — nothing to count (finding S6).
+  if (!changes.mytube.newValue) return
+  updateBadge(sanitizeStorageData(changes.mytube.newValue))
 })
 
-async function handle(message: Message): Promise<MessageResponse> {
+async function handle(incoming: Message): Promise<MessageResponse> {
+  // Runtime trust boundary (finding S2): the sender runs inside youtube.com,
+  // so the Message union is enforced here, not just at compile time.
+  const verdict = validateIncomingMessage(incoming)
+  if (!verdict.ok) return verdict
+  const message = verdict.message
   try {
     switch (message.action) {
       case 'SAVE_VIDEO': {

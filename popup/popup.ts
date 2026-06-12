@@ -18,6 +18,20 @@ function openHome(): void {
   chrome.tabs.create({ url: 'chrome://newtab' })
 }
 
+// Renders "<b>13</b> unwatched" via DOM APIs instead of innerHTML — the count
+// is computed from stored data, and privileged pages never parse computed
+// strings as HTML (finding S3). Markup is identical to the old innerHTML write.
+function renderUnwatchedTotal(target: HTMLElement, label: string): void {
+  const count = label.match(/^\d+/)?.[0]
+  if (!count) {
+    target.textContent = label
+    return
+  }
+  const bold = document.createElement('b')
+  bold.textContent = count
+  target.replaceChildren(bold, document.createTextNode(label.slice(count.length)))
+}
+
 async function init(): Promise<void> {
   const res = await send({ action: 'GET_ALL' })
   if (!res.ok || !('data' in res) || !res.data) return
@@ -29,8 +43,7 @@ async function init(): Promise<void> {
   const click = () => playClick(settings, player)
 
   // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
-  const total = document.getElementById('total')!
-  total.innerHTML = unwatchedLabel(data).replace(/^(\d+)/, '<b>$1</b>')
+  renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data))
 
   document.getElementById('open')!.addEventListener('click', openHome)
 

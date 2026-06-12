@@ -16,6 +16,7 @@ import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'l
 import Logo from './components/Logo'
 import { Category, StorageData, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
+import { sanitizeStorageData } from '../src/sanitize-storage'
 import { getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
 import SmartSection from './components/SmartSection'
@@ -53,7 +54,8 @@ export default function App() {
     load()
     const listener = (changes: { [k: string]: chrome.storage.StorageChange }, area: string) => {
       if (area === 'sync' && changes.mytube) {
-        setData(changes.mytube.newValue as StorageData)
+        // Sync snapshots come from any synced device — sanitize, never cast (S6).
+        setData(sanitizeStorageData(changes.mytube.newValue))
         refreshBytes()
       }
     }

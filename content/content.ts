@@ -4,6 +4,7 @@
 
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
+import { isYoutubeVideoId } from '../src/validate-message'
 
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
@@ -63,7 +64,9 @@ function extractCard(card: HTMLElement): CardData | null {
 function extractWatchPage(): CardData | null {
   if (!location.pathname.startsWith('/watch')) return null
   const id = new URLSearchParams(location.search).get('v')
-  if (!id) return null
+  // Same 11-char shape check the card path's href regex applies (finding S2) —
+  // a garbage ?v= never becomes a save pill or a message payload.
+  if (!id || !isYoutubeVideoId(id)) return null
 
   const titleEl = document.querySelector<HTMLElement>(
     'ytd-watch-metadata #title h1, h1.ytd-watch-metadata, #title h1.style-scope.ytd-watch-metadata',
