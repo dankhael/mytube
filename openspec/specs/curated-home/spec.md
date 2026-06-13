@@ -9,11 +9,13 @@ components. Consolidates `specs/design-rework.spec.md` (HOME-*, THEME-*),
 `specs/newtab-ui.spec.md` (UI-*, SMOKE-1), `specs/home-smart-sections.spec.md`
 (SMART-*) and the home-tile portion of `specs/home-icon-tiles.spec.md` (HICON-1..7).
 
-<!-- TODO: this is the largest consolidated capability. The HOME-*/THEME-* visual
-     redesign criteria from design-rework.spec.md and the PUI/HICON tile visuals
-     were NOT re-read line-by-line; the requirements below cover the behavior I
-     verified in the code. Reconcile visual/theme criteria against the original
-     spec files before treating this capability as complete. -->
+<!-- Reconciled 2026-06-12 (fix-memory-and-storage-robustness, first-change
+     rule): behavioral scenarios below are tagged with their legacy IDs from
+     newtab-ui (UI-*), home-smart-sections (SMART-*), design-rework (HOME-4)
+     and save-video (REORDER-VID-1). The THEME-*/HOME-* visual-fidelity and
+     HICON picker criteria stay owned by their Approved implementation-layer
+     spec files (design-rework.spec.md, home-icon-tiles.spec.md) — this
+     baseline tracks behavior, not pixels. -->
 
 ## Requirements
 
@@ -22,11 +24,11 @@ components. Consolidates `specs/design-rework.spec.md` (HOME-*, THEME-*),
 The home SHALL render each category as a section in stored order listing its
 videos, and MUST show a welcome screen instead when the library is empty.
 
-#### Scenario: Categories render in stored order
+#### Scenario: Categories render in stored order (UI-2)
 - **WHEN** the home loads with saved videos
 - **THEN** each category is shown as a section in stored order, listing its videos
 
-#### Scenario: Empty library shows a welcome screen
+#### Scenario: Empty library shows a welcome screen (UI-1)
 - **WHEN** there are no saved videos
 - **THEN** a welcome/onboarding screen is shown instead of category sections
 
@@ -36,26 +38,28 @@ The home SHALL show two cross-cutting sections derived on every render from
 [newtab/smart-sections.ts](../../../newtab/smart-sections.ts); both MUST exclude
 watched videos and MUST be capped at `SMART_LIMIT` (12).
 
-#### Scenario: Recently added (SMART)
+#### Scenario: Recently added (SMART-1)
 - **WHEN** the home renders
 - **THEN** "Recentemente adicionados" lists unwatched videos newest-first, with no age filter
 
-#### Scenario: Gathering dust threshold (SMART)
+#### Scenario: Gathering dust threshold (SMART-2)
 - **WHEN** an unwatched video was added more than `DUST_AGE_DAYS` (21) days ago
 - **THEN** it appears in "Pegando poeira", oldest-first
 
-#### Scenario: Gathering dust is empty when nothing is old enough
+#### Scenario: Smart section hides when nothing qualifies (SMART-6)
 - **WHEN** no unwatched video is older than 21 days
-- **THEN** the "Pegando poeira" section is empty
+- **THEN** the "Pegando poeira" section is hidden entirely (no empty placeholder)
 
-<!-- TODO: the 21-day threshold has no in-UI explanation (inconsistency I4). -->
+<!-- Known gap from the 2026-06 review (inconsistency I4): the 21-day threshold
+     has no in-UI explanation. Not owned by an active change — an explanation
+     would be its own small change. -->
 
 ### Requirement: Search filters the library
 
 The home search SHALL match the trimmed, case-insensitive query against video
 title and channel name, and the result MUST drive every section.
 
-#### Scenario: Filter by title or channel
+#### Scenario: Filter by title or channel (HOME-4)
 - **WHEN** the user types a query
 - **THEN** only videos whose title or channel contains the query are shown across all sections
 
@@ -68,9 +72,9 @@ title and channel name, and the result MUST drive every section.
 The home SHALL provide a toggle that hides watched videos from the category
 sections.
 
-#### Scenario: Toggle watched visibility
+#### Scenario: Toggle watched visibility (UI-3)
 - **WHEN** the user toggles the watched filter off
-- **THEN** watched videos are hidden from the category sections (smart sections already exclude them)
+- **THEN** watched videos are hidden from the category sections (smart sections already exclude them, SMART-5)
 
 ### Requirement: Per-video actions on a card
 
@@ -95,7 +99,7 @@ within a category, persisting each change.
 - **WHEN** the user drags a category to a new position
 - **THEN** the new category order is persisted (`REORDER_CATEGORIES`)
 
-#### Scenario: Reorder videos within a category
+#### Scenario: Reorder videos within a category (REORDER-VID-1)
 - **WHEN** the user drags a video within its category
 - **THEN** the new order within that category is persisted (`REORDER_VIDEOS`) without disturbing other categories
 

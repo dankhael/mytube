@@ -5,6 +5,7 @@
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
 import { isYoutubeVideoId } from '../src/validate-message'
+import { isMyTubeKey } from '../src/storage-backend'
 
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
@@ -16,6 +17,10 @@ const CARD_SELECTORS = [
 const PROCESSED = 'data-mytube'
 
 let savedIds: Map<string, string> = new Map() // videoId -> category
+
+// Module-scope so teardown() (finding M4) can detach them after orphaning.
+let observer: MutationObserver | null = null
+let torndown = false
 
 interface CardData {
   id: string
@@ -83,16 +88,40 @@ function extractWatchPage(): CardData | null {
   return { id, title, thumbnail, channelName }
 }
 
+// When the extension is reloaded/updated, already-injected scripts are orphaned
+// and chrome.runtime.sendMessage throws "Extension context invalidated"
+// synchronously. Catch it, resolve { ok: false } (never an unhandled rejection),
+// and tear ourselves down (finding M4). A runtime.lastError in the callback is a
+// transient worker restart, not orphaning — map it without teardown.
 function sendMessage(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response: MessageResponse) => {
-      if (chrome.runtime.lastError) {
-        resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
-        return
-      }
-      resolve(response)
-    })
+    try {
+      chrome.runtime.sendMessage(message, (response: MessageResponse) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
+          return
+        }
+        resolve(response)
+      })
+    } catch (e) {
+      teardown()
+      resolve({ ok: false, error: e instanceof Error ? e.message : 'context invalidated' })
+    }
   })
+}
+
+// Disconnect everything an orphaned script left attached so a dead extension
+// stops reacting to the page (finding M4). Idempotent.
+function teardown(): void {
+  if (torndown) return
+  torndown = true
+  observer?.disconnect()
+  observer = null
+  document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  document
+    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast')
+    .forEach((node) => node.remove())
 }
 
 async function getCategories(): Promise<Category[]> {
@@ -290,9 +319,18 @@ function injectButton(card: HTMLElement) {
     const isOpen = document.querySelector('.mytube-dropdown')
     if (isOpen) {
       closeAllDropdowns()
-    } else {
-      void openDropdown(btn, data!)
+      return
     }
+    // YouTube recycles renderer nodes (continuations, back/forward), so this
+    // card may now show a different video than at inject time — re-extract and
+    // save what's currently bound, falling back to inject-time data (M3).
+    let current: CardData | null = null
+    try {
+      current = extractCard(card)
+    } catch {
+      current = null
+    }
+    void openDropdown(btn, current ?? data!)
   })
 
   wrapper.appendChild(btn)
@@ -535,14 +573,24 @@ function injectStyles() {
 
 // Close dropdowns when clicking outside both the button (.mytube-wrapper) and
 // the portaled menu (.mytube-dropdown, now a child of <html>, not the wrapper).
-document.addEventListener('click', (e) => {
+// Named (not inline) so teardown() can detach it after orphaning (M4).
+function onDocumentClick(e: MouseEvent): void {
   const t = e.target as HTMLElement
   if (!t?.closest?.('.mytube-wrapper') && !t?.closest?.('.mytube-dropdown')) closeAllDropdowns()
-})
+}
+
+// Catch up on cards added while the tab was hidden (M2): scheduleScan bails out
+// while document.hidden, so re-scan once when the tab becomes visible again.
+function onVisibilityChange(): void {
+  if (!document.hidden) scan()
+}
 
 let scanScheduled = false
 function scheduleScan() {
-  if (scanScheduled) return
+  // Don't burn scan/allocation work on a backgrounded tab nobody can see (M2);
+  // requestAnimationFrame wouldn't fire while hidden anyway, which would wedge
+  // scanScheduled=true. The visibilitychange catch-up covers what we skipped.
+  if (scanScheduled || document.hidden) return
   scanScheduled = true
   requestAnimationFrame(() => {
     scanScheduled = false
@@ -557,15 +605,20 @@ async function init() {
 
   scan()
 
-  const observer = new MutationObserver(() => scheduleScan())
+  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
+  observer = new MutationObserver(() => scheduleScan())
   observer.observe(document.body, { childList: true, subtree: true })
 
-  // Keep saved state fresh if the user edits things from the new tab page.
+  // Keep saved state fresh if the user edits things from the new tab page. The
+  // snapshot is sharded across many mytube:* keys (finding R1), so re-fetch the
+  // ids through the worker (which assembles the shards) on any of them changing.
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.mytube) {
-      const videos = changes.mytube.newValue?.videos ?? []
-      refreshSavedIds(videos.map((v: { id: string; category: string }) => ({ id: v.id, category: v.category })))
-    }
+    if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
+    void sendMessage({ action: 'GET_SAVED_IDS' }).then((res) => {
+      if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
+    })
   })
 }
 
