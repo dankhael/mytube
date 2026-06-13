@@ -1,6 +1,7 @@
 # Spec: Memory & storage robustness (findings M1–M4, R1–R3)
 
-- **Status:** Approved  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved (implemented — ROB-1..ROB-17 green 2026-06-13; manual
+  acceptance below still to be checked by hand)
 - **Owner:** dankhael
 - **Contract:** `StorageBackend` in [src/storage-backend.ts](../src/storage-backend.ts)
   (interface unchanged; the Chrome implementation shards internally over a new

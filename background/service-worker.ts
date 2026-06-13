@@ -1,13 +1,18 @@
 // MyTube background service worker — owns storage mutations and the badge.
 
-import { ChromeSyncBackend } from '../src/storage-backend'
+import { ChromeSyncBackend, isMyTubeKey } from '../src/storage-backend'
 import { MyTubeStore, unwatchedCount } from '../src/storage'
+import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
-import { sanitizeStorageData } from '../src/sanitize-storage'
 import { validateIncomingMessage } from '../src/validate-message'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
+
+// Module scope == one runner per service-worker session: its failure cache
+// dies with the worker, so dead videos stop being re-fetched forever (M1)
+// but get one fresh attempt after the next worker restart.
+const backfill = createBackfillRunner({ store, fetchMetadata: fetchVideoMetadata })
 
 type SavePayload = Omit<Video, 'category' | 'addedAt' | 'watched'>
 
@@ -23,33 +28,6 @@ async function enrichOnSave(video: SavePayload): Promise<SavePayload> {
   }
 }
 
-// One-shot pass over already-saved videos that were scraped incompletely.
-let backfilling = false
-async function backfillMetadata(): Promise<void> {
-  if (backfilling) return
-  backfilling = true
-  try {
-    const data = await store.getData()
-    const targets = data.videos.filter(needsEnrichment)
-    if (targets.length === 0) return
-
-    const updates: { id: string; title: string; channelName: string }[] = []
-    for (const v of targets) {
-      const meta = await fetchVideoMetadata(v.id)
-      if (meta && (meta.title || meta.channelName)) {
-        updates.push({
-          id: v.id,
-          title: meta.title || v.title,
-          channelName: meta.channelName || v.channelName,
-        })
-      }
-    }
-    if (updates.length > 0) await store.applyMetadata(updates)
-  } finally {
-    backfilling = false
-  }
-}
-
 async function updateBadge(data?: StorageData): Promise<void> {
   const d = data ?? (await store.getData())
   const count = unwatchedCount(d)
@@ -59,20 +37,22 @@ async function updateBadge(data?: StorageData): Promise<void> {
 
 chrome.runtime.onInstalled.addListener(() => {
   updateBadge()
-  backfillMetadata()
+  void backfill.run()
 })
 
 chrome.runtime.onStartup.addListener(() => {
   updateBadge()
-  backfillMetadata()
+  void backfill.run()
 })
 
 // Keep the badge in sync if storage changes from another context (e.g. new tab).
+// The snapshot is sharded across many mytube:* keys (finding R1) and a multi-key
+// set fires onChanged per key, so re-read the whole snapshot through the store
+// (which sanitizes, S6) rather than trusting any single key's newValue.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'sync' || !changes.mytube) return
-  // A removed/cleared key has no newValue — nothing to count (finding S6).
-  if (!changes.mytube.newValue) return
-  updateBadge(sanitizeStorageData(changes.mytube.newValue))
+  if (area !== 'sync') return
+  if (!Object.keys(changes).some(isMyTubeKey)) return
+  void updateBadge()
 })
 
 async function handle(incoming: Message): Promise<MessageResponse> {
@@ -92,7 +72,7 @@ async function handle(incoming: Message): Promise<MessageResponse> {
       case 'GET_ALL': {
         const data = await store.getData()
         // Fire-and-forget: the new tab updates live via storage.onChanged.
-        void backfillMetadata()
+        void backfill.run()
         return { ok: true, data }
       }
       case 'DELETE_VIDEO':

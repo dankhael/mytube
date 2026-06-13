@@ -18,48 +18,50 @@
 
 ## 2. R1 (zero-risk part) — Banner math + write-failure regression
 
-- [ ] 2.1 Failing test: quota-warning threshold helper warns against
+- [x] 2.1 Failing test: quota-warning threshold helper warns against
       `min(total, per-item)` headroom (pure function, Vitest).
-- [ ] 2.2 Implement the helper and wire it into the new-tab banner
+- [x] 2.2 Implement the helper and wire it into the new-tab banner
       (`newtab/App.tsx`); green.
-- [ ] 2.3 Regression test: a `StorageBackend.write` rejection propagates out of
+- [x] 2.3 Regression test: a `StorageBackend.write` rejection propagates out of
       the store and `handle()` responds `{ ok: false, error }` (extend
       `FakeStorageBackend` with a rejecting mode).
 
 ## 3. M1 — Backfill failure cache
 
-- [ ] 3.1 Failing test: a video whose `fetchVideoMetadata` returned `null` is
+- [x] 3.1 Failing test: a video whose `fetchVideoMetadata` returned `null` is
       not fetched again on the next backfill pass; a new worker "session"
       (fresh module state) retries it.
-- [ ] 3.2 Implement the session-scoped `enrichmentFailed` set in
-      `background/service-worker.ts`; green.
+- [x] 3.2 Implement the session-scoped `enrichmentFailed` set in
+      `background/service-worker.ts`; green. *(Extracted to `src/backfill.ts`
+      with injected store/fetch per the approved spec — the worker keeps one
+      module-scope runner instance.)*
 
 ## 4. R2 — Mutation serialization
 
-- [ ] 4.1 Failing test: two un-awaited mutations against a `FakeStorageBackend`
+- [x] 4.1 Failing test: two un-awaited mutations against a `FakeStorageBackend`
       with artificially delayed reads both land in the final snapshot; a
       rejected write rejects its caller but the next mutation still runs.
-- [ ] 4.2 Implement the private `enqueue()` promise-chain mutex in
+- [x] 4.2 Implement the private `enqueue()` promise-chain mutex in
       `src/storage.ts` wrapping every public mutation; green.
 
 ## 5. R3 — Surface failed mutations in the home
 
-- [ ] 5.1 Change `newtab/api.ts` / `newtab/App.tsx` so `{ ok: false, error }`
+- [x] 5.1 Change `newtab/api.ts` / `newtab/App.tsx` so `{ ok: false, error }`
       is logged as structured JSON (`console.error`) instead of mapped to
       `null` silently.
-- [ ] 5.2 Add a non-blocking error toast component (Testing Library test: a
+- [x] 5.2 Add a non-blocking error toast component (Testing Library test: a
       failed mutation renders the toast; a successful one does not).
 
 ## 6. M4 + M2 + M3 — Content-script hygiene (manual acceptance)
 
-- [ ] 6.1 M4: rework the `sendMessage` wrapper in `content/content.ts` to catch
+- [x] 6.1 M4: rework the `sendMessage` wrapper in `content/content.ts` to catch
       the synchronous context-invalidated throw, resolve `{ ok: false }`, and
       call `teardown()` (disconnect observer, remove `.mytube-wrapper` /
       `.mytube-dropdown` / toast, detach document listeners). `lastError` maps
       to `{ ok: false }` without teardown.
-- [ ] 6.2 M2: gate `scheduleScan()` on `document.hidden`; add the
+- [x] 6.2 M2: gate `scheduleScan()` on `document.hidden`; add the
       `visibilitychange` catch-up scan.
-- [ ] 6.3 M3: re-extract `CardData` at click time in `injectButton`
+- [x] 6.3 M3: re-extract `CardData` at click time in `injectButton`
       (try/catch → fallback to inject-time data).
 - [ ] 6.4 Manual acceptance pass: reload the extension with a YouTube tab open
       (no console errors, UI removed); background a tab during feed scrolling
@@ -68,17 +70,20 @@
 
 ## 7. R1 (layout) — Sharded storage backend
 
-- [ ] 7.1 Extend `FakeStorageBackend` with a per-item-quota mode that rejects
+- [x] 7.1 Extend `FakeStorageBackend` with a per-item-quota mode that rejects
       any single key over 8,192 bytes (named fake, no inline stubs).
-- [ ] 7.2 Failing tests against the quota-mode fake: large library round-trips;
+      *(Sharding lives below `StorageBackend`, so the fake is a new
+      `FakeSyncArea` at that seam — per the approved spec — not a mode on
+      `FakeStorageBackend`.)*
+- [x] 7.2 Failing tests against the quota-mode fake: large library round-trips;
       no key exceeds the quota; legacy single-key data migrates
       (write-shards-then-remove order); interrupted migration (shards + legacy
       both present) prefers shards and finishes cleanup; unchanged chunks are
       not rewritten.
-- [ ] 7.3 Implement sharded `read()`/`write()` + migration in the Chrome
+- [x] 7.3 Implement sharded `read()`/`write()` + migration in the Chrome
       backend (`src/storage-backend.ts`; split the module if it nears 500
       lines), including the generation marker decided in 1.3; green.
-- [ ] 7.4 Update `storage.onChanged` consumers (service-worker badge,
+- [x] 7.4 Update `storage.onChanged` consumers (service-worker badge,
       new tab, content script) to react to any `mytube:*` key change by
       re-reading through the backend.
 - [ ] 7.5 Manual acceptance: upgrade a profile with a pre-shard library
@@ -89,6 +94,9 @@
 
 - [ ] 8.1 Full pass: `npm test`, `npm run test:e2e`, all manual acceptance
       checklists from `specs/storage-robustness.spec.md`.
-- [ ] 8.2 Mark the implementation spec's criteria green and prepare the change
+      *(2026-06-13: automated half done — `npm test` 111/111, e2e smoke green,
+      `tsc --noEmit` clean. Manual checklist awaits a human with the loaded
+      extension.)*
+- [x] 8.2 Mark the implementation spec's criteria green and prepare the change
       for `/opsx:archive` (delta folds into `persistence-sync`,
       `metadata-enrichment`, `save-from-youtube`, `curated-home` baselines).

@@ -34,6 +34,22 @@ function scriptStore(data: Omit<StorageData, 'settings'>) {
   )
 }
 
+// GET_ALL succeeds with `data`; every mutation answers `mutationReply` (ROB-10/11).
+function scriptStoreWithMutationReply(data: Omit<StorageData, 'settings'>, mutationReply: unknown) {
+  const full: StorageData = { ...data, settings: { ...DEFAULT_SETTINGS } }
+  vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+    ((msg: { action: string }, cb: (r: unknown) => void) =>
+      cb(msg.action === 'GET_ALL' ? { ok: true, data: full } : mutationReply)) as never,
+  )
+}
+
+// Only the home's own structured logs — React act()/error noise must not count.
+function mytubeErrorLogs(spy: ReturnType<typeof vi.spyOn>): string[] {
+  return spy.mock.calls
+    .map((args: unknown[]) => String(args[0]))
+    .filter((line: string) => line.includes('mytube.newtab'))
+}
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -150,6 +166,43 @@ describe('home-icon-tiles.spec (home)', () => {
     expect(screen.getByRole('button', { name: 'gamepad' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'trophy' })).toBeTruthy()
     expect(screen.queryByText('🎮')).toBeNull()
+  })
+})
+
+describe('storage-robustness.spec (home)', () => {
+  const LIBRARY = {
+    categories: [{ name: 'Tutoriais', emoji: '🎓' }],
+    videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
+  }
+
+  it('ROB-10: a failed mutation logs structured JSON and renders the error toast', async () => {
+    scriptStoreWithMutationReply(LIBRARY, { ok: false, error: 'quota exceeded' })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Tutoriais')
+
+    await user.click(screen.getAllByTitle('Marcar como assistido')[0])
+
+    const toast = await screen.findByRole('alert')
+    expect(toast.textContent).toContain('não foi salva')
+    const logged = mytubeErrorLogs(errorSpy).join('\n')
+    expect(logged).toContain('MARK_WATCHED')
+    expect(logged).toContain('quota exceeded')
+  })
+
+  it('ROB-11: a successful mutation shows no toast and logs no error', async () => {
+    const full: StorageData = { ...LIBRARY, settings: { ...DEFAULT_SETTINGS } }
+    scriptStoreWithMutationReply(LIBRARY, { ok: true, data: full })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('Tutoriais')
+
+    await user.click(screen.getAllByTitle('Marcar como assistido')[0])
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(mytubeErrorLogs(errorSpy)).toHaveLength(0)
   })
 })
 

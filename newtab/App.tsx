@@ -16,17 +16,19 @@ import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'l
 import Logo from './components/Logo'
 import { Category, StorageData, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
-import { sanitizeStorageData } from '../src/sanitize-storage'
-import { getBytesInUse, mutate, send } from './api'
+import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
+import ErrorToast from './components/ErrorToast'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
 import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
 import { filterVideos } from './search'
+import { bindingQuotaLimit, shouldWarnQuota } from './quota'
+import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
 
-const STORAGE_LIMIT = 102_400 // chrome.storage.sync quota in bytes
-const WARN_RATIO = 0.8
+// The lower of the total quota and any per-item ceiling the layout imposes (R1).
+const QUOTA_LIMIT = bindingQuotaLimit(SYNC_QUOTA_LIMITS)
 
 export default function App() {
   const [data, setData] = useState<StorageData | null>(null)
@@ -37,6 +39,7 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [moving, setMoving] = useState<Video | null>(null)
+  const [mutationError, setMutationError] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -53,23 +56,26 @@ export default function App() {
   useEffect(() => {
     load()
     const listener = (changes: { [k: string]: chrome.storage.StorageChange }, area: string) => {
-      if (area === 'sync' && changes.mytube) {
-        // Sync snapshots come from any synced device — sanitize, never cast (S6).
-        setData(sanitizeStorageData(changes.mytube.newValue))
-        refreshBytes()
-      }
+      // The snapshot spans many mytube:* keys now (finding R1); re-read the whole
+      // thing through the worker (which sanitizes, S6) on any of them changing.
+      if (area === 'sync' && Object.keys(changes).some(isMyTubeKey)) void load()
     }
     chrome.storage.onChanged.addListener(listener)
     return () => chrome.storage.onChanged.removeListener(listener)
   }, [load, refreshBytes])
 
-  const apply = useCallback(async (next: Promise<StorageData | null>) => {
+  const apply = useCallback(async (next: Promise<MutationOutcome>) => {
     const result = await next
-    if (result) {
-      setData(result)
+    if (result.ok) {
+      setData(result.data)
       refreshBytes()
+      return
     }
-  }, [refreshBytes])
+    // The mutation did not persist (finding R3): surface it and re-read the
+    // store so optimistic UI (e.g. drag reorder) never claims success.
+    setMutationError(result.error)
+    void load()
+  }, [refreshBytes, load])
 
   // ---- handlers ----
   const openVideo = (id: string) =>
@@ -148,16 +154,19 @@ export default function App() {
 
   const isEmpty = data.videos.length === 0
   const unwatched = data.videos.filter((v) => !v.watched).length
-  const overQuota = bytes / STORAGE_LIMIT >= WARN_RATIO
+  const overQuota = shouldWarnQuota(bytes, QUOTA_LIMIT)
 
   return (
     <div className="home">
+      {mutationError && (
+        <ErrorToast message={mutationError} onDismiss={() => setMutationError(null)} />
+      )}
       <div className="home-inner">
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
             <AlertTriangle className="h-4 w-4" />
-            Armazenamento quase cheio ({Math.round((bytes / STORAGE_LIMIT) * 100)}% de 100KB). Remova
-            alguns vídeos para continuar sincronizando.
+            Armazenamento quase cheio ({Math.round((bytes / QUOTA_LIMIT) * 100)}% do limite de
+            sincronização). Remova alguns vídeos para continuar sincronizando.
           </div>
         )}
 
