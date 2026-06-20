@@ -6,6 +6,7 @@
 // data passes through byte-identical (original references, original key order).
 
 import { isIconKey } from './validate-message'
+import { isAccentPreset, DEFAULT_ACCENT } from './theme'
 import { Category, DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, Video } from './types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -53,9 +54,13 @@ function sanitizedCategories(value: unknown): Category[] {
 
 // Merge over defaults so options added after this snapshot was saved fall back
 // gracefully — same contract getData always had (persistence-sync baseline).
+// An unknown/garbage `accent` (synced from another version) falls back to the
+// default preset rather than reaching --accent-h as an invalid value (THEME-4).
 function sanitizedSettings(value: unknown): Settings {
   if (!isRecord(value) || typeof value.soundEffects !== 'boolean') return { ...DEFAULT_SETTINGS }
-  return { ...DEFAULT_SETTINGS, ...value }
+  const merged = { ...DEFAULT_SETTINGS, ...value }
+  if (!isAccentPreset(merged.accent)) merged.accent = DEFAULT_ACCENT
+  return merged
 }
 
 // The top-level spread keeps unknown future fields and the stored key order, so

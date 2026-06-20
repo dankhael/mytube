@@ -13,11 +13,13 @@ export default defineManifest({
   // Explicit least-privilege CSP for extension pages (finding S5): ytimg for
   // thumbnails, www.youtube.com for the worker's oEmbed fetch, fonts vendored
   // locally (S4). 'unsafe-inline' stays in style-src because React/dnd-kit set
-  // inline style attributes for drag transforms.
+  // inline style attributes for drag transforms. data: in img-src is the inline
+  // SVG favicon the new-tab page generates from the accent (THEME-10) — images
+  // only, no script vector.
   content_security_policy: {
     extension_pages: [
       "default-src 'self'",
-      "img-src 'self' https://i.ytimg.com",
+      "img-src 'self' https://i.ytimg.com data:",
       'connect-src https://www.youtube.com',
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",

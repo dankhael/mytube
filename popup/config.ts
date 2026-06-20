@@ -3,9 +3,11 @@
 // options later — each preference is just another `.cfg-row`.
 
 import { Settings } from '../src/types'
+import { AccentPreset, ACCENT_PRESETS, accentHue } from '../src/theme'
 
 export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
+  onPickAccent: (accent: AccentPreset) => void
 }
 
 // Returns the backdrop overlay; the caller appends it to the document.
@@ -22,9 +24,10 @@ export function createConfigModal(settings: Settings, cb: ConfigModalCallbacks):
   close.textContent = '✕'
   header.appendChild(close)
 
-  // Body — one row per option (only sound effects for now).
+  // Body — one row per option.
   const body = el('div', 'cfg-body')
   body.appendChild(soundRow(settings.soundEffects, cb.onToggleSound))
+  body.appendChild(accentRow(settings.accent, cb.onPickAccent))
 
   // Footer — donate placeholder card (not wired yet) — see PUI-7.
   const footer = el('div', 'cfg-footer')
@@ -70,6 +73,51 @@ function donateCard(): HTMLElement {
 
   card.append(ico, text, textEl('span', 'cfg-soon', 'SOON'))
   return card
+}
+
+// A row of accent-color swatches (THEME-5/6). Single-select like a radio group:
+// the persisted preset starts selected; picking another reports it and moves the
+// selection. Each swatch previews its real accent color via the --accent token.
+function accentRow(selected: AccentPreset, onPick: (accent: AccentPreset) => void): HTMLElement {
+  const row = el('div', 'cfg-row')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', 'Theme color'),
+    textEl('span', 'cfg-row-sub', 'Accent across the whole extension'),
+  )
+  row.appendChild(text)
+
+  const group = el('div', 'cfg-swatches')
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', 'Theme color')
+
+  const swatches = ACCENT_PRESETS.map((preset) => {
+    const swatch = el('button', 'cfg-swatch') as HTMLButtonElement
+    swatch.setAttribute('role', 'radio')
+    swatch.dataset.accent = preset
+    swatch.setAttribute('aria-label', preset)
+    swatch.title = preset
+    // Preview the preset's hue with the same lightness/chroma as --accent.
+    swatch.style.background = `oklch(0.815 0.125 ${accentHue(preset)})`
+    swatch.addEventListener('click', () => {
+      select(preset)
+      onPick(preset)
+    })
+    group.appendChild(swatch)
+    return swatch
+  })
+
+  function select(preset: AccentPreset): void {
+    for (const swatch of swatches) {
+      const on = swatch.dataset.accent === preset
+      swatch.setAttribute('aria-checked', String(on))
+      swatch.classList.toggle('selected', on)
+    }
+  }
+  select(selected)
+
+  row.appendChild(group)
+  return row
 }
 
 function soundRow(initial: boolean, onToggle: (enabled: boolean) => void): HTMLElement {

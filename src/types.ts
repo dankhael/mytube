@@ -1,6 +1,7 @@
 // Shared types used across background, content script and the new tab page.
 
 import { IconKey } from './category-icon'
+import { AccentPreset, DEFAULT_ACCENT } from './theme'
 
 export interface Video {
   id: string // YouTube videoId
@@ -23,10 +24,12 @@ export interface Category {
 // missing/unknown keys fall back gracefully (no schema migration needed).
 export interface Settings {
   soundEffects: boolean
+  accent: AccentPreset // accent color; applied via --accent-h (see src/theme.ts)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   soundEffects: false, // opt-in: no surprise audio on first install
+  accent: DEFAULT_ACCENT, // preserves the original look (--accent-h: 290)
 }
 
 export interface StorageData {

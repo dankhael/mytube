@@ -5,6 +5,7 @@ import { MyTubeStore, unwatchedCount } from '../src/storage'
 import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
+import { accentLogoSvg } from '../src/logo-svg'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
@@ -35,24 +36,72 @@ async function updateBadge(data?: StorageData): Promise<void> {
   await chrome.action.setBadgeBackgroundColor({ color: '#FF0000' })
 }
 
+// Last accent painted onto the toolbar icon, so a storage change that didn't
+// touch the accent (e.g. saving a video) skips the rasterize.
+let paintedAccent: string | null = null
+
+// Rasterize the accent mark to ImageData. OffscreenCanvas + createImageBitmap are
+// the only canvas primitives available in an MV3 worker (no DOM). The SVG carries
+// an intrinsic 256² size so the bitmap has dimensions to scale from.
+async function rasterizeIcon(svg: string, size: number): Promise<ImageData> {
+  const bitmap = await createImageBitmap(new Blob([svg], { type: 'image/svg+xml' }), {
+    resizeWidth: size,
+    resizeHeight: size,
+    resizeQuality: 'high',
+  })
+  const canvas = new OffscreenCanvas(size, size)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error(`OffscreenCanvas 2d context unavailable for size ${size}`)
+  ctx.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  return ctx.getImageData(0, 0, size, size)
+}
+
+// Recolor the toolbar icon to match the chosen accent (THEME-11). Best-effort:
+// if rasterization isn't available the manifest PNG stays in place, so the icon
+// is never left blank.
+async function repaintIcon(accent: string): Promise<void> {
+  if (accent === paintedAccent) return
+  try {
+    const svg = accentLogoSvg(accent)
+    const imageData = {
+      16: await rasterizeIcon(svg, 16),
+      32: await rasterizeIcon(svg, 32),
+      48: await rasterizeIcon(svg, 48),
+    }
+    await chrome.action.setIcon({ imageData })
+    paintedAccent = accent
+  } catch {
+    // Leave the manifest default icon if the canvas/bitmap path is unavailable.
+  }
+}
+
+// Single read drives both the badge count and the icon accent.
+async function refreshAction(): Promise<void> {
+  const data = await store.getData()
+  await updateBadge(data)
+  await repaintIcon(data.settings.accent)
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  updateBadge()
+  void refreshAction()
   void backfill.run()
 })
 
 chrome.runtime.onStartup.addListener(() => {
-  updateBadge()
+  void refreshAction()
   void backfill.run()
 })
 
-// Keep the badge in sync if storage changes from another context (e.g. new tab).
-// The snapshot is sharded across many mytube:* keys (finding R1) and a multi-key
-// set fires onChanged per key, so re-read the whole snapshot through the store
-// (which sanitizes, S6) rather than trusting any single key's newValue.
+// Keep the badge + icon in sync if storage changes from another context (e.g. new
+// tab or the popup accent picker). The snapshot is sharded across many mytube:*
+// keys (finding R1) and a multi-key set fires onChanged per key, so re-read the
+// whole snapshot through the store (which sanitizes, S6) rather than trusting any
+// single key's newValue.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return
   if (!Object.keys(changes).some(isMyTubeKey)) return
-  void updateBadge()
+  void refreshAction()
 })
 
 async function handle(incoming: Message): Promise<MessageResponse> {

@@ -12,12 +12,15 @@ export default function Logo({ size = 28 }: { size?: number }) {
       />
       <path
         d="M107.2 84.8L168 122.4C169 122.953 169.834 123.765 170.415 124.75C170.995 125.734 171.302 126.857 171.302 128C171.302 129.143 170.995 130.266 170.415 131.25C169.834 132.235 169 133.047 168 133.6L107.2 171.2C106.219 171.805 105.093 172.135 103.941 172.153C102.789 172.172 101.653 171.879 100.653 171.305C99.6534 170.732 98.8272 169.899 98.2617 168.895C97.6961 167.89 97.4122 166.752 97.44 165.6V90.4C97.4122 89.2479 97.6961 88.1096 98.2617 87.1054C98.8272 86.1012 99.6534 85.2683 100.653 84.6948C101.653 84.1212 102.789 83.8282 103.941 83.8467C105.093 83.8653 106.219 84.1946 107.2 84.8Z"
-        fill="#0C2A22"
+        style={{ fill: 'var(--accent-ink)' }}
       />
+      {/* Gradient/cutout track the theme tokens (which follow --accent-h), so the
+          mark re-themes with the accent setting. style (not the stop-color attr)
+          so var() resolves reliably. THEME-9. */}
       <defs>
         <linearGradient id={gid} x1="24" y1="24" x2="247.386" y2="231.43" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#A89CFF" />
-          <stop offset="1" stopColor="#8B7BFF" />
+          <stop style={{ stopColor: 'var(--accent)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--accent-2)' }} />
         </linearGradient>
       </defs>
     </svg>

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { IconKey } from './category-icon'
 import { DEFAULT_DATA, DEFAULT_SETTINGS, StorageData, Video } from './types'
 import { sanitizeStorageData } from './sanitize-storage'
+import { DEFAULT_ACCENT } from './theme'
 
 // Key order mirrors what the extension persists (content-script payload spread
 // first, then the reducer's category/addedAt/watched) — SEC-14 asserts on it.
@@ -26,7 +27,7 @@ function wellFormedSnapshot(): StorageData {
   return {
     categories: [{ name: 'Tutoriais', emoji: '🎓', icon: 'book' }],
     videos: [storedVideo('dQw4w9WgXcQ'), { ...storedVideo('aqz-KE-bpKQ'), watched: true, watchedAt: 1_700_000_001_000 }],
-    settings: { soundEffects: true },
+    settings: { soundEffects: true, accent: 'mint' },
   }
 }
 
@@ -54,6 +55,11 @@ describe('security-hardening.spec — sanitize-storage', () => {
       videos: [first, null, { title: 'sem id' }, { ...storedVideo('9bZkp7q19f0'), title: 42 }, second],
     }
     expect(sanitizeStorageData(snapshot).videos).toEqual([first, second])
+  })
+
+  it('THEME-4: an unknown accent preset falls back to the default on read', () => {
+    const snapshot = { ...wellFormedSnapshot(), settings: { soundEffects: true, accent: 'puce' } }
+    expect(sanitizeStorageData(snapshot).settings.accent).toBe(DEFAULT_ACCENT)
   })
 
   it('SEC-17: a category with an unknown icon is kept with the icon unset', () => {

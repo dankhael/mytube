@@ -336,6 +336,29 @@ footer {
   transform: translateX(18px);
   background: var(--accent-ink);
 }
+.cfg-swatches {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cfg-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: transform 0.12s var(--ease-bounce), outline-color 0.12s var(--ease);
+}
+.cfg-swatch:hover {
+  transform: scale(1.12);
+}
+.cfg-swatch.selected {
+  outline-color: var(--text);
+}
 .cfg-footer {
   padding: 12px 16px 16px;
   border-top: 1px solid var(--border-soft);

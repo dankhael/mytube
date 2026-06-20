@@ -5,10 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createConfigModal } from './config'
 import { Settings } from '../src/types'
 
-function open(settings: Settings, onToggleSound = vi.fn()) {
-  const modal = createConfigModal(settings, { onToggleSound })
+function open(partial: Partial<Settings> = {}, onToggleSound = vi.fn(), onPickAccent = vi.fn()) {
+  const settings: Settings = { soundEffects: false, accent: 'violet', ...partial }
+  const modal = createConfigModal(settings, { onToggleSound, onPickAccent })
   document.body.appendChild(modal)
-  return { modal, onToggleSound }
+  return { modal, onToggleSound, onPickAccent }
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -55,6 +56,25 @@ describe('popup-config.spec (modal)', () => {
     expect(document.querySelector('.cfg-donate-sub')?.textContent).toBe('Support the developer')
     expect(document.querySelector('.cfg-soon')?.textContent).toBe('SOON')
     expect(document.querySelector('.cfg-donate-ico svg')).not.toBeNull()
+  })
+
+  it('THEME-5: the theme-color row marks the persisted accent selected', () => {
+    open({ accent: 'mint' })
+    const swatches = document.querySelectorAll<HTMLElement>('.cfg-swatch')
+    expect(swatches.length).toBe(6)
+    const selected = document.querySelector<HTMLElement>('.cfg-swatch.selected')
+    expect(selected?.dataset.accent).toBe('mint')
+    expect(selected?.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('THEME-6: picking another swatch reports it and moves the selection', () => {
+    const { onPickAccent } = open({ accent: 'violet' })
+    const red = document.querySelector<HTMLElement>('.cfg-swatch[data-accent="red"]')!
+    red.click()
+    expect(onPickAccent).toHaveBeenCalledWith('red')
+    expect(red.classList.contains('selected')).toBe(true)
+    expect(red.getAttribute('aria-checked')).toBe('true')
+    expect(document.querySelectorAll('.cfg-swatch.selected').length).toBe(1)
   })
 
   it('CFG-7: closes via ✕, Esc and backdrop click', () => {

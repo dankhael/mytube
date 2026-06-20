@@ -26,6 +26,8 @@ import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
 import { filterVideos } from './search'
 import { bindingQuotaLimit, shouldWarnQuota } from './quota'
 import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
+import { applyAccent } from '../src/theme'
+import { applyAccentFavicon } from './favicon'
 
 // The lower of the total quota and any per-item ceiling the layout imposes (R1).
 const QUOTA_LIMIT = bindingQuotaLimit(SYNC_QUOTA_LIMITS)
@@ -35,6 +37,16 @@ export default function App() {
   const [showWatched, setShowWatched] = useState(true)
   const [query, setQuery] = useState('')
   const [bytes, setBytes] = useState(0)
+  const accent = data?.settings.accent
+
+  // Recolor the home from the persisted accent; re-runs if it changes elsewhere
+  // (e.g. the popup picker, synced via storage.onChanged → load) — THEME-7/8.
+  // The tab favicon tracks it too, so the browser tab icon matches (THEME-10).
+  useEffect(() => {
+    if (!accent) return
+    applyAccent(document.documentElement, accent)
+    applyAccentFavicon(document, accent)
+  }, [accent])
 
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)

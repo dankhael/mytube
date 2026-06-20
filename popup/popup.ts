@@ -7,6 +7,7 @@ import { renderPopup } from './render'
 import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
+import { applyAccent } from '../src/theme'
 
 function send(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
@@ -42,6 +43,9 @@ async function init(): Promise<void> {
   const player = createClickPlayer()
   const click = () => playClick(settings, player)
 
+  // Recolor the popup from the persisted accent before first paint (THEME-7).
+  applyAccent(document.documentElement, settings.accent)
+
   // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
   renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data))
 
@@ -53,6 +57,11 @@ async function init(): Promise<void> {
       onToggleSound: (enabled) => {
         settings = { ...settings, soundEffects: enabled }
         void send({ action: 'UPDATE_SETTINGS', settings: { soundEffects: enabled } })
+      },
+      onPickAccent: (accent) => {
+        settings = { ...settings, accent }
+        applyAccent(document.documentElement, accent) // live recolor, no reopen
+        void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
       },
     })
     document.body.appendChild(modal)
