@@ -8,6 +8,11 @@ export interface Video {
   title: string
   thumbnail: string // thumbnail URL (mqdefault.jpg)
   channelName: string
+  // Channel avatar URL captured from the YouTube DOM at save time. Optional:
+  // there is no deterministic per-videoId avatar URL (oEmbed returns none), so
+  // many cards have none and old saves predate this field — the home card falls
+  // back to the initial-letter avatar. Host-gated on save/read (see channel-avatar).
+  channelThumbnail?: string
   category: string
   addedAt: number // timestamp
   watched: boolean

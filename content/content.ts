@@ -27,6 +27,21 @@ interface CardData {
   title: string
   thumbnail: string
   channelName: string
+  channelThumbnail?: string // channel avatar URL when the DOM exposes one
+}
+
+// Best-effort read of the channel avatar <img> within a card/owner scope. Covers
+// classic renderers (#avatar img / yt-img-shadow) and the newer lockup/owner
+// view-models. Returns undefined when absent — the worker host-gates the value
+// anyway (channel-avatar), and the home card falls back to the initial letter.
+function extractAvatar(scope: ParentNode): string | undefined {
+  const img =
+    scope.querySelector<HTMLImageElement>('#avatar img') ||
+    scope.querySelector<HTMLImageElement>('yt-img-shadow img') ||
+    scope.querySelector<HTMLImageElement>('.yt-spec-avatar-shape img') ||
+    scope.querySelector<HTMLImageElement>('yt-decorated-avatar-view-model img')
+  const src = img?.currentSrc || img?.src || ''
+  return src.startsWith('https://') ? src : undefined
 }
 
 function extractCard(card: HTMLElement): CardData | null {
@@ -62,7 +77,7 @@ function extractCard(card: HTMLElement): CardData | null {
   // mqdefault is stable regardless of YouTube's lazy-loaded <img> state.
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
 
-  return { id, title, thumbnail, channelName }
+  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(card) }
 }
 
 // Reads the video currently open on a /watch page (the one in the player).
@@ -85,7 +100,11 @@ function extractWatchPage(): CardData | null {
   const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
 
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
-  return { id, title, thumbnail, channelName }
+  // Scope to the owner block so we read the channel's avatar, not some other
+  // avatar elsewhere on the watch page (comments, suggestions).
+  const ownerScope =
+    document.querySelector<HTMLElement>('ytd-video-owner-renderer, #owner') ?? document
+  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(ownerScope) }
 }
 
 // When the extension is reloaded/updated, already-injected scripts are orphaned
@@ -231,7 +250,13 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
   const saveTo = async (category: string) => {
     const res = await sendMessage({
       action: 'SAVE_VIDEO',
-      video: { id: card.id, title: card.title, thumbnail: card.thumbnail, channelName: card.channelName },
+      video: {
+        id: card.id,
+        title: card.title,
+        thumbnail: card.thumbnail,
+        channelName: card.channelName,
+        channelThumbnail: card.channelThumbnail,
+      },
       category,
     })
     closeAllDropdowns()

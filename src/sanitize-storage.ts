@@ -5,7 +5,7 @@
 // bytes stay untouched until the next legitimate mutation, and well-formed
 // data passes through byte-identical (original references, original key order).
 
-import { isIconKey } from './validate-message'
+import { isAllowedAvatarUrl, isIconKey } from './validate-message'
 import { isAccentPreset, DEFAULT_ACCENT } from './theme'
 import { Category, DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, Video } from './types'
 
@@ -27,9 +27,21 @@ function isStoredVideo(entry: unknown): entry is Video {
   )
 }
 
+// An off-host / non-https / non-string channelThumbnail (synced from another
+// version or hand-edited) reads as absent so the home card shows its initial-
+// letter fallback (AVATAR-4) — the same host gate the worker applies on save.
+// Drops only the field, never the video; a valid/missing avatar keeps the
+// original reference for the byte-identical pass-through (SEC-14).
+function withGatedAvatar(video: Video): Video {
+  if (video.channelThumbnail === undefined || isAllowedAvatarUrl(video.channelThumbnail)) return video
+  const gated = { ...video }
+  delete gated.channelThumbnail
+  return gated
+}
+
 function sanitizedVideos(value: unknown): Video[] {
   if (!Array.isArray(value)) return []
-  return value.filter(isStoredVideo)
+  return value.filter(isStoredVideo).map(withGatedAvatar)
 }
 
 function isStoredCategory(entry: unknown): entry is Category {

@@ -32,6 +32,9 @@ export function VideoCardView({
   style,
 }: ViewProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  // Avatar URLs rot (Google rotates them); on load failure we drop to the
+  // initial-letter avatar instead of showing a broken image (AVATAR-7).
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export function VideoCardView({
   }, [menuOpen])
 
   const initial = video.channelName.trim().charAt(0).toUpperCase() || '•'
+  const showPhoto = Boolean(video.channelThumbnail) && !avatarFailed
   const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -122,7 +126,17 @@ export function VideoCardView({
       </div>
 
       <div className="vmeta">
-        <div className="avatar">{initial}</div>
+        {showPhoto ? (
+          <img
+            className="avatar avatar-img"
+            src={video.channelThumbnail}
+            alt={video.channelName}
+            loading="lazy"
+            onError={() => setAvatarFailed(true)}
+          />
+        ) : (
+          <div className="avatar">{initial}</div>
+        )}
         <div className="txt">
           <p className="vtitle" title={video.title}>
             {video.title}

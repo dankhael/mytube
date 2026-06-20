@@ -1,33 +1,4 @@
-# extension-security
-
-## Purpose
-
-The extension's trust-boundary guarantees: least-privilege manifest permissions,
-an explicit CSP for extension pages, runtime validation of every message at the
-service-worker boundary, no computed-HTML sinks in privileged pages, and no
-third-party requests from extension pages. Implemented in
-[src/validate-message.ts](../../../src/validate-message.ts) and enforced at
-`handle()` in [background/service-worker.ts](../../../background/service-worker.ts);
-granular criteria live in `specs/security-hardening.spec.md` (SEC-1..SEC-19).
-Established by the harden-extension-security change (security review findings
-S1–S5, S8–S9; S6 lives in `persistence-sync`).
-
-## Requirements
-
-### Requirement: Least-privilege manifest permissions
-
-The manifest SHALL request only the permissions the extension actually uses.
-Today that is exactly `storage`; `tabs` and `activeTab` MUST NOT be requested
-(`chrome.tabs.create` needs no permission). Host permissions MUST remain limited
-to `https://www.youtube.com/*`.
-
-#### Scenario: Only storage is requested
-- **WHEN** the manifest is built
-- **THEN** `permissions` is exactly `['storage']` and installing the extension shows no "Read your browsing history" warning
-
-#### Scenario: Tab opening still works without tabs permission
-- **WHEN** the user opens a video or the home from the popup
-- **THEN** `chrome.tabs.create` opens the tab successfully with no `tabs` permission present
+## MODIFIED Requirements
 
 ### Requirement: Explicit CSP for extension pages
 
@@ -107,22 +78,6 @@ check the card path already has.
 #### Scenario: Watch-page id is shape-checked at extraction
 - **WHEN** the watch page URL carries a `v` parameter that is not an 11-character `[\w-]` id
 - **THEN** the content script does not inject a save pill for it and sends no message with that id
-
-### Requirement: No computed HTML in privileged pages
-
-Extension pages (popup, new tab) MUST NOT assign computed strings to `innerHTML`
-or equivalent HTML-parsing sinks. Dynamic content SHALL be built with
-`createElement`/`textContent`/`replaceChildren`; SVG icons SHALL come only from
-a closed key→markup map gated by the shared icon-key validator. Static literal
-markup is exempt.
-
-#### Scenario: Unwatched count renders without HTML parsing
-- **WHEN** the popup renders the "N unwatched" label
-- **THEN** the bold count is built via DOM APIs (`createElement` + `textContent`) and the rendered markup is identical to before
-
-#### Scenario: Icon tiles only render known keys
-- **WHEN** a category's stored `icon` is not a key of the closed SVG map
-- **THEN** no markup derived from the stored string is parsed as HTML
 
 ### Requirement: No third-party requests from extension pages
 

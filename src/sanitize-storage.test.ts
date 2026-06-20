@@ -62,6 +62,29 @@ describe('security-hardening.spec — sanitize-storage', () => {
     expect(sanitizeStorageData(snapshot).settings.accent).toBe(DEFAULT_ACCENT)
   })
 
+  it('AVATAR-1: a video without channelThumbnail round-trips with the field undefined', () => {
+    const video = storedVideo('dQw4w9WgXcQ')
+    const [result] = sanitizeStorageData({ ...wellFormedSnapshot(), videos: [video] }).videos
+    expect(result.channelThumbnail).toBeUndefined()
+    expect(result).toEqual(video)
+  })
+
+  it('AVATAR-4: a bad-host or non-string channelThumbnail reads back absent, rest byte-identical', () => {
+    const good = { ...storedVideo('dQw4w9WgXcQ'), channelThumbnail: 'https://yt3.ggpht.com/ytc/abc=s88' }
+    const badHost = { ...storedVideo('aqz-KE-bpKQ'), channelThumbnail: 'https://evil.example/pixel.gif' }
+    const nonString = { ...storedVideo('9bZkp7q19f0'), channelThumbnail: 42 as unknown as string }
+    const snapshot = { ...wellFormedSnapshot(), videos: [good, badHost, nonString] }
+
+    const result = sanitizeStorageData(snapshot).videos
+    // Allowlisted avatar survives untouched (byte-identical, SEC-14).
+    expect(result[0]).toEqual(good)
+    // Bad host / non-string: the field is gone, every other field intact.
+    expect(result[1].channelThumbnail).toBeUndefined()
+    expect(result[1]).toEqual({ ...badHost, channelThumbnail: undefined })
+    expect(result[2].channelThumbnail).toBeUndefined()
+    expect(result[2].id).toBe('9bZkp7q19f0')
+  })
+
   it('SEC-17: a category with an unknown icon is kept with the icon unset', () => {
     const snapshot = wellFormedSnapshot()
     snapshot.categories = [{ name: 'Caveiras', emoji: '💀', icon: 'skull' as IconKey }]

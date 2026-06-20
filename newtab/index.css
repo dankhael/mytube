@@ -339,6 +339,10 @@ body {
   font-size: 13px;
   color: var(--text-2);
 }
+/* The channel photo reuses the round .avatar slot; cover-fit it edge to edge. */
+.vmeta .avatar-img {
+  object-fit: cover;
+}
 .vmeta .txt {
   min-width: 0;
 }
