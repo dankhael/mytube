@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Check, MoreVertical, Play, Trash2, FolderInput, Eye, EyeOff } from 'lucide-react'
 import { Video } from '../../src/types'
 
-interface CardActions {
+export interface CardActions {
   video: Video
   onOpen: (id: string) => void
   onMove: (video: Video) => void
@@ -108,22 +108,24 @@ export function VideoCardView({
             <MoreVertical size={16} />
           </button>
         </div>
-
-        {menuOpen && (
-          <div className="vmenu" ref={menuRef} onClick={stop}>
-            <button onClick={() => { setMenuOpen(false); onMove(video) }}>
-              <FolderInput size={15} /> Mover para…
-            </button>
-            <button onClick={() => { setMenuOpen(false); onToggleWatched(video) }}>
-              {video.watched ? <Eye size={15} /> : <Check size={15} />}
-              {video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
-            </button>
-            <button className="danger" onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
-              <Trash2 size={15} /> Remover
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Anchored to .vcard, not .vthumb: .vthumb is overflow:hidden and would
+          clip the menu's last item ("Remover") below the artwork. */}
+      {menuOpen && (
+        <div className="vmenu" ref={menuRef} onClick={stop}>
+          <button onClick={() => { setMenuOpen(false); onMove(video) }}>
+            <FolderInput size={15} /> Mover para…
+          </button>
+          <button onClick={() => { setMenuOpen(false); onToggleWatched(video) }}>
+            {video.watched ? <Eye size={15} /> : <Check size={15} />}
+            {video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
+          </button>
+          <button className="danger" onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
+            <Trash2 size={15} /> Remover
+          </button>
+        </div>
+      )}
 
       <div className="vmeta">
         {showPhoto ? (
