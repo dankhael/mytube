@@ -292,6 +292,40 @@ footer {
   gap: 12px;
   padding: 12px 0;
 }
+/* Language gets a full-width segmented control under its label — the pt-BR
+   option is too wide to sit inline on the right like the toggle/swatches. */
+.cfg-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.cfg-langs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-3);
+}
+.cfg-lang {
+  flex: 1;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.cfg-lang:hover {
+  color: var(--text);
+}
+.cfg-lang.selected {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
 .cfg-row-text {
   display: flex;
   flex-direction: column;

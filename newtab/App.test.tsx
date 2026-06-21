@@ -59,7 +59,7 @@ describe('newtab-ui.spec', () => {
   it('UI-1: an empty store renders the welcome screen', async () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
     render(<App />)
-    expect(await screen.findByText(/curada por você/i)).toBeTruthy()
+    expect(await screen.findByText(/curated by you/i)).toBeTruthy()
   })
 
   it('UI-2: categories and their videos are rendered', async () => {
@@ -85,7 +85,7 @@ describe('newtab-ui.spec', () => {
     render(<App />)
 
     expect(await screen.findByText('Video Assistido')).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: /assistidos/i }))
+    await user.click(screen.getByRole('button', { name: 'Watched' }))
 
     expect(screen.queryByText('Video Assistido')).toBeNull()
     expect(screen.getAllByText('Video Aberto').length).toBeGreaterThan(0)
@@ -105,8 +105,8 @@ describe('home-smart-sections.spec (home)', () => {
     })
     render(<App />)
 
-    expect(await screen.findByText('Recentemente adicionados')).toBeTruthy()
-    expect(screen.getByText('Pegando poeira')).toBeTruthy()
+    expect(await screen.findByText('Recently added')).toBeTruthy()
+    expect(screen.getByText('Gathering dust')).toBeTruthy()
     // Watched video lives only in its category (excluded from both smart sections).
     expect(screen.getAllByText('Ja Visto')).toHaveLength(1)
   })
@@ -118,8 +118,8 @@ describe('home-smart-sections.spec (home)', () => {
     })
     render(<App />)
 
-    expect(await screen.findByText('Recentemente adicionados')).toBeTruthy()
-    expect(screen.queryByText('Pegando poeira')).toBeNull()
+    expect(await screen.findByText('Recently added')).toBeTruthy()
+    expect(screen.queryByText('Gathering dust')).toBeNull()
   })
 })
 
@@ -159,9 +159,9 @@ describe('home-icon-tiles.spec (home)', () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
     const user = userEvent.setup()
     render(<App />)
-    await screen.findByText(/curada por você/i)
+    await screen.findByText(/curated by you/i)
 
-    await user.click(screen.getByRole('button', { name: /categoria/i }))
+    await user.click(screen.getByRole('button', { name: /category/i }))
     // Icon picker buttons are labelled by their IconKey; the old emoji chars are gone.
     expect(screen.getByRole('button', { name: 'gamepad' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'trophy' })).toBeTruthy()
@@ -182,10 +182,10 @@ describe('storage-robustness.spec (home)', () => {
     render(<App />)
     await screen.findByText('Tutoriais')
 
-    await user.click(screen.getAllByTitle('Marcar como assistido')[0])
+    await user.click(screen.getAllByTitle('Mark as watched')[0])
 
     const toast = await screen.findByRole('alert')
-    expect(toast.textContent).toContain('não foi salva')
+    expect(toast.textContent).toContain('was not saved')
     const logged = mytubeErrorLogs(errorSpy).join('\n')
     expect(logged).toContain('MARK_WATCHED')
     expect(logged).toContain('quota exceeded')
@@ -199,7 +199,7 @@ describe('storage-robustness.spec (home)', () => {
     render(<App />)
     await screen.findByText('Tutoriais')
 
-    await user.click(screen.getAllByTitle('Marcar como assistido')[0])
+    await user.click(screen.getAllByTitle('Mark as watched')[0])
 
     expect(screen.queryByRole('alert')).toBeNull()
     expect(mytubeErrorLogs(errorSpy)).toHaveLength(0)
@@ -225,7 +225,7 @@ describe('design-rework.spec (home)', () => {
     render(<App />)
 
     expect(await screen.findAllByText('Receita de Bolo')).not.toHaveLength(0)
-    await user.type(screen.getByPlaceholderText(/buscar/i), 'react')
+    await user.type(screen.getByPlaceholderText(/search/i), 'react')
 
     expect(screen.queryByText('Receita de Bolo')).toBeNull()
     expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)

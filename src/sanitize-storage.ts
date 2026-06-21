@@ -7,6 +7,7 @@
 
 import { isAllowedAvatarUrl, isIconKey } from './validate-message'
 import { isAccentPreset, DEFAULT_ACCENT } from './theme'
+import { isLanguage, DEFAULT_LANGUAGE } from './i18n'
 import { Category, DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, Video } from './types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -72,6 +73,9 @@ function sanitizedSettings(value: unknown): Settings {
   if (!isRecord(value) || typeof value.soundEffects !== 'boolean') return { ...DEFAULT_SETTINGS }
   const merged = { ...DEFAULT_SETTINGS, ...value }
   if (!isAccentPreset(merged.accent)) merged.accent = DEFAULT_ACCENT
+  // An unknown/garbage language (synced from another version, or a hostile
+  // UPDATE_SETTINGS from the content script) falls back to English (I18N-2).
+  if (!isLanguage(merged.language)) merged.language = DEFAULT_LANGUAGE
   return merged
 }
 

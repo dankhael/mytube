@@ -43,6 +43,6 @@ describe('popup-categories.spec (grouping)', () => {
       [{ name: 'A', emoji: '📁' }],
       [vid('a', 'A'), { ...vid('b', 'A'), watched: true }, vid('c', 'A')],
     )
-    expect(unwatchedLabel(d)).toBe('2 unwatched')
+    expect(unwatchedLabel(d, 'en')).toBe('2 unwatched')
   })
 })

@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'lucide-react'
 import Logo from './components/Logo'
-import { Category, StorageData, Video } from '../src/types'
+import { Category, StorageData, UNCATEGORIZED, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
 import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
@@ -28,6 +28,8 @@ import { bindingQuotaLimit, shouldWarnQuota } from './quota'
 import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
 import { applyAccent } from '../src/theme'
 import { applyAccentFavicon } from './favicon'
+import { DEFAULT_LANGUAGE, t } from '../src/i18n'
+import { LanguageProvider, useT } from './i18n-context'
 
 // The lower of the total quota and any per-item ceiling the layout imposes (R1).
 const QUOTA_LIMIT = bindingQuotaLimit(SYNC_QUOTA_LIMITS)
@@ -114,15 +116,22 @@ export default function App() {
     apply(mutate({ action: 'UPDATE_CATEGORY', oldName: editing.name, name, emoji: editing.emoji, icon }))
   }
   const deleteCategory = (cat: Category) => {
+    const lang = data?.settings.language ?? DEFAULT_LANGUAGE
     const count = data?.videos.filter((v) => v.category === cat.name).length ?? 0
     let deleteVideos = false
     if (count > 0) {
-      // Two-step confirm: keep videos (move to "Sem categoria") or delete them too.
+      // Two-step confirm: keep videos (move to the uncategorized bucket) or
+      // delete them too. {uncategorized} is the real category the reducer moves
+      // orphans into (UNCATEGORIZED), so the dialog names the actual destination.
       const alsoDelete = window.confirm(
-        `Deletar "${cat.name}"?\n\nOK = apagar a categoria E seus ${count} vídeos.\nCancelar = manter os vídeos (movê-los para "Sem categoria").`,
+        t('cat.confirmDeleteWithVideos', lang, {
+          name: cat.name,
+          count,
+          uncategorized: UNCATEGORIZED,
+        }),
       )
       deleteVideos = alsoDelete
-    } else if (!window.confirm(`Deletar a categoria "${cat.name}"?`)) {
+    } else if (!window.confirm(t('cat.confirmDelete', lang, { name: cat.name }))) {
       return
     }
     apply(mutate({ action: 'DELETE_CATEGORY', name: cat.name, deleteVideos }))
@@ -161,14 +170,22 @@ export default function App() {
   const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
 
   if (!data) {
-    return <div className="flex h-full items-center justify-center text-yt-muted">Carregando…</div>
+    return (
+      <div className="flex h-full items-center justify-center text-yt-muted">
+        {t('home.loading', DEFAULT_LANGUAGE)}
+      </div>
+    )
   }
 
+  const lang = data.settings.language
+  const tr = (key: Parameters<typeof t>[0], vars?: Record<string, string | number>) =>
+    t(key, lang, vars)
   const isEmpty = data.videos.length === 0
   const unwatched = data.videos.filter((v) => !v.watched).length
   const overQuota = shouldWarnQuota(bytes, QUOTA_LIMIT)
 
   return (
+    <LanguageProvider lang={lang}>
     <div className="home">
       {mutationError && (
         <ErrorToast message={mutationError} onDismiss={() => setMutationError(null)} />
@@ -177,8 +194,7 @@ export default function App() {
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
             <AlertTriangle className="h-4 w-4" />
-            Armazenamento quase cheio ({Math.round((bytes / QUOTA_LIMIT) * 100)}% do limite de
-            sincronização). Remova alguns vídeos para continuar sincronizando.
+            {tr('home.quotaWarning', { percent: Math.round((bytes / QUOTA_LIMIT) * 100) })}
           </div>
         )}
 
@@ -190,9 +206,13 @@ export default function App() {
                 My<b>Tube</b>
               </span>
             </div>
-            <h1>Welcome back.</h1>
+            <h1>{tr('home.welcomeBack')}</h1>
             <p>
-              Você tem <b>{unwatched} vídeos</b> esperando na sua biblioteca.
+              {tr('home.greetingPre')}{' '}
+              <b>
+                {unwatched} {tr(unwatched === 1 ? 'common.video' : 'common.videos')}
+              </b>{' '}
+              {tr('home.greetingPost')}
             </p>
           </div>
 
@@ -200,7 +220,7 @@ export default function App() {
             <label className="searchbar">
               <Search size={18} style={{ color: 'var(--text-3)', flex: 'none' }} />
               <input
-                placeholder="Buscar na biblioteca…"
+                placeholder={tr('home.searchPlaceholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -208,13 +228,13 @@ export default function App() {
             <button
               className="ghost-btn"
               onClick={() => setShowWatched((v) => !v)}
-              title={showWatched ? 'Ocultar assistidos' : 'Mostrar assistidos'}
+              title={showWatched ? tr('home.hideWatched') : tr('home.showWatched')}
             >
               {showWatched ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {showWatched ? 'Assistidos' : 'Ocultos'}
+              {showWatched ? tr('home.watched') : tr('home.hidden')}
             </button>
             <button className="accent-btn" onClick={() => setShowAdd(true)}>
-              <Plus className="h-4 w-4" /> Categoria
+              <Plus className="h-4 w-4" /> {tr('home.category')}
             </button>
           </div>
         </div>
@@ -225,7 +245,7 @@ export default function App() {
           <>
             <SmartSection
               icon={Sparkles}
-              title="Recentemente adicionados"
+              title={tr('home.recentlyAdded')}
               videos={recentlyAdded}
               onOpenVideo={openVideo}
               onMoveVideo={setMoving}
@@ -257,7 +277,7 @@ export default function App() {
 
             <SmartSection
               icon={Hourglass}
-              title="Pegando poeira"
+              title={tr('home.gatheringDust')}
               videos={gatheringDust}
               onOpenVideo={openVideo}
               onMoveVideo={setMoving}
@@ -281,27 +301,29 @@ export default function App() {
         />
       )}
     </div>
+    </LanguageProvider>
   )
 }
 
 function WelcomeScreen() {
+  const tr = useT()
   return (
     <div className="mx-auto mt-20 max-w-xl text-center">
       <div className="mx-auto mb-6 w-fit">
         <Logo size={64} />
       </div>
-      <h1 className="mb-3 font-display text-3xl font-bold">Sua home do YouTube, curada por você.</h1>
+      <h1 className="mb-3 font-display text-3xl font-bold">{tr('welcome.title')}</h1>
       <p className="text-yt-muted">
-        Navegue pelo YouTube e clique no botão{' '}
-        <span className="rounded bg-yt-card px-2 py-0.5 text-yt-text">+ Salvar</span> nos vídeos para
-        organizá-los aqui em categorias. Chega de “Watch Later” virar cemitério.
+        {tr('welcome.bodyPre')}{' '}
+        <span className="rounded bg-yt-card px-2 py-0.5 text-yt-text">{tr('welcome.savePill')}</span>{' '}
+        {tr('welcome.bodyPost')}
       </p>
       <a
         href="https://www.youtube.com"
         className="accent-btn mt-8 inline-flex"
         style={{ display: 'inline-flex' }}
       >
-        Abrir o YouTube
+        {tr('welcome.openYoutube')}
       </a>
     </div>
   )

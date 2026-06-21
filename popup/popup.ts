@@ -36,7 +36,7 @@ function renderUnwatchedTotal(target: HTMLElement, label: string): void {
 async function init(): Promise<void> {
   const res = await send({ action: 'GET_ALL' })
   if (!res.ok || !('data' in res) || !res.data) return
-  const data = res.data
+  let data = res.data
 
   // Mutable so the config toggle updates what the sound check reads live.
   let settings: Settings = data.settings
@@ -46,8 +46,18 @@ async function init(): Promise<void> {
   // Recolor the popup from the persisted accent before first paint (THEME-7).
   applyAccent(document.documentElement, settings.accent)
 
-  // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
-  renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data))
+  // Paints every language-dependent surface. Re-run when the user switches
+  // language so the popup re-localizes immediately, with no reopen (Decisions §2).
+  const paint = () => {
+    data = { ...data, settings }
+    // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
+    renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data, settings.language))
+    renderPopup(document.getElementById('list')!, data, {
+      openVideo: (id) => chrome.tabs.create({ url: watchUrl(id) }),
+      openHome,
+      onInteract: click,
+    })
+  }
 
   document.getElementById('open')!.addEventListener('click', openHome)
 
@@ -63,15 +73,16 @@ async function init(): Promise<void> {
         applyAccent(document.documentElement, accent) // live recolor, no reopen
         void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
       },
+      onPickLanguage: (language) => {
+        settings = { ...settings, language }
+        paint() // re-localize the list + total live (Decisions §2)
+        void send({ action: 'UPDATE_SETTINGS', settings: { language } })
+      },
     })
     document.body.appendChild(modal)
   })
 
-  renderPopup(document.getElementById('list')!, data, {
-    openVideo: (id) => chrome.tabs.create({ url: watchUrl(id) }),
-    openHome,
-    onInteract: click,
-  })
+  paint()
 }
 
 void init()

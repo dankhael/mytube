@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { type LucideIcon } from 'lucide-react'
 import { Video } from '../../src/types'
 import { VideoCardView } from './VideoCard'
+import { useT } from '../i18n-context'
 
 interface Props {
   icon: LucideIcon // monochrome header glyph (matches the category tiles)
@@ -27,6 +28,7 @@ export default function SmartSection({
   onDeleteVideo,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const tr = useT()
 
   if (videos.length === 0) return null // SMART-6: hide when nothing qualifies
 
@@ -41,12 +43,12 @@ export default function SmartSection({
         </div>
         <h2 className="cat-title">{title}</h2>
         <span className="cat-count">
-          {videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'}
+          {videos.length} {tr(videos.length === 1 ? 'common.video' : 'common.videos')}
         </span>
         <div className="spacer" />
         {hiddenCount > 0 && (
           <button className="cat-action" style={{ opacity: 1 }} onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Mostrar menos' : `Ver todos (${videos.length})`}
+            {expanded ? tr('common.showLess') : tr('common.seeAll', { count: videos.length })}
           </button>
         )}
       </div>

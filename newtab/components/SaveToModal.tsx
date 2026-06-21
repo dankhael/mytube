@@ -1,5 +1,6 @@
 import { Category, Video } from '../../src/types'
 import { ModalShell } from './AddCategoryModal'
+import { useT } from '../i18n-context'
 
 interface Props {
   video: Video
@@ -10,8 +11,9 @@ interface Props {
 
 // Picks a destination category for an existing saved video.
 export default function SaveToModal({ video, categories, onClose, onMove }: Props) {
+  const tr = useT()
   return (
-    <ModalShell title="Mover vídeo para…" onClose={onClose}>
+    <ModalShell title={tr('modal.moveVideoTo')} onClose={onClose}>
       <p className="mb-4 line-clamp-2 text-sm text-yt-muted">{video.title}</p>
       <div className="flex flex-col gap-1">
         {categories.map((cat) => {
@@ -27,7 +29,7 @@ export default function SaveToModal({ video, categories, onClose, onMove }: Prop
             >
               <span>{cat.emoji}</span>
               <span>{cat.name}</span>
-              {current && <span className="ml-auto text-xs">atual</span>}
+              {current && <span className="ml-auto text-xs">{tr('modal.current')}</span>}
             </button>
           )
         })}

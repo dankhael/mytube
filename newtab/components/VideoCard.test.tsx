@@ -107,16 +107,16 @@ describe('card-menu-clip.spec — context menu placement', () => {
       .getAllByRole('button')
       .map((b) => b.textContent?.trim())
     expect(labels).toEqual([
-      'Mover para…',
-      'Marcar como assistido',
-      'Remover',
+      'Move to…',
+      'Mark as watched',
+      'Remove',
     ])
   })
 
   it('MENU-3: clicking Remover fires onDelete with the id and closes the menu', () => {
     const { container, onDelete } = renderWithHandlers(makeVideo())
     const menu = openMenu(container)
-    fireEvent.click(within(menu).getByText('Remover'))
+    fireEvent.click(within(menu).getByText('Remove'))
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onDelete).toHaveBeenCalledWith('dQw4w9WgXcQ')
     expect(container.querySelector('.vmenu')).toBeNull()
@@ -126,7 +126,7 @@ describe('card-menu-clip.spec — context menu placement', () => {
     const video = makeVideo()
     const { container, onMove } = renderWithHandlers(video)
     const menu = openMenu(container)
-    fireEvent.click(within(menu).getByText('Mover para…'))
+    fireEvent.click(within(menu).getByText('Move to…'))
     expect(onMove).toHaveBeenCalledTimes(1)
     expect(onMove).toHaveBeenCalledWith(video)
     expect(container.querySelector('.vmenu')).toBeNull()

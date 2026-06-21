@@ -2,6 +2,7 @@
 
 import { Category, StorageData, Video } from '../src/types'
 import { unwatchedCount } from '../src/storage'
+import { Language, t } from '../src/i18n'
 
 // Cap shown per category in the popup; the rest lives on the new-tab home.
 export const VIDEO_CAP = 10
@@ -31,7 +32,8 @@ export function watchUrl(id: string): string {
 }
 
 // Header summary shown in the popup, e.g. "13 unwatched" (spec PUI-1). The
-// number is meant to be styled distinctly from the word (accent vs muted).
-export function unwatchedLabel(data: StorageData): string {
-  return `${unwatchedCount(data)} unwatched`
+// number is meant to be styled distinctly from the word (accent vs muted), so
+// renderUnwatchedTotal splits the leading digits — keep the count first.
+export function unwatchedLabel(data: StorageData, lang: Language): string {
+  return `${unwatchedCount(data)} ${t('popup.unwatchedWord', lang)}`
 }

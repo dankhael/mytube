@@ -6,6 +6,7 @@ import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
+import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
@@ -83,7 +84,21 @@ async function refreshAction(): Promise<void> {
   await repaintIcon(data.settings.accent)
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+// On first install, seed the interface language from the browser locale so a
+// pt-BR browser starts in Portuguese (Decisions §1). Only runs on 'install'
+// (never on update/chrome_update) and only when the stored value is still the
+// untouched default, so it never overrides a user's explicit pick.
+async function seedLanguageOnInstall(): Promise<void> {
+  const detected = detectLanguage(navigator.language)
+  if (detected === DEFAULT_LANGUAGE) return
+  const data = await store.getData()
+  if (data.settings.language === DEFAULT_LANGUAGE) {
+    await store.updateSettings({ language: detected })
+  }
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') void seedLanguageOnInstall()
   void refreshAction()
   void backfill.run()
 })

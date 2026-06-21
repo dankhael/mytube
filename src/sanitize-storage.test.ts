@@ -27,7 +27,7 @@ function wellFormedSnapshot(): StorageData {
   return {
     categories: [{ name: 'Tutoriais', emoji: '🎓', icon: 'book' }],
     videos: [storedVideo('dQw4w9WgXcQ'), { ...storedVideo('aqz-KE-bpKQ'), watched: true, watchedAt: 1_700_000_001_000 }],
-    settings: { soundEffects: true, accent: 'mint' },
+    settings: { soundEffects: true, accent: 'mint', language: 'pt-BR' },
   }
 }
 
@@ -60,6 +60,21 @@ describe('security-hardening.spec — sanitize-storage', () => {
   it('THEME-4: an unknown accent preset falls back to the default on read', () => {
     const snapshot = { ...wellFormedSnapshot(), settings: { soundEffects: true, accent: 'puce' } }
     expect(sanitizeStorageData(snapshot).settings.accent).toBe(DEFAULT_ACCENT)
+  })
+
+  it('I18N-1: a snapshot with no language key defaults to English on read', () => {
+    const snapshot = { ...wellFormedSnapshot(), settings: { soundEffects: true, accent: 'mint' } }
+    expect(sanitizeStorageData(snapshot).settings.language).toBe('en')
+  })
+
+  it('I18N-2: an unknown/garbage language falls back to English on read', () => {
+    for (const bad of ['fr', 42, null, '']) {
+      const snapshot = {
+        ...wellFormedSnapshot(),
+        settings: { soundEffects: true, accent: 'mint', language: bad },
+      }
+      expect(sanitizeStorageData(snapshot).settings.language, `language ${JSON.stringify(bad)}`).toBe('en')
+    }
   })
 
   it('AVATAR-1: a video without channelThumbnail round-trips with the field undefined', () => {

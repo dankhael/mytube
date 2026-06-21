@@ -4,6 +4,7 @@
 
 import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { useT } from '../i18n-context'
 
 const AUTO_DISMISS_MS = 6_000
 
@@ -13,6 +14,7 @@ interface ErrorToastProps {
 }
 
 export default function ErrorToast({ message, onDismiss }: ErrorToastProps) {
+  const tr = useT()
   useEffect(() => {
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
@@ -25,9 +27,9 @@ export default function ErrorToast({ message, onDismiss }: ErrorToastProps) {
     >
       <AlertTriangle className="h-4 w-4 flex-none" />
       <span>
-        A ação não foi salva — <span className="text-red-300/80">{message}</span>
+        {tr('toast.notSaved')} <span className="text-red-300/80">{message}</span>
       </span>
-      <button aria-label="Fechar aviso" className="flex-none text-red-300/80" onClick={onDismiss}>
+      <button aria-label={tr('toast.dismiss')} className="flex-none text-red-300/80" onClick={onDismiss}>
         <X className="h-4 w-4" />
       </button>
     </div>

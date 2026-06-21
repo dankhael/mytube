@@ -4,10 +4,12 @@
 
 import { Settings } from '../src/types'
 import { AccentPreset, ACCENT_PRESETS, accentHue } from '../src/theme'
+import { Language, LANGUAGES, t } from '../src/i18n'
 
 export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
   onPickAccent: (accent: AccentPreset) => void
+  onPickLanguage: (language: Language) => void
 }
 
 // Returns the backdrop overlay; the caller appends it to the document.
@@ -15,39 +17,68 @@ export function createConfigModal(settings: Settings, cb: ConfigModalCallbacks):
   const backdrop = el('div', 'cfg-backdrop')
   const modal = el('div', 'cfg-modal')
   modal.addEventListener('click', (e) => e.stopPropagation())
-
-  // Header
-  const header = el('div', 'cfg-header')
-  header.appendChild(textEl('h2', 'cfg-title', 'Settings'))
-  const close = el('button', 'cfg-close')
-  close.setAttribute('aria-label', 'Close')
-  close.textContent = '✕'
-  header.appendChild(close)
-
-  // Body — one row per option.
-  const body = el('div', 'cfg-body')
-  body.appendChild(soundRow(settings.soundEffects, cb.onToggleSound))
-  body.appendChild(accentRow(settings.accent, cb.onPickAccent))
-
-  // Footer — donate placeholder card (not wired yet) — see PUI-7.
-  const footer = el('div', 'cfg-footer')
-  footer.appendChild(donateCard())
-
-  modal.append(header, body, footer)
   backdrop.appendChild(modal)
+
+  // The modal owns a copy of what it shows so it can re-render itself in the
+  // new language the moment the user switches (Decisions §2) — without a reopen
+  // and without dropping the sound/accent they changed earlier in the session.
+  const shown: Settings = { ...settings }
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') destroy()
   }
-  function destroy() {
+  function destroy(): void {
     document.removeEventListener('keydown', onKey)
     backdrop.remove()
   }
+
+  function render(): void {
+    const lang = shown.language
+    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang))
+  }
+
+  function body(lang: Language): HTMLElement {
+    const node = el('div', 'cfg-body')
+    node.append(
+      languageRow(lang, (next) => {
+        shown.language = next
+        cb.onPickLanguage(next)
+        render() // re-localize the whole modal in place
+      }),
+      soundRow(shown.soundEffects, lang, (on) => {
+        shown.soundEffects = on
+        cb.onToggleSound(on)
+      }),
+      accentRow(shown.accent, lang, (accent) => {
+        shown.accent = accent
+        cb.onPickAccent(accent)
+      }),
+    )
+    return node
+  }
+
   document.addEventListener('keydown', onKey)
-  close.addEventListener('click', destroy)
   backdrop.addEventListener('click', destroy)
 
+  render()
   return backdrop
+}
+
+function header(lang: Language, onClose: () => void): HTMLElement {
+  const node = el('div', 'cfg-header')
+  node.appendChild(textEl('h2', 'cfg-title', t('config.title', lang)))
+  const close = el('button', 'cfg-close')
+  close.setAttribute('aria-label', t('common.close', lang))
+  close.textContent = '✕'
+  close.addEventListener('click', onClose)
+  node.appendChild(close)
+  return node
+}
+
+function footer(lang: Language): HTMLElement {
+  const node = el('div', 'cfg-footer')
+  node.appendChild(donateCard(lang))
+  return node
 }
 
 const COFFEE_SVG =
@@ -58,7 +89,7 @@ const COFFEE_SVG =
   '</svg>'
 
 // Non-actionable "Buy me a coffee" placeholder card with a SOON badge (PUI-7).
-function donateCard(): HTMLElement {
+function donateCard(lang: Language): HTMLElement {
   const card = el('button', 'cfg-donate') as HTMLButtonElement
   card.disabled = true
 
@@ -67,29 +98,76 @@ function donateCard(): HTMLElement {
 
   const text = el('div', 'cfg-donate-text')
   text.append(
-    textEl('span', 'cfg-donate-title', 'Buy me a coffee'),
-    textEl('span', 'cfg-donate-sub', 'Support the developer'),
+    textEl('span', 'cfg-donate-title', t('config.donate.title', lang)),
+    textEl('span', 'cfg-donate-sub', t('config.donate.sub', lang)),
   )
 
-  card.append(ico, text, textEl('span', 'cfg-soon', 'SOON'))
+  card.append(ico, text, textEl('span', 'cfg-soon', t('config.donate.soon', lang)))
   return card
+}
+
+// Language picker as a full-width segmented control (I18N-6/7). Single-select
+// like a radio group: the persisted language starts selected; picking another
+// reports it and moves the selection. It gets its own stacked row because the
+// pt-BR label is too wide to sit beside the label like the sound/accent rows.
+function languageRow(selected: Language, onPick: (language: Language) => void): HTMLElement {
+  const row = el('div', 'cfg-row cfg-row-stack')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.language.label', selected)),
+    textEl('span', 'cfg-row-sub', t('config.language.sub', selected)),
+  )
+  row.appendChild(text)
+
+  const group = el('div', 'cfg-langs')
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', t('config.language.label', selected))
+
+  const options = LANGUAGES.map(({ code, label }) => {
+    const option = el('button', 'cfg-lang') as HTMLButtonElement
+    option.setAttribute('role', 'radio')
+    option.dataset.lang = code
+    option.textContent = label
+    option.addEventListener('click', () => {
+      select(code)
+      onPick(code)
+    })
+    group.appendChild(option)
+    return option
+  })
+
+  function select(code: Language): void {
+    for (const option of options) {
+      const on = option.dataset.lang === code
+      option.setAttribute('aria-checked', String(on))
+      option.classList.toggle('selected', on)
+    }
+  }
+  select(selected)
+
+  row.appendChild(group)
+  return row
 }
 
 // A row of accent-color swatches (THEME-5/6). Single-select like a radio group:
 // the persisted preset starts selected; picking another reports it and moves the
 // selection. Each swatch previews its real accent color via the --accent token.
-function accentRow(selected: AccentPreset, onPick: (accent: AccentPreset) => void): HTMLElement {
+function accentRow(
+  selected: AccentPreset,
+  lang: Language,
+  onPick: (accent: AccentPreset) => void,
+): HTMLElement {
   const row = el('div', 'cfg-row')
   const text = el('div', 'cfg-row-text')
   text.append(
-    textEl('span', 'cfg-row-label', 'Theme color'),
-    textEl('span', 'cfg-row-sub', 'Accent across the whole extension'),
+    textEl('span', 'cfg-row-label', t('config.theme.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.theme.sub', lang)),
   )
   row.appendChild(text)
 
   const group = el('div', 'cfg-swatches')
   group.setAttribute('role', 'radiogroup')
-  group.setAttribute('aria-label', 'Theme color')
+  group.setAttribute('aria-label', t('config.theme.label', lang))
 
   const swatches = ACCENT_PRESETS.map((preset) => {
     const swatch = el('button', 'cfg-swatch') as HTMLButtonElement
@@ -120,12 +198,16 @@ function accentRow(selected: AccentPreset, onPick: (accent: AccentPreset) => voi
   return row
 }
 
-function soundRow(initial: boolean, onToggle: (enabled: boolean) => void): HTMLElement {
+function soundRow(
+  initial: boolean,
+  lang: Language,
+  onToggle: (enabled: boolean) => void,
+): HTMLElement {
   const row = el('div', 'cfg-row')
   const text = el('div', 'cfg-row-text')
   text.append(
-    textEl('span', 'cfg-row-label', 'Sound effects'),
-    textEl('span', 'cfg-row-sub', 'Little chimes as you browse'),
+    textEl('span', 'cfg-row-label', t('config.sound.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.sound.sub', lang)),
   )
   row.appendChild(text)
 

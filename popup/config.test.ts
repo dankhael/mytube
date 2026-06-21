@@ -5,11 +5,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createConfigModal } from './config'
 import { Settings } from '../src/types'
 
-function open(partial: Partial<Settings> = {}, onToggleSound = vi.fn(), onPickAccent = vi.fn()) {
-  const settings: Settings = { soundEffects: false, accent: 'violet', ...partial }
-  const modal = createConfigModal(settings, { onToggleSound, onPickAccent })
+function open(
+  partial: Partial<Settings> = {},
+  onToggleSound = vi.fn(),
+  onPickAccent = vi.fn(),
+  onPickLanguage = vi.fn(),
+) {
+  const settings: Settings = { soundEffects: false, accent: 'violet', language: 'en', ...partial }
+  const modal = createConfigModal(settings, { onToggleSound, onPickAccent, onPickLanguage })
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent }
+  return { modal, onToggleSound, onPickAccent, onPickLanguage }
+}
+
+// The sound row is the .cfg-row that owns the toggle (the language row is first now).
+function soundRowEl(): HTMLElement {
+  return document.querySelector<HTMLElement>('.cfg-toggle')!.closest('.cfg-row')!
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -46,8 +56,39 @@ describe('popup-config.spec (modal)', () => {
 
   it('PUI-6: the sound row has the English label and accurate subtitle', () => {
     open({ soundEffects: false })
-    expect(document.querySelector('.cfg-row-label')?.textContent).toBe('Sound effects')
-    expect(document.querySelector('.cfg-row-sub')?.textContent).toMatch(/as you browse/i)
+    const row = soundRowEl()
+    expect(row.querySelector('.cfg-row-label')?.textContent).toBe('Sound effects')
+    expect(row.querySelector('.cfg-row-sub')?.textContent).toMatch(/as you browse/i)
+  })
+
+  it('I18N-6: the language row marks the persisted language selected', () => {
+    open({ language: 'pt-BR' })
+    const options = document.querySelectorAll<HTMLElement>('.cfg-lang')
+    expect(options.length).toBe(2)
+    const selected = document.querySelector<HTMLElement>('.cfg-lang.selected')
+    expect(selected?.dataset.lang).toBe('pt-BR')
+    expect(selected?.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('I18N-6: an English install renders the modal in English', () => {
+    open({ language: 'en' })
+    expect(document.querySelector('.cfg-title')?.textContent).toBe('Settings')
+  })
+
+  it('I18N-8: a pt-BR install renders the modal in Portuguese', () => {
+    open({ language: 'pt-BR' })
+    expect(document.querySelector('.cfg-title')?.textContent).toBe('Configurações')
+    expect(soundRowEl().querySelector('.cfg-row-label')?.textContent).toBe('Efeitos sonoros')
+  })
+
+  it('I18N-7: picking another language reports it and moves the selection', () => {
+    const { onPickLanguage } = open({ language: 'en' })
+    const pt = document.querySelector<HTMLElement>('.cfg-lang[data-lang="pt-BR"]')!
+    pt.click()
+    expect(onPickLanguage).toHaveBeenCalledWith('pt-BR')
+    expect(pt.classList.contains('selected')).toBe(true)
+    expect(pt.getAttribute('aria-checked')).toBe('true')
+    expect(document.querySelectorAll('.cfg-lang.selected').length).toBe(1)
   })
 
   it('PUI-7: the donate card has a title, subtitle and SOON badge', () => {

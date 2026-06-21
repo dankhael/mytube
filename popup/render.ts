@@ -5,6 +5,7 @@
 import { StorageData, Video } from '../src/types'
 import { CategoryGroup, VIDEO_CAP, groupVideosByCategory } from './groups'
 import { categorySvg } from './category-icon'
+import { Language, t } from '../src/i18n'
 
 export interface PopupCallbacks {
   openVideo: (id: string) => void
@@ -16,20 +17,27 @@ export interface PopupCallbacks {
 
 export function renderPopup(root: HTMLElement, data: StorageData, cb: PopupCallbacks): void {
   root.replaceChildren()
+  const lang = data.settings.language
 
   if (data.videos.length === 0) {
     const empty = el('li', 'empty')
-    empty.innerHTML = 'Nenhum vídeo salvo ainda.<br>Clique em “+ Salvar” nos vídeos do YouTube.'
+    // DOM nodes (not innerHTML) so the localized strings are never parsed as
+    // markup; mirrors the old two-line "<br>"-separated message.
+    empty.append(
+      document.createTextNode(t('popup.emptyTitle', lang)),
+      document.createElement('br'),
+      document.createTextNode(t('popup.emptyHint', lang)),
+    )
     root.appendChild(empty)
     return
   }
 
   for (const group of groupVideosByCategory(data)) {
-    root.appendChild(categorySection(group, cb))
+    root.appendChild(categorySection(group, lang, cb))
   }
 }
 
-function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement {
+function categorySection(group: CategoryGroup, lang: Language, cb: PopupCallbacks): HTMLElement {
   const { category, videos } = group
   const section = el('li', 'cat')
 
@@ -50,7 +58,7 @@ function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement 
     const open = section.classList.toggle('open')
     row.querySelector('.chev')!.textContent = open ? '▾' : '▸'
     if (open && !built) {
-      buildPanel(panel, videos, cb)
+      buildPanel(panel, videos, lang, cb)
       built = true
     }
   })
@@ -59,9 +67,9 @@ function categorySection(group: CategoryGroup, cb: PopupCallbacks): HTMLElement 
   return section
 }
 
-function buildPanel(panel: HTMLElement, videos: Video[], cb: PopupCallbacks): void {
+function buildPanel(panel: HTMLElement, videos: Video[], lang: Language, cb: PopupCallbacks): void {
   if (videos.length === 0) {
-    panel.appendChild(textDiv('cat-empty', 'Nenhum vídeo aqui.'))
+    panel.appendChild(textDiv('cat-empty', t('popup.categoryEmpty', lang)))
     return
   }
 
@@ -71,7 +79,7 @@ function buildPanel(panel: HTMLElement, videos: Video[], cb: PopupCallbacks): vo
 
   if (videos.length > VIDEO_CAP) {
     const more = el('button', 'more-link')
-    more.textContent = `Ver todos na home (${videos.length})`
+    more.textContent = t('popup.seeAllInHome', lang, { count: videos.length })
     more.addEventListener('click', cb.openHome)
     panel.appendChild(more)
   }

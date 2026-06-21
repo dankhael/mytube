@@ -89,7 +89,23 @@ describe('popup-categories.spec (render)', () => {
     })
     const vaziaRow = root.querySelectorAll<HTMLElement>('.cat-row')[1]
     vaziaRow.click()
-    expect(root.querySelector('.cat-empty')?.textContent).toMatch(/nenhum vídeo/i)
+    expect(root.querySelector('.cat-empty')?.textContent).toMatch(/no videos here/i)
+  })
+
+  it('I18N-8: a pt-BR store renders the popup empty state in Portuguese', () => {
+    const root = document.createElement('ul')
+    document.body.appendChild(root)
+    renderPopup(
+      root,
+      { categories: [], videos: [], settings: { ...DEFAULT_SETTINGS, language: 'pt-BR' } },
+      { openVideo: vi.fn(), openHome: vi.fn() },
+    )
+    expect(root.querySelector('.empty')?.textContent).toMatch(/nenhum vídeo salvo/i)
+  })
+
+  it('I18N-9: an English store renders the popup empty state in English', () => {
+    const { root } = mount({ categories: [], videos: [] })
+    expect(root.querySelector('.empty')?.textContent).toMatch(/no videos saved/i)
   })
 
   it('PUI-2: category row shows an icon tile (svg), not the emoji, with a count pill', () => {

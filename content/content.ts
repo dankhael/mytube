@@ -6,6 +6,12 @@ import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
 import { isYoutubeVideoId } from '../src/validate-message'
 import { isMyTubeKey } from '../src/storage-backend'
+import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
+
+// Active interface language, refreshed from the store on init and on change.
+// The content script is plain DOM (no React context), so it threads `lang`
+// through a module-level variable rather than the new-tab i18n context.
+let lang: Language = DEFAULT_LANGUAGE
 
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
@@ -196,13 +202,13 @@ function setSavedState(btn: HTMLElement, category: string | null) {
   if (category) {
     btn.classList.add('mytube-saved')
     plus.textContent = '✓'
-    label.textContent = 'Salvo'
-    btn.title = `Salvo em: ${category}`
+    label.textContent = t('content.saved', lang)
+    btn.title = t('content.savedIn', lang, { category })
   } else {
     btn.classList.remove('mytube-saved')
     plus.textContent = '+'
-    label.textContent = 'Salvar'
-    btn.title = 'Salvar no MyTube'
+    label.textContent = t('content.save', lang)
+    btn.title = t('content.saveToMyTube', lang)
   }
 }
 
@@ -244,7 +250,7 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
 
   const header = document.createElement('div')
   header.className = 'mytube-dropdown-header'
-  header.textContent = 'Salvar em…'
+  header.textContent = t('content.saveTo', lang)
   dropdown.appendChild(header)
 
   const saveTo = async (category: string) => {
@@ -265,7 +271,7 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
       setSavedState(btn, category)
       btn.classList.add('mytube-flash')
       setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
-      showToast(`Salvo em ${category} ✨`)
+      showToast(t('content.savedToast', lang, { category }))
     }
   }
 
@@ -283,12 +289,12 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
   // "Nova categoria" — expands into an inline input.
   const newItem = document.createElement('button')
   newItem.className = 'mytube-dropdown-item mytube-dropdown-new'
-  newItem.textContent = '+ Nova categoria'
+  newItem.textContent = t('content.newCategory', lang)
   newItem.addEventListener('click', (e) => {
     e.stopPropagation()
     const input = document.createElement('input')
     input.className = 'mytube-dropdown-input'
-    input.placeholder = 'Nome da categoria…'
+    input.placeholder = t('content.categoryNamePlaceholder', lang)
     input.addEventListener('click', (ev) => ev.stopPropagation())
     input.addEventListener('keydown', (ev) => {
       ev.stopPropagation()
@@ -623,8 +629,16 @@ function scheduleScan() {
   })
 }
 
+// Pull the persisted interface language so the pill/menu render localized.
+// Best-effort: a failed round-trip leaves the English default in place.
+async function refreshLanguage() {
+  const res = await sendMessage({ action: 'GET_ALL' })
+  if (res.ok && 'data' in res && res.data) lang = res.data.settings.language
+}
+
 async function init() {
   injectStyles()
+  await refreshLanguage()
   const res = await sendMessage({ action: 'GET_SAVED_IDS' })
   if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
 
@@ -641,6 +655,8 @@ async function init() {
   // ids through the worker (which assembles the shards) on any of them changing.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
+    // Re-localize too: the language may have changed from the popup/new-tab.
+    void refreshLanguage().then(() => scan())
     void sendMessage({ action: 'GET_SAVED_IDS' }).then((res) => {
       if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
     })
