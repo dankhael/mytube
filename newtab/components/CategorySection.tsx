@@ -17,8 +17,10 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Category, Video } from '../../src/types'
 import { resolveCategoryIcon } from '../../src/category-icon'
+import { sectionDomId } from '../category-anchor'
 import CategoryIcon from './CategoryIcon'
 import VideoCard from './VideoCard'
+import { useT } from '../i18n-context'
 
 interface Props {
   category: Category
@@ -36,6 +38,7 @@ const PREVIEW_COUNT = 4
 
 export default function CategorySection(props: Props) {
   const { category, videos } = props
+  const tr = useT()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `cat:${category.name}`,
   })
@@ -74,9 +77,9 @@ export default function CategorySection(props: Props) {
   }
 
   return (
-    <section ref={setNodeRef} style={style} className="cat">
+    <section ref={setNodeRef} id={sectionDomId(category.name)} style={style} className="cat">
       <div className="cat-head">
-        <button {...attributes} {...listeners} className="drag" title="Arrastar categoria">
+        <button {...attributes} {...listeners} className="drag" title={tr('cat.drag')}>
           <GripVertical size={16} />
         </button>
         <div className="cat-ico">
@@ -84,13 +87,13 @@ export default function CategorySection(props: Props) {
         </div>
         <h2 className="cat-title">{category.name}</h2>
         <span className="cat-count">
-          {videos.length} {videos.length === 1 ? 'vídeo' : 'vídeos'}
+          {videos.length} {tr(videos.length === 1 ? 'common.video' : 'common.videos')}
         </span>
 
         <div className="spacer" />
         {hiddenCount > 0 && (
           <button className="cat-action" style={{ opacity: 1 }} onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Mostrar menos' : `Ver todos (${videos.length})`}
+            {expanded ? tr('common.showLess') : tr('common.seeAll', { count: videos.length })}
           </button>
         )}
 
@@ -99,17 +102,17 @@ export default function CategorySection(props: Props) {
             onClick={() => setMenuOpen((v) => !v)}
             className="cat-action"
             style={{ opacity: 1, padding: '0 9px' }}
-            title="Opções da categoria"
+            title={tr('cat.options')}
           >
             <MoreHorizontal size={18} />
           </button>
           {menuOpen && (
             <div className="vmenu" style={{ right: 0, top: 38 }}>
               <button onClick={() => { setMenuOpen(false); props.onEditCategory(category) }}>
-                <Pencil size={15} /> Renomear / emoji
+                <Pencil size={15} /> {tr('cat.rename')}
               </button>
               <button className="danger" onClick={() => { setMenuOpen(false); props.onDeleteCategory(category) }}>
-                <Trash2 size={15} /> Deletar categoria
+                <Trash2 size={15} /> {tr('cat.delete')}
               </button>
             </div>
           )}
@@ -122,8 +125,8 @@ export default function CategorySection(props: Props) {
             <CategoryIcon icon={resolveCategoryIcon(category)} size={20} />
           </div>
           <div>
-            <b>Nada aqui ainda</b>
-            <span>Clique em “+ Salvar” em qualquer vídeo para jogá-lo em {category.name}.</span>
+            <b>{tr('cat.emptyTitle')}</b>
+            <span>{tr('cat.emptyHint', { name: category.name })}</span>
           </div>
         </div>
       ) : (

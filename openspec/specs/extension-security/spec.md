@@ -32,18 +32,24 @@ to `https://www.youtube.com/*`.
 ### Requirement: Explicit CSP for extension pages
 
 The manifest SHALL declare a `content_security_policy.extension_pages` that
-allows only what the extension uses: `default-src 'self'`, images from `'self'`
-and `https://i.ytimg.com`, connections to `https://www.youtube.com`, locally
-hosted fonts, and `object-src 'none'`. Inline `style` attributes remain allowed
-(`'unsafe-inline'` in `style-src`) because React/dnd-kit set drag transforms
-inline.
+allows only what the extension uses: `default-src 'self'`, images from `'self'`,
+`https://i.ytimg.com` (video thumbnails), and the channel-avatar hosts
+`https://yt3.ggpht.com`, `https://yt3.googleusercontent.com`, and
+`https://lh3.googleusercontent.com`, plus `data:` for the generated inline SVG
+favicon; connections to `https://www.youtube.com`, locally hosted fonts, and
+`object-src 'none'`. Inline `style` attributes remain allowed (`'unsafe-inline'`
+in `style-src`) because React/dnd-kit set drag transforms inline.
 
 #### Scenario: Thumbnail host is allowed
 - **WHEN** the new tab or popup renders a saved video's `i.ytimg.com` thumbnail
 - **THEN** the image loads under the declared CSP
 
+#### Scenario: Channel avatar host is allowed
+- **WHEN** the home card renders a saved video's channel avatar from one of the allowlisted Google avatar hosts
+- **THEN** the image loads under the declared CSP
+
 #### Scenario: Arbitrary remote image is blocked
-- **WHEN** an extension page attempts to load an image from any host other than `'self'` or `https://i.ytimg.com`
+- **WHEN** an extension page attempts to load an image from any host other than `'self'`, `https://i.ytimg.com`, or the three allowlisted avatar hosts
 - **THEN** the CSP blocks the request
 
 ### Requirement: Runtime validation at the service-worker message boundary
@@ -58,6 +64,10 @@ making the compile-time `Message` union true at runtime. Specifically:
 - `video.thumbnail` MUST be normalized to the canonical
   `https://i.ytimg.com/vi/<id>/mqdefault.jpg` URL; any other candidate string is
   replaced by the canonical URL derived from the validated id.
+- `video.channelThumbnail`, when present, MUST be kept only if it is an `https:`
+  URL whose host is one of `yt3.ggpht.com`, `yt3.googleusercontent.com`, or
+  `lh3.googleusercontent.com`; any other value (other host, non-https, or
+  non-string) MUST be dropped to `undefined` without failing the save.
 - Category `icon` values MUST be gated against the closed icon set; unknown
   values are treated as unset.
 - `title`, `channelName`, and category `name` MUST be clamped to a bounded
@@ -73,6 +83,14 @@ check the card path already has.
 #### Scenario: Non-canonical thumbnail is normalized
 - **WHEN** a `SAVE_VIDEO` arrives whose `thumbnail` is not exactly `https://i.ytimg.com/vi/<id>/mqdefault.jpg`
 - **THEN** the stored video's thumbnail is the canonical URL derived from the validated id
+
+#### Scenario: Allowlisted channel avatar is kept
+- **WHEN** a `SAVE_VIDEO` arrives whose `channelThumbnail` is an `https:` URL on an allowlisted avatar host
+- **THEN** the stored video keeps that `channelThumbnail` value
+
+#### Scenario: Non-allowlisted channel avatar is dropped
+- **WHEN** a `SAVE_VIDEO` arrives whose `channelThumbnail` is a non-allowlisted host, non-https, or non-string
+- **THEN** the stored video has `channelThumbnail` undefined and the rest of the save succeeds
 
 #### Scenario: Canonical payload passes through unchanged
 - **WHEN** a `SAVE_VIDEO` arrives with a valid id and the canonical thumbnail (what the content script sends today)
@@ -110,8 +128,10 @@ markup is exempt.
 
 Extension pages MUST NOT fetch resources from third-party origins at page load.
 Web fonts SHALL be vendored into the extension (woff2 + local `@font-face`)
-instead of imported from Google Fonts; the only remote origin extension pages
-may contact is `https://i.ytimg.com` for video thumbnails.
+instead of imported from Google Fonts; the only remote origins extension pages
+may contact are `https://i.ytimg.com` for video thumbnails and the allowlisted
+channel-avatar hosts (`yt3.ggpht.com`, `yt3.googleusercontent.com`,
+`lh3.googleusercontent.com`) for saved channel photos.
 
 #### Scenario: New tab loads without contacting Google
 - **WHEN** the user opens a new tab

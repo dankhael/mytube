@@ -5,7 +5,9 @@
 // bytes stay untouched until the next legitimate mutation, and well-formed
 // data passes through byte-identical (original references, original key order).
 
-import { isIconKey } from './validate-message'
+import { isAllowedAvatarUrl, isIconKey } from './validate-message'
+import { isAccentPreset, DEFAULT_ACCENT } from './theme'
+import { isLanguage, DEFAULT_LANGUAGE } from './i18n'
 import { Category, DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, Video } from './types'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,9 +28,21 @@ function isStoredVideo(entry: unknown): entry is Video {
   )
 }
 
+// An off-host / non-https / non-string channelThumbnail (synced from another
+// version or hand-edited) reads as absent so the home card shows its initial-
+// letter fallback (AVATAR-4) — the same host gate the worker applies on save.
+// Drops only the field, never the video; a valid/missing avatar keeps the
+// original reference for the byte-identical pass-through (SEC-14).
+function withGatedAvatar(video: Video): Video {
+  if (video.channelThumbnail === undefined || isAllowedAvatarUrl(video.channelThumbnail)) return video
+  const gated = { ...video }
+  delete gated.channelThumbnail
+  return gated
+}
+
 function sanitizedVideos(value: unknown): Video[] {
   if (!Array.isArray(value)) return []
-  return value.filter(isStoredVideo)
+  return value.filter(isStoredVideo).map(withGatedAvatar)
 }
 
 function isStoredCategory(entry: unknown): entry is Category {
@@ -53,9 +67,16 @@ function sanitizedCategories(value: unknown): Category[] {
 
 // Merge over defaults so options added after this snapshot was saved fall back
 // gracefully — same contract getData always had (persistence-sync baseline).
+// An unknown/garbage `accent` (synced from another version) falls back to the
+// default preset rather than reaching --accent-h as an invalid value (THEME-4).
 function sanitizedSettings(value: unknown): Settings {
   if (!isRecord(value) || typeof value.soundEffects !== 'boolean') return { ...DEFAULT_SETTINGS }
-  return { ...DEFAULT_SETTINGS, ...value }
+  const merged = { ...DEFAULT_SETTINGS, ...value }
+  if (!isAccentPreset(merged.accent)) merged.accent = DEFAULT_ACCENT
+  // An unknown/garbage language (synced from another version, or a hostile
+  // UPDATE_SETTINGS from the content script) falls back to English (I18N-2).
+  if (!isLanguage(merged.language)) merged.language = DEFAULT_LANGUAGE
+  return merged
 }
 
 // The top-level spread keeps unknown future fields and the stored key order, so

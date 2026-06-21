@@ -10,6 +10,7 @@ import {
   ValidationResult,
   canonicalThumbnail,
   clampText,
+  isAllowedAvatarUrl,
   isIconKey,
   isYoutubeVideoId,
   validateIncomingMessage,
@@ -108,6 +109,42 @@ describe('security-hardening.spec — validate-message', () => {
     const validated = accepted(validateIncomingMessage(message))
     if (validated.action !== 'SAVE_VIDEO') throw new Error('action changed by validation')
     expect(validated.video.thumbnail).toBe(CANONICAL)
+  })
+
+  it('AVATAR-2: a SAVE_VIDEO with an allowlisted avatar host keeps channelThumbnail', () => {
+    const allowed = [
+      'https://yt3.ggpht.com/ytc/abc=s88-c-k-c0x00ffffff-no-rj',
+      'https://yt3.googleusercontent.com/ytc/def=s48',
+      'https://lh3.googleusercontent.com/a/ghi=s64',
+    ]
+    for (const url of allowed) {
+      expect(isAllowedAvatarUrl(url), `expected ${url} to be allowed`).toBe(true)
+      const message = saveVideoMessage()
+      message.video.channelThumbnail = url
+      const validated = accepted(validateIncomingMessage(message))
+      if (validated.action !== 'SAVE_VIDEO') throw new Error('action changed by validation')
+      expect(validated.video.channelThumbnail).toBe(url)
+    }
+  })
+
+  it('AVATAR-3: a non-allowlisted, non-https or non-string avatar is dropped to undefined', () => {
+    const rejected: unknown[] = [
+      'https://evil.example/pixel.gif',
+      'http://yt3.ggpht.com/ytc/abc', // non-https
+      'https://i.ytimg.com/vi/x/mqdefault.jpg', // thumbnail host, not an avatar host
+      'not a url',
+      42,
+    ]
+    for (const value of rejected) {
+      expect(isAllowedAvatarUrl(value), `expected ${JSON.stringify(value)} to be rejected`).toBe(false)
+      const message = saveVideoMessage()
+      message.video.channelThumbnail = value as string
+      const validated = accepted(validateIncomingMessage(message))
+      if (validated.action !== 'SAVE_VIDEO') throw new Error('action changed by validation')
+      expect(validated.video.channelThumbnail).toBeUndefined()
+      // The rest of the save still succeeds untouched.
+      expect(validated.video.id).toBe(VALID_ID)
+    }
   })
 
   it('SEC-12: an icon outside the closed set reads as unset in category messages', () => {

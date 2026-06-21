@@ -3,48 +3,95 @@
 // options later — each preference is just another `.cfg-row`.
 
 import { Settings } from '../src/types'
+import { AccentPreset, ACCENT_PRESETS, accentHue } from '../src/theme'
+import { Language, LANGUAGES, t } from '../src/i18n'
 
 export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
+  onPickAccent: (accent: AccentPreset) => void
+  onPickLanguage: (language: Language) => void
+  // Opens Chrome's shortcut settings; extensions can't bind shortcuts themselves.
+  onEditShortcut: () => void
 }
 
+// `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
+// unset. The caller reads it from chrome.commands and passes it in so this modal
+// stays a pure DOM unit (no chrome dependency, jsdom-testable).
 // Returns the backdrop overlay; the caller appends it to the document.
-export function createConfigModal(settings: Settings, cb: ConfigModalCallbacks): HTMLElement {
+export function createConfigModal(
+  settings: Settings,
+  cb: ConfigModalCallbacks,
+  homeShortcut = '',
+): HTMLElement {
   const backdrop = el('div', 'cfg-backdrop')
   const modal = el('div', 'cfg-modal')
   modal.addEventListener('click', (e) => e.stopPropagation())
-
-  // Header
-  const header = el('div', 'cfg-header')
-  header.appendChild(textEl('h2', 'cfg-title', 'Settings'))
-  const close = el('button', 'cfg-close')
-  close.setAttribute('aria-label', 'Close')
-  close.textContent = '✕'
-  header.appendChild(close)
-
-  // Body — one row per option (only sound effects for now).
-  const body = el('div', 'cfg-body')
-  body.appendChild(soundRow(settings.soundEffects, cb.onToggleSound))
-
-  // Footer — donate placeholder card (not wired yet) — see PUI-7.
-  const footer = el('div', 'cfg-footer')
-  footer.appendChild(donateCard())
-
-  modal.append(header, body, footer)
   backdrop.appendChild(modal)
+
+  document.body.classList.add('config-open')
+
+  // The modal owns a copy of what it shows so it can re-render itself in the
+  // new language the moment the user switches (Decisions §2) — without a reopen
+  // and without dropping the sound/accent they changed earlier in the session.
+  const shown: Settings = { ...settings }
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') destroy()
   }
-  function destroy() {
+  function destroy(): void {
+    document.body.classList.remove('config-open')
     document.removeEventListener('keydown', onKey)
     backdrop.remove()
   }
+
+  function render(): void {
+    const lang = shown.language
+    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang))
+  }
+
+  function body(lang: Language): HTMLElement {
+    const node = el('div', 'cfg-body')
+    node.append(
+      languageRow(lang, (next) => {
+        shown.language = next
+        cb.onPickLanguage(next)
+        render() // re-localize the whole modal in place
+      }),
+      soundRow(shown.soundEffects, lang, (on) => {
+        shown.soundEffects = on
+        cb.onToggleSound(on)
+      }),
+      accentRow(shown.accent, lang, (accent) => {
+        shown.accent = accent
+        cb.onPickAccent(accent)
+      }),
+      shortcutRow(homeShortcut, lang, cb.onEditShortcut),
+    )
+    return node
+  }
+
   document.addEventListener('keydown', onKey)
-  close.addEventListener('click', destroy)
   backdrop.addEventListener('click', destroy)
 
+  render()
   return backdrop
+}
+
+function header(lang: Language, onClose: () => void): HTMLElement {
+  const node = el('div', 'cfg-header')
+  node.appendChild(textEl('h2', 'cfg-title', t('config.title', lang)))
+  const close = el('button', 'cfg-close')
+  close.setAttribute('aria-label', t('common.close', lang))
+  close.textContent = '✕'
+  close.addEventListener('click', onClose)
+  node.appendChild(close)
+  return node
+}
+
+function footer(lang: Language): HTMLElement {
+  const node = el('div', 'cfg-footer')
+  node.appendChild(donateCard(lang))
+  return node
 }
 
 const COFFEE_SVG =
@@ -55,7 +102,7 @@ const COFFEE_SVG =
   '</svg>'
 
 // Non-actionable "Buy me a coffee" placeholder card with a SOON badge (PUI-7).
-function donateCard(): HTMLElement {
+function donateCard(lang: Language): HTMLElement {
   const card = el('button', 'cfg-donate') as HTMLButtonElement
   card.disabled = true
 
@@ -64,20 +111,116 @@ function donateCard(): HTMLElement {
 
   const text = el('div', 'cfg-donate-text')
   text.append(
-    textEl('span', 'cfg-donate-title', 'Buy me a coffee'),
-    textEl('span', 'cfg-donate-sub', 'Support the developer'),
+    textEl('span', 'cfg-donate-title', t('config.donate.title', lang)),
+    textEl('span', 'cfg-donate-sub', t('config.donate.sub', lang)),
   )
 
-  card.append(ico, text, textEl('span', 'cfg-soon', 'SOON'))
+  card.append(ico, text, textEl('span', 'cfg-soon', t('config.donate.soon', lang)))
   return card
 }
 
-function soundRow(initial: boolean, onToggle: (enabled: boolean) => void): HTMLElement {
+// Language picker as a full-width segmented control (I18N-6/7). Single-select
+// like a radio group: the persisted language starts selected; picking another
+// reports it and moves the selection. It gets its own stacked row because the
+// pt-BR label is too wide to sit beside the label like the sound/accent rows.
+function languageRow(selected: Language, onPick: (language: Language) => void): HTMLElement {
+  const row = el('div', 'cfg-row cfg-row-stack')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.language.label', selected)),
+    textEl('span', 'cfg-row-sub', t('config.language.sub', selected)),
+  )
+  row.appendChild(text)
+
+  const group = el('div', 'cfg-langs')
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', t('config.language.label', selected))
+
+  const options = LANGUAGES.map(({ code, label }) => {
+    const option = el('button', 'cfg-lang') as HTMLButtonElement
+    option.setAttribute('role', 'radio')
+    option.dataset.lang = code
+    option.textContent = label
+    option.addEventListener('click', () => {
+      select(code)
+      onPick(code)
+    })
+    group.appendChild(option)
+    return option
+  })
+
+  function select(code: Language): void {
+    for (const option of options) {
+      const on = option.dataset.lang === code
+      option.setAttribute('aria-checked', String(on))
+      option.classList.toggle('selected', on)
+    }
+  }
+  select(selected)
+
+  row.appendChild(group)
+  return row
+}
+
+// A row of accent-color swatches (THEME-5/6). Single-select like a radio group:
+// the persisted preset starts selected; picking another reports it and moves the
+// selection. Each swatch previews its real accent color via the --accent token.
+function accentRow(
+  selected: AccentPreset,
+  lang: Language,
+  onPick: (accent: AccentPreset) => void,
+): HTMLElement {
   const row = el('div', 'cfg-row')
   const text = el('div', 'cfg-row-text')
   text.append(
-    textEl('span', 'cfg-row-label', 'Sound effects'),
-    textEl('span', 'cfg-row-sub', 'Little chimes as you browse'),
+    textEl('span', 'cfg-row-label', t('config.theme.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.theme.sub', lang)),
+  )
+  row.appendChild(text)
+
+  const group = el('div', 'cfg-swatches')
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', t('config.theme.label', lang))
+
+  const swatches = ACCENT_PRESETS.map((preset) => {
+    const swatch = el('button', 'cfg-swatch') as HTMLButtonElement
+    swatch.setAttribute('role', 'radio')
+    swatch.dataset.accent = preset
+    swatch.setAttribute('aria-label', preset)
+    swatch.title = preset
+    // Preview the preset's hue with the same lightness/chroma as --accent.
+    swatch.style.background = `oklch(0.815 0.125 ${accentHue(preset)})`
+    swatch.addEventListener('click', () => {
+      select(preset)
+      onPick(preset)
+    })
+    group.appendChild(swatch)
+    return swatch
+  })
+
+  function select(preset: AccentPreset): void {
+    for (const swatch of swatches) {
+      const on = swatch.dataset.accent === preset
+      swatch.setAttribute('aria-checked', String(on))
+      swatch.classList.toggle('selected', on)
+    }
+  }
+  select(selected)
+
+  row.appendChild(group)
+  return row
+}
+
+function soundRow(
+  initial: boolean,
+  lang: Language,
+  onToggle: (enabled: boolean) => void,
+): HTMLElement {
+  const row = el('div', 'cfg-row')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.sound.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.sound.sub', lang)),
   )
   row.appendChild(text)
 
@@ -95,6 +238,29 @@ function soundRow(initial: boolean, onToggle: (enabled: boolean) => void): HTMLE
   })
 
   row.appendChild(toggle)
+  return row
+}
+
+// Keyboard shortcut to open the home. Chrome owns the binding (extensions can't
+// assign their own shortcuts), so this row only DISPLAYS the current shortcut and
+// the right-side button deep-links to chrome://extensions/shortcuts to change it.
+function shortcutRow(shortcut: string, lang: Language, onEdit: () => void): HTMLElement {
+  const row = el('div', 'cfg-row')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.shortcut.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.shortcut.sub', lang)),
+  )
+  row.appendChild(text)
+
+  const button = el('button', 'cfg-shortcut') as HTMLButtonElement
+  button.textContent = shortcut || t('config.shortcut.unset', lang)
+  if (!shortcut) button.classList.add('cfg-shortcut-unset')
+  button.setAttribute('aria-label', t('config.shortcut.change', lang))
+  button.title = t('config.shortcut.change', lang)
+  button.addEventListener('click', onEdit)
+
+  row.appendChild(button)
   return row
 }
 

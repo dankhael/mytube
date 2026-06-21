@@ -14,29 +14,47 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'lucide-react'
 import Logo from './components/Logo'
-import { Category, StorageData, Video } from '../src/types'
+import { Category, StorageData, UNCATEGORIZED, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
-import { sanitizeStorageData } from '../src/sanitize-storage'
-import { getBytesInUse, mutate, send } from './api'
+import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
+import CategoryChips from './components/CategoryChips'
+import ErrorToast from './components/ErrorToast'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
 import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
 import { filterVideos } from './search'
+import { bindingQuotaLimit, shouldWarnQuota } from './quota'
+import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
+import { applyAccent } from '../src/theme'
+import { applyAccentFavicon } from './favicon'
+import { DEFAULT_LANGUAGE, t } from '../src/i18n'
+import { LanguageProvider, useT } from './i18n-context'
 
-const STORAGE_LIMIT = 102_400 // chrome.storage.sync quota in bytes
-const WARN_RATIO = 0.8
+// The lower of the total quota and any per-item ceiling the layout imposes (R1).
+const QUOTA_LIMIT = bindingQuotaLimit(SYNC_QUOTA_LIMITS)
 
 export default function App() {
   const [data, setData] = useState<StorageData | null>(null)
   const [showWatched, setShowWatched] = useState(true)
   const [query, setQuery] = useState('')
   const [bytes, setBytes] = useState(0)
+  const accent = data?.settings.accent
+
+  // Recolor the home from the persisted accent; re-runs if it changes elsewhere
+  // (e.g. the popup picker, synced via storage.onChanged → load) — THEME-7/8.
+  // The tab favicon tracks it too, so the browser tab icon matches (THEME-10).
+  useEffect(() => {
+    if (!accent) return
+    applyAccent(document.documentElement, accent)
+    applyAccentFavicon(document, accent)
+  }, [accent])
 
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [moving, setMoving] = useState<Video | null>(null)
+  const [mutationError, setMutationError] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -53,23 +71,26 @@ export default function App() {
   useEffect(() => {
     load()
     const listener = (changes: { [k: string]: chrome.storage.StorageChange }, area: string) => {
-      if (area === 'sync' && changes.mytube) {
-        // Sync snapshots come from any synced device — sanitize, never cast (S6).
-        setData(sanitizeStorageData(changes.mytube.newValue))
-        refreshBytes()
-      }
+      // The snapshot spans many mytube:* keys now (finding R1); re-read the whole
+      // thing through the worker (which sanitizes, S6) on any of them changing.
+      if (area === 'sync' && Object.keys(changes).some(isMyTubeKey)) void load()
     }
     chrome.storage.onChanged.addListener(listener)
     return () => chrome.storage.onChanged.removeListener(listener)
   }, [load, refreshBytes])
 
-  const apply = useCallback(async (next: Promise<StorageData | null>) => {
+  const apply = useCallback(async (next: Promise<MutationOutcome>) => {
     const result = await next
-    if (result) {
-      setData(result)
+    if (result.ok) {
+      setData(result.data)
       refreshBytes()
+      return
     }
-  }, [refreshBytes])
+    // The mutation did not persist (finding R3): surface it and re-read the
+    // store so optimistic UI (e.g. drag reorder) never claims success.
+    setMutationError(result.error)
+    void load()
+  }, [refreshBytes, load])
 
   // ---- handlers ----
   const openVideo = (id: string) =>
@@ -96,15 +117,22 @@ export default function App() {
     apply(mutate({ action: 'UPDATE_CATEGORY', oldName: editing.name, name, emoji: editing.emoji, icon }))
   }
   const deleteCategory = (cat: Category) => {
+    const lang = data?.settings.language ?? DEFAULT_LANGUAGE
     const count = data?.videos.filter((v) => v.category === cat.name).length ?? 0
     let deleteVideos = false
     if (count > 0) {
-      // Two-step confirm: keep videos (move to "Sem categoria") or delete them too.
+      // Two-step confirm: keep videos (move to the uncategorized bucket) or
+      // delete them too. {uncategorized} is the real category the reducer moves
+      // orphans into (UNCATEGORIZED), so the dialog names the actual destination.
       const alsoDelete = window.confirm(
-        `Deletar "${cat.name}"?\n\nOK = apagar a categoria E seus ${count} vídeos.\nCancelar = manter os vídeos (movê-los para "Sem categoria").`,
+        t('cat.confirmDeleteWithVideos', lang, {
+          name: cat.name,
+          count,
+          uncategorized: UNCATEGORIZED,
+        }),
       )
       deleteVideos = alsoDelete
-    } else if (!window.confirm(`Deletar a categoria "${cat.name}"?`)) {
+    } else if (!window.confirm(t('cat.confirmDelete', lang, { name: cat.name }))) {
       return
     }
     apply(mutate({ action: 'DELETE_CATEGORY', name: cat.name, deleteVideos }))
@@ -138,26 +166,45 @@ export default function App() {
     return map
   }, [data, searched, showWatched])
 
+  // Chips that jump to a category section (spec home-category-chips). Same order
+  // as the rendered sections; under an active search, a category with no matching
+  // video drops its chip (CHIP-5) — without a query every category gets one.
+  const chipCategories = useMemo(() => {
+    if (!data) return []
+    if (!query) return data.categories
+    return data.categories.filter((c) => (videosByCategory.get(c.name)?.length ?? 0) > 0)
+  }, [data, query, videosByCategory])
+
   // Derived, cross-cutting sections (watched always excluded — see the spec).
   const recentlyAdded = useMemo(() => selectRecentlyAdded(searched), [searched])
   const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
 
   if (!data) {
-    return <div className="flex h-full items-center justify-center text-yt-muted">Carregando…</div>
+    return (
+      <div className="flex h-full items-center justify-center text-yt-muted">
+        {t('home.loading', DEFAULT_LANGUAGE)}
+      </div>
+    )
   }
 
+  const lang = data.settings.language
+  const tr = (key: Parameters<typeof t>[0], vars?: Record<string, string | number>) =>
+    t(key, lang, vars)
   const isEmpty = data.videos.length === 0
   const unwatched = data.videos.filter((v) => !v.watched).length
-  const overQuota = bytes / STORAGE_LIMIT >= WARN_RATIO
+  const overQuota = shouldWarnQuota(bytes, QUOTA_LIMIT)
 
   return (
+    <LanguageProvider lang={lang}>
     <div className="home">
+      {mutationError && (
+        <ErrorToast message={mutationError} onDismiss={() => setMutationError(null)} />
+      )}
       <div className="home-inner">
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
             <AlertTriangle className="h-4 w-4" />
-            Armazenamento quase cheio ({Math.round((bytes / STORAGE_LIMIT) * 100)}% de 100KB). Remova
-            alguns vídeos para continuar sincronizando.
+            {tr('home.quotaWarning', { percent: Math.round((bytes / QUOTA_LIMIT) * 100) })}
           </div>
         )}
 
@@ -169,9 +216,13 @@ export default function App() {
                 My<b>Tube</b>
               </span>
             </div>
-            <h1>Welcome back.</h1>
+            <h1>{tr('home.welcomeBack')}</h1>
             <p>
-              Você tem <b>{unwatched} vídeos</b> esperando na sua biblioteca.
+              {tr('home.greetingPre')}{' '}
+              <b>
+                {unwatched} {tr(unwatched === 1 ? 'common.video' : 'common.videos')}
+              </b>{' '}
+              {tr('home.greetingPost')}
             </p>
           </div>
 
@@ -179,7 +230,7 @@ export default function App() {
             <label className="searchbar">
               <Search size={18} style={{ color: 'var(--text-3)', flex: 'none' }} />
               <input
-                placeholder="Buscar na biblioteca…"
+                placeholder={tr('home.searchPlaceholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -187,13 +238,13 @@ export default function App() {
             <button
               className="ghost-btn"
               onClick={() => setShowWatched((v) => !v)}
-              title={showWatched ? 'Ocultar assistidos' : 'Mostrar assistidos'}
+              title={showWatched ? tr('home.hideWatched') : tr('home.showWatched')}
             >
               {showWatched ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {showWatched ? 'Assistidos' : 'Ocultos'}
+              {showWatched ? tr('home.watched') : tr('home.hidden')}
             </button>
             <button className="accent-btn" onClick={() => setShowAdd(true)}>
-              <Plus className="h-4 w-4" /> Categoria
+              <Plus className="h-4 w-4" /> {tr('home.category')}
             </button>
           </div>
         </div>
@@ -202,9 +253,11 @@ export default function App() {
           <WelcomeScreen />
         ) : (
           <>
+            <CategoryChips categories={chipCategories} />
+
             <SmartSection
               icon={Sparkles}
-              title="Recentemente adicionados"
+              title={tr('home.recentlyAdded')}
               videos={recentlyAdded}
               onOpenVideo={openVideo}
               onMoveVideo={setMoving}
@@ -236,7 +289,7 @@ export default function App() {
 
             <SmartSection
               icon={Hourglass}
-              title="Pegando poeira"
+              title={tr('home.gatheringDust')}
               videos={gatheringDust}
               onOpenVideo={openVideo}
               onMoveVideo={setMoving}
@@ -260,27 +313,29 @@ export default function App() {
         />
       )}
     </div>
+    </LanguageProvider>
   )
 }
 
 function WelcomeScreen() {
+  const tr = useT()
   return (
     <div className="mx-auto mt-20 max-w-xl text-center">
       <div className="mx-auto mb-6 w-fit">
         <Logo size={64} />
       </div>
-      <h1 className="mb-3 font-display text-3xl font-bold">Sua home do YouTube, curada por você.</h1>
+      <h1 className="mb-3 font-display text-3xl font-bold">{tr('welcome.title')}</h1>
       <p className="text-yt-muted">
-        Navegue pelo YouTube e clique no botão{' '}
-        <span className="rounded bg-yt-card px-2 py-0.5 text-yt-text">+ Salvar</span> nos vídeos para
-        organizá-los aqui em categorias. Chega de “Watch Later” virar cemitério.
+        {tr('welcome.bodyPre')}{' '}
+        <span className="rounded bg-yt-card px-2 py-0.5 text-yt-text">{tr('welcome.savePill')}</span>{' '}
+        {tr('welcome.bodyPost')}
       </p>
       <a
         href="https://www.youtube.com"
         className="accent-btn mt-8 inline-flex"
         style={{ display: 'inline-flex' }}
       >
-        Abrir o YouTube
+        {tr('welcome.openYoutube')}
       </a>
     </div>
   )

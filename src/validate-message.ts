@@ -26,6 +26,27 @@ export function canonicalThumbnail(id: string, candidate: string): string {
   return candidate === canonical ? candidate : canonical
 }
 
+// Channel avatars live at opaque Google host paths, so unlike the thumbnail they
+// can't be canonicalized to one deterministic URL. We host-allowlist instead: an
+// off-list / non-https URL is the same tracking-pixel / exfiltration vector SEC-4
+// guards against, so it's dropped rather than stored. The CSP img-src
+// (manifest.config.ts) MUST list the same hosts or the <img> won't load.
+export const AVATAR_HOSTS: readonly string[] = [
+  'yt3.ggpht.com',
+  'yt3.googleusercontent.com',
+  'lh3.googleusercontent.com',
+]
+
+export function isAllowedAvatarUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && AVATAR_HOSTS.includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
 const ICON_KEYS: ReadonlySet<string> = new Set(ALL_ICONS)
 
 export function isIconKey(value: unknown): value is IconKey {
@@ -61,6 +82,11 @@ function validatedSaveVideo(message: Extract<Message, { action: 'SAVE_VIDEO' }>)
         title: clampText(video.title),
         thumbnail: canonicalThumbnail(video.id, video.thumbnail),
         channelName: clampText(video.channelName),
+        // Keep the avatar only if it's an https URL on an allowlisted host;
+        // anything else is dropped (undefined) without failing the save.
+        channelThumbnail: isAllowedAvatarUrl(video.channelThumbnail)
+          ? video.channelThumbnail
+          : undefined,
       },
     },
   }

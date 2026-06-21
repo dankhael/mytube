@@ -5,6 +5,13 @@
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
 import { isYoutubeVideoId } from '../src/validate-message'
+import { isMyTubeKey } from '../src/storage-backend'
+import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
+
+// Active interface language, refreshed from the store on init and on change.
+// The content script is plain DOM (no React context), so it threads `lang`
+// through a module-level variable rather than the new-tab i18n context.
+let lang: Language = DEFAULT_LANGUAGE
 
 const CARD_SELECTORS = [
   'ytd-rich-item-renderer', // home
@@ -17,11 +24,30 @@ const PROCESSED = 'data-mytube'
 
 let savedIds: Map<string, string> = new Map() // videoId -> category
 
+// Module-scope so teardown() (finding M4) can detach them after orphaning.
+let observer: MutationObserver | null = null
+let torndown = false
+
 interface CardData {
   id: string
   title: string
   thumbnail: string
   channelName: string
+  channelThumbnail?: string // channel avatar URL when the DOM exposes one
+}
+
+// Best-effort read of the channel avatar <img> within a card/owner scope. Covers
+// classic renderers (#avatar img / yt-img-shadow) and the newer lockup/owner
+// view-models. Returns undefined when absent — the worker host-gates the value
+// anyway (channel-avatar), and the home card falls back to the initial letter.
+function extractAvatar(scope: ParentNode): string | undefined {
+  const img =
+    scope.querySelector<HTMLImageElement>('#avatar img') ||
+    scope.querySelector<HTMLImageElement>('yt-img-shadow img') ||
+    scope.querySelector<HTMLImageElement>('.yt-spec-avatar-shape img') ||
+    scope.querySelector<HTMLImageElement>('yt-decorated-avatar-view-model img')
+  const src = img?.currentSrc || img?.src || ''
+  return src.startsWith('https://') ? src : undefined
 }
 
 function extractCard(card: HTMLElement): CardData | null {
@@ -57,7 +83,7 @@ function extractCard(card: HTMLElement): CardData | null {
   // mqdefault is stable regardless of YouTube's lazy-loaded <img> state.
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
 
-  return { id, title, thumbnail, channelName }
+  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(card) }
 }
 
 // Reads the video currently open on a /watch page (the one in the player).
@@ -80,19 +106,47 @@ function extractWatchPage(): CardData | null {
   const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
 
   const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
-  return { id, title, thumbnail, channelName }
+  // Scope to the owner block so we read the channel's avatar, not some other
+  // avatar elsewhere on the watch page (comments, suggestions).
+  const ownerScope =
+    document.querySelector<HTMLElement>('ytd-video-owner-renderer, #owner') ?? document
+  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(ownerScope) }
 }
 
+// When the extension is reloaded/updated, already-injected scripts are orphaned
+// and chrome.runtime.sendMessage throws "Extension context invalidated"
+// synchronously. Catch it, resolve { ok: false } (never an unhandled rejection),
+// and tear ourselves down (finding M4). A runtime.lastError in the callback is a
+// transient worker restart, not orphaning — map it without teardown.
 function sendMessage(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response: MessageResponse) => {
-      if (chrome.runtime.lastError) {
-        resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
-        return
-      }
-      resolve(response)
-    })
+    try {
+      chrome.runtime.sendMessage(message, (response: MessageResponse) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
+          return
+        }
+        resolve(response)
+      })
+    } catch (e) {
+      teardown()
+      resolve({ ok: false, error: e instanceof Error ? e.message : 'context invalidated' })
+    }
   })
+}
+
+// Disconnect everything an orphaned script left attached so a dead extension
+// stops reacting to the page (finding M4). Idempotent.
+function teardown(): void {
+  if (torndown) return
+  torndown = true
+  observer?.disconnect()
+  observer = null
+  document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  document
+    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast')
+    .forEach((node) => node.remove())
 }
 
 async function getCategories(): Promise<Category[]> {
@@ -148,13 +202,13 @@ function setSavedState(btn: HTMLElement, category: string | null) {
   if (category) {
     btn.classList.add('mytube-saved')
     plus.textContent = '✓'
-    label.textContent = 'Salvo'
-    btn.title = `Salvo em: ${category}`
+    label.textContent = t('content.saved', lang)
+    btn.title = t('content.savedIn', lang, { category })
   } else {
     btn.classList.remove('mytube-saved')
     plus.textContent = '+'
-    label.textContent = 'Salvar'
-    btn.title = 'Salvar no MyTube'
+    label.textContent = t('content.save', lang)
+    btn.title = t('content.saveToMyTube', lang)
   }
 }
 
@@ -196,13 +250,19 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
 
   const header = document.createElement('div')
   header.className = 'mytube-dropdown-header'
-  header.textContent = 'Salvar em…'
+  header.textContent = t('content.saveTo', lang)
   dropdown.appendChild(header)
 
   const saveTo = async (category: string) => {
     const res = await sendMessage({
       action: 'SAVE_VIDEO',
-      video: { id: card.id, title: card.title, thumbnail: card.thumbnail, channelName: card.channelName },
+      video: {
+        id: card.id,
+        title: card.title,
+        thumbnail: card.thumbnail,
+        channelName: card.channelName,
+        channelThumbnail: card.channelThumbnail,
+      },
       category,
     })
     closeAllDropdowns()
@@ -211,7 +271,7 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
       setSavedState(btn, category)
       btn.classList.add('mytube-flash')
       setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
-      showToast(`Salvo em ${category} ✨`)
+      showToast(t('content.savedToast', lang, { category }))
     }
   }
 
@@ -229,12 +289,12 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
   // "Nova categoria" — expands into an inline input.
   const newItem = document.createElement('button')
   newItem.className = 'mytube-dropdown-item mytube-dropdown-new'
-  newItem.textContent = '+ Nova categoria'
+  newItem.textContent = t('content.newCategory', lang)
   newItem.addEventListener('click', (e) => {
     e.stopPropagation()
     const input = document.createElement('input')
     input.className = 'mytube-dropdown-input'
-    input.placeholder = 'Nome da categoria…'
+    input.placeholder = t('content.categoryNamePlaceholder', lang)
     input.addEventListener('click', (ev) => ev.stopPropagation())
     input.addEventListener('keydown', (ev) => {
       ev.stopPropagation()
@@ -290,9 +350,18 @@ function injectButton(card: HTMLElement) {
     const isOpen = document.querySelector('.mytube-dropdown')
     if (isOpen) {
       closeAllDropdowns()
-    } else {
-      void openDropdown(btn, data!)
+      return
     }
+    // YouTube recycles renderer nodes (continuations, back/forward), so this
+    // card may now show a different video than at inject time — re-extract and
+    // save what's currently bound, falling back to inject-time data (M3).
+    let current: CardData | null = null
+    try {
+      current = extractCard(card)
+    } catch {
+      current = null
+    }
+    void openDropdown(btn, current ?? data!)
   })
 
   wrapper.appendChild(btn)
@@ -350,8 +419,18 @@ function injectWatchButton() {
     existing?.remove()
     return
   }
-  // Already injected for this video — nothing to do (avoids observer loops).
-  if (existing && existing.getAttribute('data-vid') === data.id) return
+  
+  // Already injected for this video in the correct container.
+  if (existing && existing.getAttribute('data-vid') === data.id && existing.parentElement === actions) {
+    // Ensure our button stays at the end of the flex row if YouTube's SPA logic inserts new native buttons.
+    if (actions.lastElementChild !== existing) {
+      actions.appendChild(existing)
+      const existingBtn = existing.querySelector<HTMLElement>('.mytube-btn')
+      if (buttonRow && existingBtn) matchActionBarMetrics(existing, existingBtn, buttonRow)
+    }
+    return
+  }
+  
   existing?.remove()
 
   const wrapper = document.createElement('div')
@@ -535,14 +614,24 @@ function injectStyles() {
 
 // Close dropdowns when clicking outside both the button (.mytube-wrapper) and
 // the portaled menu (.mytube-dropdown, now a child of <html>, not the wrapper).
-document.addEventListener('click', (e) => {
+// Named (not inline) so teardown() can detach it after orphaning (M4).
+function onDocumentClick(e: MouseEvent): void {
   const t = e.target as HTMLElement
   if (!t?.closest?.('.mytube-wrapper') && !t?.closest?.('.mytube-dropdown')) closeAllDropdowns()
-})
+}
+
+// Catch up on cards added while the tab was hidden (M2): scheduleScan bails out
+// while document.hidden, so re-scan once when the tab becomes visible again.
+function onVisibilityChange(): void {
+  if (!document.hidden) scan()
+}
 
 let scanScheduled = false
 function scheduleScan() {
-  if (scanScheduled) return
+  // Don't burn scan/allocation work on a backgrounded tab nobody can see (M2);
+  // requestAnimationFrame wouldn't fire while hidden anyway, which would wedge
+  // scanScheduled=true. The visibilitychange catch-up covers what we skipped.
+  if (scanScheduled || document.hidden) return
   scanScheduled = true
   requestAnimationFrame(() => {
     scanScheduled = false
@@ -550,22 +639,37 @@ function scheduleScan() {
   })
 }
 
+// Pull the persisted interface language so the pill/menu render localized.
+// Best-effort: a failed round-trip leaves the English default in place.
+async function refreshLanguage() {
+  const res = await sendMessage({ action: 'GET_ALL' })
+  if (res.ok && 'data' in res && res.data) lang = res.data.settings.language
+}
+
 async function init() {
   injectStyles()
+  await refreshLanguage()
   const res = await sendMessage({ action: 'GET_SAVED_IDS' })
   if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
 
   scan()
 
-  const observer = new MutationObserver(() => scheduleScan())
+  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
+  observer = new MutationObserver(() => scheduleScan())
   observer.observe(document.body, { childList: true, subtree: true })
 
-  // Keep saved state fresh if the user edits things from the new tab page.
+  // Keep saved state fresh if the user edits things from the new tab page. The
+  // snapshot is sharded across many mytube:* keys (finding R1), so re-fetch the
+  // ids through the worker (which assembles the shards) on any of them changing.
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.mytube) {
-      const videos = changes.mytube.newValue?.videos ?? []
-      refreshSavedIds(videos.map((v: { id: string; category: string }) => ({ id: v.id, category: v.category })))
-    }
+    if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
+    // Re-localize too: the language may have changed from the popup/new-tab.
+    void refreshLanguage().then(() => scan())
+    void sendMessage({ action: 'GET_SAVED_IDS' }).then((res) => {
+      if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
+    })
   })
 }
 

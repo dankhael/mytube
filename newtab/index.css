@@ -181,6 +181,44 @@ body {
   transform: scale(0.97);
 }
 
+/* category chip bar — jump to a section (spec home-category-chips). Mirrors
+   YouTube's own category bar: a horizontal pill row that scrolls sideways
+   instead of wrapping. */
+.cat-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox: hide the horizontal scrollbar */
+  padding-bottom: 2px;
+}
+.cat-chips::-webkit-scrollbar {
+  display: none;
+}
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none; /* never shrink — overflow scrolls instead of squashing chips */
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.cat-chip:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.cat-chip:active {
+  transform: scale(0.97);
+}
+
 /* category section */
 .cat {
   margin-top: 34px;
@@ -338,6 +376,10 @@ body {
   font-weight: 800;
   font-size: 13px;
   color: var(--text-2);
+}
+/* The channel photo reuses the round .avatar slot; cover-fit it edge to edge. */
+.vmeta .avatar-img {
+  object-fit: cover;
 }
 .vmeta .txt {
   min-width: 0;

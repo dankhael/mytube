@@ -3,8 +3,9 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Check, MoreVertical, Play, Trash2, FolderInput, Eye, EyeOff } from 'lucide-react'
 import { Video } from '../../src/types'
+import { useT } from '../i18n-context'
 
-interface CardActions {
+export interface CardActions {
   video: Video
   onOpen: (id: string) => void
   onMove: (video: Video) => void
@@ -31,7 +32,11 @@ export function VideoCardView({
   rootProps,
   style,
 }: ViewProps) {
+  const tr = useT()
   const [menuOpen, setMenuOpen] = useState(false)
+  // Avatar URLs rot (Google rotates them); on load failure we drop to the
+  // initial-letter avatar instead of showing a broken image (AVATAR-7).
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,6 +49,7 @@ export function VideoCardView({
   }, [menuOpen])
 
   const initial = video.channelName.trim().charAt(0).toUpperCase() || '•'
+  const showPhoto = Boolean(video.channelThumbnail) && !avatarFailed
   const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -63,10 +69,10 @@ export function VideoCardView({
         <div className="scrim" />
         {video.watched ? (
           <span className="watched-tag">
-            <Check size={12} /> Assistido
+            <Check size={12} /> {tr('card.watched')}
           </span>
         ) : (
-          <span className="unwatch-dot" title="Ainda não assistido" />
+          <span className="unwatch-dot" title={tr('card.notWatched')} />
         )}
         <div className="play">
           <Play size={22} className="fill-current" />
@@ -75,7 +81,7 @@ export function VideoCardView({
         <div className="vactions">
           <button
             className="vact"
-            title={video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
+            title={video.watched ? tr('card.markUnwatched') : tr('card.markWatched')}
             onClick={(e) => {
               stop(e)
               onToggleWatched(video)
@@ -85,7 +91,7 @@ export function VideoCardView({
           </button>
           <button
             className="vact"
-            title="Mover…"
+            title={tr('card.move')}
             onClick={(e) => {
               stop(e)
               onMove(video)
@@ -95,7 +101,7 @@ export function VideoCardView({
           </button>
           <button
             className="vact"
-            title="Mais"
+            title={tr('card.more')}
             onClick={(e) => {
               stop(e)
               setMenuOpen((v) => !v)
@@ -104,25 +110,37 @@ export function VideoCardView({
             <MoreVertical size={16} />
           </button>
         </div>
-
-        {menuOpen && (
-          <div className="vmenu" ref={menuRef} onClick={stop}>
-            <button onClick={() => { setMenuOpen(false); onMove(video) }}>
-              <FolderInput size={15} /> Mover para…
-            </button>
-            <button onClick={() => { setMenuOpen(false); onToggleWatched(video) }}>
-              {video.watched ? <Eye size={15} /> : <Check size={15} />}
-              {video.watched ? 'Marcar não assistido' : 'Marcar como assistido'}
-            </button>
-            <button className="danger" onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
-              <Trash2 size={15} /> Remover
-            </button>
-          </div>
-        )}
       </div>
 
+      {/* Anchored to .vcard, not .vthumb: .vthumb is overflow:hidden and would
+          clip the menu's last item ("Remover") below the artwork. */}
+      {menuOpen && (
+        <div className="vmenu" ref={menuRef} onClick={stop}>
+          <button onClick={() => { setMenuOpen(false); onMove(video) }}>
+            <FolderInput size={15} /> {tr('card.moveTo')}
+          </button>
+          <button onClick={() => { setMenuOpen(false); onToggleWatched(video) }}>
+            {video.watched ? <Eye size={15} /> : <Check size={15} />}
+            {video.watched ? tr('card.markUnwatched') : tr('card.markWatched')}
+          </button>
+          <button className="danger" onClick={() => { setMenuOpen(false); onDelete(video.id) }}>
+            <Trash2 size={15} /> {tr('card.remove')}
+          </button>
+        </div>
+      )}
+
       <div className="vmeta">
-        <div className="avatar">{initial}</div>
+        {showPhoto ? (
+          <img
+            className="avatar avatar-img"
+            src={video.channelThumbnail}
+            alt={video.channelName}
+            loading="lazy"
+            onError={() => setAvatarFailed(true)}
+          />
+        ) : (
+          <div className="avatar">{initial}</div>
+        )}
         <div className="txt">
           <p className="vtitle" title={video.title}>
             {video.title}

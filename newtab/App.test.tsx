@@ -3,7 +3,7 @@
 // ID it proves (see specs/newtab-ui.spec.md).
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
@@ -34,6 +34,22 @@ function scriptStore(data: Omit<StorageData, 'settings'>) {
   )
 }
 
+// GET_ALL succeeds with `data`; every mutation answers `mutationReply` (ROB-10/11).
+function scriptStoreWithMutationReply(data: Omit<StorageData, 'settings'>, mutationReply: unknown) {
+  const full: StorageData = { ...data, settings: { ...DEFAULT_SETTINGS } }
+  vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+    ((msg: { action: string }, cb: (r: unknown) => void) =>
+      cb(msg.action === 'GET_ALL' ? { ok: true, data: full } : mutationReply)) as never,
+  )
+}
+
+// Only the home's own structured logs — React act()/error noise must not count.
+function mytubeErrorLogs(spy: ReturnType<typeof vi.spyOn>): string[] {
+  return spy.mock.calls
+    .map((args: unknown[]) => String(args[0]))
+    .filter((line: string) => line.includes('mytube.newtab'))
+}
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -43,7 +59,7 @@ describe('newtab-ui.spec', () => {
   it('UI-1: an empty store renders the welcome screen', async () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
     render(<App />)
-    expect(await screen.findByText(/curada por você/i)).toBeTruthy()
+    expect(await screen.findByText(/curated by you/i)).toBeTruthy()
   })
 
   it('UI-2: categories and their videos are rendered', async () => {
@@ -52,7 +68,7 @@ describe('newtab-ui.spec', () => {
       videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
     })
     render(<App />)
-    expect(await screen.findByText('Tutoriais')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Tutoriais' })).toBeTruthy()
     // Also appears in "Recentemente adicionados" (cross-cutting), so allow duplicates.
     expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)
   })
@@ -69,7 +85,7 @@ describe('newtab-ui.spec', () => {
     render(<App />)
 
     expect(await screen.findByText('Video Assistido')).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: /assistidos/i }))
+    await user.click(screen.getByRole('button', { name: 'Watched' }))
 
     expect(screen.queryByText('Video Assistido')).toBeNull()
     expect(screen.getAllByText('Video Aberto').length).toBeGreaterThan(0)
@@ -89,8 +105,8 @@ describe('home-smart-sections.spec (home)', () => {
     })
     render(<App />)
 
-    expect(await screen.findByText('Recentemente adicionados')).toBeTruthy()
-    expect(screen.getByText('Pegando poeira')).toBeTruthy()
+    expect(await screen.findByText('Recently added')).toBeTruthy()
+    expect(screen.getByText('Gathering dust')).toBeTruthy()
     // Watched video lives only in its category (excluded from both smart sections).
     expect(screen.getAllByText('Ja Visto')).toHaveLength(1)
   })
@@ -102,8 +118,8 @@ describe('home-smart-sections.spec (home)', () => {
     })
     render(<App />)
 
-    expect(await screen.findByText('Recentemente adicionados')).toBeTruthy()
-    expect(screen.queryByText('Pegando poeira')).toBeNull()
+    expect(await screen.findByText('Recently added')).toBeTruthy()
+    expect(screen.queryByText('Gathering dust')).toBeNull()
   })
 })
 
@@ -114,7 +130,7 @@ describe('home-icon-tiles.spec (home)', () => {
       videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
     })
     const { container } = render(<App />)
-    await screen.findByText('Tutoriais')
+    await screen.findByRole('heading', { name: 'Tutoriais' })
 
     // Smart-section tiles keep their emoji (out of scope); the category tile is
     // the one that rendered an <svg>.
@@ -132,7 +148,7 @@ describe('home-icon-tiles.spec (home)', () => {
       videos: [video('aaaaaaaaaaa', 'Cheia', 'Um video')],
     })
     const { container } = render(<App />)
-    await screen.findByText('Vazia')
+    await screen.findByRole('heading', { name: 'Vazia' })
 
     const emptyState = container.querySelector('.empty .ei')!
     expect(emptyState.querySelector('svg')).not.toBeNull()
@@ -143,13 +159,157 @@ describe('home-icon-tiles.spec (home)', () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
     const user = userEvent.setup()
     render(<App />)
-    await screen.findByText(/curada por você/i)
+    await screen.findByText(/curated by you/i)
 
-    await user.click(screen.getByRole('button', { name: /categoria/i }))
+    await user.click(screen.getByRole('button', { name: /category/i }))
     // Icon picker buttons are labelled by their IconKey; the old emoji chars are gone.
     expect(screen.getByRole('button', { name: 'gamepad' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'trophy' })).toBeTruthy()
     expect(screen.queryByText('🎮')).toBeNull()
+  })
+})
+
+describe('storage-robustness.spec (home)', () => {
+  const LIBRARY = {
+    categories: [{ name: 'Tutoriais', emoji: '🎓' }],
+    videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
+  }
+
+  it('ROB-10: a failed mutation logs structured JSON and renders the error toast', async () => {
+    scriptStoreWithMutationReply(LIBRARY, { ok: false, error: 'quota exceeded' })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Tutoriais' })
+
+    await user.click(screen.getAllByTitle('Mark as watched')[0])
+
+    const toast = await screen.findByRole('alert')
+    expect(toast.textContent).toContain('was not saved')
+    const logged = mytubeErrorLogs(errorSpy).join('\n')
+    expect(logged).toContain('MARK_WATCHED')
+    expect(logged).toContain('quota exceeded')
+  })
+
+  it('ROB-11: a successful mutation shows no toast and logs no error', async () => {
+    const full: StorageData = { ...LIBRARY, settings: { ...DEFAULT_SETTINGS } }
+    scriptStoreWithMutationReply(LIBRARY, { ok: true, data: full })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Tutoriais' })
+
+    await user.click(screen.getAllByTitle('Mark as watched')[0])
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(mytubeErrorLogs(errorSpy)).toHaveLength(0)
+  })
+})
+
+describe('home-category-chips.spec', () => {
+  it('CHIP-1: one chip renders per category, in stored order', async () => {
+    scriptStore({
+      categories: [
+        { name: 'Jogos', emoji: '🎮' },
+        { name: 'Música', emoji: '🎵' },
+        { name: 'Podcasts', emoji: '🎙️' },
+      ],
+      videos: [video('aaaaaaaaaaa', 'Jogos', 'Gameplay')],
+    })
+    render(<App />)
+    const nav = await screen.findByRole('navigation', { name: 'Jump to category' })
+    expect(within(nav).getAllByRole('button').map((c) => c.textContent)).toEqual([
+      'Jogos',
+      'Música',
+      'Podcasts',
+    ])
+  })
+
+  it('CHIP-2: each chip shows the category name and its icon', async () => {
+    scriptStore({
+      categories: [{ name: 'Jogos', emoji: '🎮' }],
+      videos: [video('aaaaaaaaaaa', 'Jogos', 'Gameplay')],
+    })
+    render(<App />)
+    const nav = await screen.findByRole('navigation', { name: 'Jump to category' })
+    const chip = within(nav).getByRole('button', { name: /Jogos/ })
+    expect(chip.textContent).toContain('Jogos')
+    expect(chip.querySelector('svg')).not.toBeNull()
+  })
+
+  it('CHIP-3: clicking a chip scrolls its section into view', async () => {
+    const scrollSpy = vi.fn()
+    Element.prototype.scrollIntoView = scrollSpy
+    scriptStore({
+      categories: [
+        { name: 'Jogos', emoji: '🎮' },
+        { name: 'Música', emoji: '🎵' },
+      ],
+      videos: [video('aaaaaaaaaaa', 'Música', 'Clipe')],
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    const nav = await screen.findByRole('navigation', { name: 'Jump to category' })
+
+    await user.click(within(nav).getByRole('button', { name: /Música/ }))
+
+    expect(scrollSpy).toHaveBeenCalled()
+    expect((scrollSpy.mock.instances[0] as HTMLElement).id).toBe('cat-section:Música')
+  })
+
+  it('CHIP-4: no chip row on the empty welcome screen', async () => {
+    scriptStore({ categories: [{ name: 'Jogos', emoji: '🎮' }], videos: [] })
+    render(<App />)
+    await screen.findByText(/curated by you/i)
+    expect(screen.queryByRole('navigation', { name: 'Jump to category' })).toBeNull()
+  })
+
+  it('CHIP-5: an active search hides chips for categories with no match', async () => {
+    scriptStore({
+      categories: [
+        { name: 'Jogos', emoji: '🎮' },
+        { name: 'Música', emoji: '🎵' },
+      ],
+      videos: [
+        video('aaaaaaaaaaa', 'Jogos', 'Aprenda React'),
+        video('bbbbbbbbbbb', 'Música', 'Receita de Bolo'),
+      ],
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('navigation', { name: 'Jump to category' })
+
+    await user.type(screen.getByPlaceholderText(/search/i), 'react')
+
+    const nav = screen.getByRole('navigation', { name: 'Jump to category' })
+    expect(within(nav).getAllByRole('button').map((c) => c.textContent)).toEqual(['Jogos'])
+  })
+
+  it('CHIP-6: the chip row re-derives when categories change in the store', async () => {
+    let categories = [{ name: 'Jogos', emoji: '🎮' }]
+    const reply = (cb: (r: unknown) => void) =>
+      cb({ ok: true, data: { categories, videos: [video('aaaaaaaaaaa', 'Jogos', 'G')], settings: { ...DEFAULT_SETTINGS } } })
+    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+      ((_msg: unknown, cb: (r: unknown) => void) => reply(cb)) as never,
+    )
+    // addListener is a shared vi.fn() across the file; clear it so calls[0] is
+    // this App's storage listener, not a leftover from an earlier test.
+    vi.mocked(chrome.storage.onChanged.addListener).mockClear()
+    render(<App />)
+    const first = await screen.findByRole('navigation', { name: 'Jump to category' })
+    expect(within(first).getAllByRole('button')).toHaveLength(1)
+
+    // The store gains a category; firing storage.onChanged makes the home reload.
+    categories = [{ name: 'Jogos', emoji: '🎮' }, { name: 'Música', emoji: '🎵' }]
+    const fire = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
+    await act(async () => {
+      fire({ 'mytube:meta': {} } as never, 'sync')
+    })
+
+    await waitFor(() => {
+      const nav = screen.getByRole('navigation', { name: 'Jump to category' })
+      expect(within(nav).getAllByRole('button').map((c) => c.textContent)).toEqual(['Jogos', 'Música'])
+    })
   })
 })
 
@@ -172,7 +332,7 @@ describe('design-rework.spec (home)', () => {
     render(<App />)
 
     expect(await screen.findAllByText('Receita de Bolo')).not.toHaveLength(0)
-    await user.type(screen.getByPlaceholderText(/buscar/i), 'react')
+    await user.type(screen.getByPlaceholderText(/search/i), 'react')
 
     expect(screen.queryByText('Receita de Bolo')).toBeNull()
     expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)

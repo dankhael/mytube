@@ -69,6 +69,40 @@ describe('save-video.spec', () => {
     expect(y.title).toBe('y') // untouched
   })
 
+  it('ROB-3: a backend write rejection propagates and leaves the snapshot unchanged', async () => {
+    const backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A')]))
+    const store = new MyTubeStore(backend)
+    backend.failNextWrite(new Error('QUOTA_BYTES_PER_ITEM quota exceeded'))
+    await expect(store.deleteVideo('x')).rejects.toThrow('QUOTA_BYTES_PER_ITEM')
+    expect(backend.snapshot()!.videos.map((v) => v.id)).toEqual(['x'])
+  })
+
+  it('ROB-8: two un-awaited mutations both land in the final snapshot', async () => {
+    const backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], []))
+    backend.delayReads(10) // widen the read-modify-write window
+    const store = new MyTubeStore(backend)
+
+    await Promise.all([
+      store.saveVideo({ ...VIDEO, id: 'aaaaaaaaaaa' }, 'A'),
+      store.saveVideo({ ...VIDEO, id: 'bbbbbbbbbbb' }, 'A'),
+    ])
+
+    const ids = backend.snapshot()!.videos.map((v) => v.id).sort()
+    expect(ids).toEqual(['aaaaaaaaaaa', 'bbbbbbbbbbb'])
+  })
+
+  it('ROB-9: a failed write rejects its caller but does not wedge the queue', async () => {
+    const backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A')]))
+    const store = new MyTubeStore(backend)
+
+    backend.failNextWrite(new Error('sync is sad'))
+    await expect(store.deleteVideo('x')).rejects.toThrow('sync is sad')
+
+    const data = await store.markWatched('x', true)
+    expect(data.videos[0].watched).toBe(true)
+    expect(backend.snapshot()!.videos[0].watched).toBe(true)
+  })
+
   it('REORDER-VID-1: reordering a category keeps other categories intact', async () => {
     backend = new FakeStorageBackend(
       seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [
