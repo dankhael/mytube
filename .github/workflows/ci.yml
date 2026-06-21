@@ -1,0 +1,26 @@
+name: CI
+
+# Gate every PR into master on the same checks the local hooks run: the Vitest
+# suite (reducer + new-tab components) and a clean build (tsc --noEmit + vite
+# build). E2E/Playwright is intentionally excluded — it needs a headed browser
+# and is too slow/flaky for a required check (run `npm run test:e2e` locally).
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
