@@ -28,6 +28,8 @@ export function createConfigModal(
   modal.addEventListener('click', (e) => e.stopPropagation())
   backdrop.appendChild(modal)
 
+  document.body.classList.add('config-open')
+
   // The modal owns a copy of what it shows so it can re-render itself in the
   // new language the moment the user switches (Decisions §2) — without a reopen
   // and without dropping the sound/accent they changed earlier in the session.
@@ -37,6 +39,7 @@ export function createConfigModal(
     if (e.key === 'Escape') destroy()
   }
   function destroy(): void {
+    document.body.classList.remove('config-open')
     document.removeEventListener('keydown', onKey)
     backdrop.remove()
   }
