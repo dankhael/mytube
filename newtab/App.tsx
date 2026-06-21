@@ -18,6 +18,7 @@ import { Category, StorageData, UNCATEGORIZED, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
 import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
+import CategoryChips from './components/CategoryChips'
 import ErrorToast from './components/ErrorToast'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
@@ -165,6 +166,15 @@ export default function App() {
     return map
   }, [data, searched, showWatched])
 
+  // Chips that jump to a category section (spec home-category-chips). Same order
+  // as the rendered sections; under an active search, a category with no matching
+  // video drops its chip (CHIP-5) — without a query every category gets one.
+  const chipCategories = useMemo(() => {
+    if (!data) return []
+    if (!query) return data.categories
+    return data.categories.filter((c) => (videosByCategory.get(c.name)?.length ?? 0) > 0)
+  }, [data, query, videosByCategory])
+
   // Derived, cross-cutting sections (watched always excluded — see the spec).
   const recentlyAdded = useMemo(() => selectRecentlyAdded(searched), [searched])
   const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
@@ -243,6 +253,8 @@ export default function App() {
           <WelcomeScreen />
         ) : (
           <>
+            <CategoryChips categories={chipCategories} />
+
             <SmartSection
               icon={Sparkles}
               title={tr('home.recentlyAdded')}

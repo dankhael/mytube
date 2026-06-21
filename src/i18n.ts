@@ -79,6 +79,7 @@ const EN = {
   'home.category': 'Category',
   'home.recentlyAdded': 'Recently added',
   'home.gatheringDust': 'Gathering dust',
+  'home.jumpToCategory': 'Jump to category',
 
   'welcome.title': 'Your YouTube home, curated by you.',
   'welcome.bodyPre': 'Browse YouTube and click the',
@@ -174,6 +175,7 @@ const PT_BR: Record<MessageKey, string> = {
   'home.category': 'Categoria',
   'home.recentlyAdded': 'Recentemente adicionados',
   'home.gatheringDust': 'Pegando poeira',
+  'home.jumpToCategory': 'Ir para a categoria',
 
   'welcome.title': 'Sua home do YouTube, curada por você.',
   'welcome.bodyPre': 'Navegue pelo YouTube e clique no botão',

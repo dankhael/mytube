@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Category, Video } from '../../src/types'
 import { resolveCategoryIcon } from '../../src/category-icon'
+import { sectionDomId } from '../category-anchor'
 import CategoryIcon from './CategoryIcon'
 import VideoCard from './VideoCard'
 import { useT } from '../i18n-context'
@@ -76,7 +77,7 @@ export default function CategorySection(props: Props) {
   }
 
   return (
-    <section ref={setNodeRef} style={style} className="cat">
+    <section ref={setNodeRef} id={sectionDomId(category.name)} style={style} className="cat">
       <div className="cat-head">
         <button {...attributes} {...listeners} className="drag" title={tr('cat.drag')}>
           <GripVertical size={16} />

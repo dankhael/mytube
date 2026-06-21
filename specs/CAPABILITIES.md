@@ -12,7 +12,7 @@ here in the same PR that lands the spec.
 | Capability | What it does | Authoritative specs (ID prefix) |
 |---|---|---|
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar` |
-| [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `theme-color`, `card-menu-clip`, `channel-avatar` |
+| [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar` |
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
@@ -40,6 +40,8 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
 [newtab/App.tsx](../newtab/App.tsx) and components.
 
 - Saved videos grouped by category in stored order; welcome screen when empty.
+- A YouTube-style category chip row jumps to a category's section (smooth-scroll);
+  chips track the visible-category set and drop under search (CHIP).
 - Smart sections from [newtab/smart-sections.ts](../newtab/smart-sections.ts):
   "Recentemente adicionados" (newest unwatched) and "Pegando poeira" (unwatched
   older than 21 days, hidden when empty); both cap at 12 and exclude watched.
