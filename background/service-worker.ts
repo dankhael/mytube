@@ -7,6 +7,7 @@ import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
 import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
+import { openHomeTab, OPEN_HOME_COMMAND } from '../src/home-page'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
@@ -106,6 +107,12 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onStartup.addListener(() => {
   void refreshAction()
   void backfill.run()
+})
+
+// Keyboard shortcut to open the curated home (commands.open_home). The home is a
+// packaged page, not a new-tab override, so it has to be opened explicitly.
+chrome.commands.onCommand.addListener((command) => {
+  if (command === OPEN_HOME_COMMAND) openHomeTab()
 })
 
 // Keep the badge + icon in sync if storage changes from another context (e.g. new

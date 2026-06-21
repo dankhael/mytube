@@ -8,6 +8,7 @@ import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
+import { openHomeTab, openShortcutSettings, homeShortcut } from '../src/home-page'
 
 function send(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
@@ -15,8 +16,10 @@ function send(message: Message): Promise<MessageResponse> {
   })
 }
 
+// The home is no longer a new-tab override, so open its packaged URL rather than
+// chrome://newtab (which would now land on the browser default). See home-page.ts.
 function openHome(): void {
-  chrome.tabs.create({ url: 'chrome://newtab' })
+  openHomeTab()
 }
 
 // Renders "<b>13</b> unwatched" via DOM APIs instead of innerHTML — the count
@@ -61,24 +64,35 @@ async function init(): Promise<void> {
 
   document.getElementById('open')!.addEventListener('click', openHome)
 
-  document.getElementById('config')!.addEventListener('click', () => {
+  document.getElementById('config')!.addEventListener('click', async () => {
     click()
-    const modal = createConfigModal(settings, {
-      onToggleSound: (enabled) => {
-        settings = { ...settings, soundEffects: enabled }
-        void send({ action: 'UPDATE_SETTINGS', settings: { soundEffects: enabled } })
+    // Read the live shortcut binding so the row shows the user's current key
+    // (Chrome owns it; '' when unset). Fetched on open so it reflects changes
+    // made on the shortcuts page since the popup last opened.
+    const shortcut = await homeShortcut()
+    const modal = createConfigModal(
+      settings,
+      {
+        onToggleSound: (enabled) => {
+          settings = { ...settings, soundEffects: enabled }
+          void send({ action: 'UPDATE_SETTINGS', settings: { soundEffects: enabled } })
+        },
+        onPickAccent: (accent) => {
+          settings = { ...settings, accent }
+          applyAccent(document.documentElement, accent) // live recolor, no reopen
+          void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
+        },
+        onPickLanguage: (language) => {
+          settings = { ...settings, language }
+          paint() // re-localize the list + total live (Decisions §2)
+          void send({ action: 'UPDATE_SETTINGS', settings: { language } })
+        },
+        // Chrome forbids extensions from binding shortcuts; deep-link the user to
+        // its shortcut page. Opening it closes the popup, so no live refresh.
+        onEditShortcut: () => openShortcutSettings(),
       },
-      onPickAccent: (accent) => {
-        settings = { ...settings, accent }
-        applyAccent(document.documentElement, accent) // live recolor, no reopen
-        void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
-      },
-      onPickLanguage: (language) => {
-        settings = { ...settings, language }
-        paint() // re-localize the list + total live (Decisions §2)
-        void send({ action: 'UPDATE_SETTINGS', settings: { language } })
-      },
-    })
+      shortcut,
+    )
     document.body.appendChild(modal)
   })
 

@@ -10,10 +10,19 @@ export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
   onPickAccent: (accent: AccentPreset) => void
   onPickLanguage: (language: Language) => void
+  // Opens Chrome's shortcut settings; extensions can't bind shortcuts themselves.
+  onEditShortcut: () => void
 }
 
+// `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
+// unset. The caller reads it from chrome.commands and passes it in so this modal
+// stays a pure DOM unit (no chrome dependency, jsdom-testable).
 // Returns the backdrop overlay; the caller appends it to the document.
-export function createConfigModal(settings: Settings, cb: ConfigModalCallbacks): HTMLElement {
+export function createConfigModal(
+  settings: Settings,
+  cb: ConfigModalCallbacks,
+  homeShortcut = '',
+): HTMLElement {
   const backdrop = el('div', 'cfg-backdrop')
   const modal = el('div', 'cfg-modal')
   modal.addEventListener('click', (e) => e.stopPropagation())
@@ -53,6 +62,7 @@ export function createConfigModal(settings: Settings, cb: ConfigModalCallbacks):
         shown.accent = accent
         cb.onPickAccent(accent)
       }),
+      shortcutRow(homeShortcut, lang, cb.onEditShortcut),
     )
     return node
   }
@@ -225,6 +235,29 @@ function soundRow(
   })
 
   row.appendChild(toggle)
+  return row
+}
+
+// Keyboard shortcut to open the home. Chrome owns the binding (extensions can't
+// assign their own shortcuts), so this row only DISPLAYS the current shortcut and
+// the right-side button deep-links to chrome://extensions/shortcuts to change it.
+function shortcutRow(shortcut: string, lang: Language, onEdit: () => void): HTMLElement {
+  const row = el('div', 'cfg-row')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.shortcut.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.shortcut.sub', lang)),
+  )
+  row.appendChild(text)
+
+  const button = el('button', 'cfg-shortcut') as HTMLButtonElement
+  button.textContent = shortcut || t('config.shortcut.unset', lang)
+  if (!shortcut) button.classList.add('cfg-shortcut-unset')
+  button.setAttribute('aria-label', t('config.shortcut.change', lang))
+  button.title = t('config.shortcut.change', lang)
+  button.addEventListener('click', onEdit)
+
+  row.appendChild(button)
   return row
 }
 

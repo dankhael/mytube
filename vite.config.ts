@@ -14,7 +14,13 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Keep readable output; CRXJS wires up the inputs from the manifest.
+      // CRXJS only builds HTML pages the manifest references. The curated home is
+      // no longer a new-tab override (see manifest.config.ts), so it isn't a
+      // manifest page — register it here explicitly or it won't be emitted to
+      // dist/ and the open-home action 404s (ERR_FILE_NOT_FOUND).
+      input: {
+        newtab: 'newtab/index.html',
+      },
     },
   },
 })

@@ -370,6 +370,29 @@ footer {
   transform: translateX(18px);
   background: var(--accent-ink);
 }
+/* Pill button showing the current open-home shortcut; opens Chrome's shortcut
+   page on click (extensions can't bind shortcuts themselves). */
+.cfg-shortcut {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.cfg-shortcut:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cfg-shortcut-unset {
+  color: var(--text-3);
+}
 .cfg-swatches {
   margin-left: auto;
   display: flex;

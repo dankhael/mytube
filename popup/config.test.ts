@@ -10,11 +10,17 @@ function open(
   onToggleSound = vi.fn(),
   onPickAccent = vi.fn(),
   onPickLanguage = vi.fn(),
+  homeShortcut = '',
+  onEditShortcut = vi.fn(),
 ) {
   const settings: Settings = { soundEffects: false, accent: 'violet', language: 'en', ...partial }
-  const modal = createConfigModal(settings, { onToggleSound, onPickAccent, onPickLanguage })
+  const modal = createConfigModal(
+    settings,
+    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut },
+    homeShortcut,
+  )
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent, onPickLanguage }
+  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut }
 }
 
 // The sound row is the .cfg-row that owns the toggle (the language row is first now).
@@ -116,6 +122,38 @@ describe('popup-config.spec (modal)', () => {
     expect(red.classList.contains('selected')).toBe(true)
     expect(red.getAttribute('aria-checked')).toBe('true')
     expect(document.querySelectorAll('.cfg-swatch.selected').length).toBe(1)
+  })
+
+  // The shortcut row owns the .cfg-shortcut button.
+  function shortcutButton(): HTMLButtonElement {
+    return document.querySelector<HTMLButtonElement>('.cfg-shortcut')!
+  }
+
+  it('SHORTCUT-1: the shortcut row shows the current binding when set', () => {
+    open({}, vi.fn(), vi.fn(), vi.fn(), 'Ctrl+Shift+Y')
+    const button = shortcutButton()
+    expect(button.textContent).toBe('Ctrl+Shift+Y')
+    expect(button.classList.contains('cfg-shortcut-unset')).toBe(false)
+  })
+
+  it('SHORTCUT-2: the shortcut row shows "Not set" when no binding exists', () => {
+    open({}, vi.fn(), vi.fn(), vi.fn(), '')
+    const button = shortcutButton()
+    expect(button.textContent).toBe('Not set')
+    expect(button.classList.contains('cfg-shortcut-unset')).toBe(true)
+  })
+
+  it('SHORTCUT-3: pt-BR renders the row label and the unset placeholder localized', () => {
+    open({ language: 'pt-BR' }, vi.fn(), vi.fn(), vi.fn(), '')
+    const row = shortcutButton().closest('.cfg-row')!
+    expect(row.querySelector('.cfg-row-label')?.textContent).toBe('Atalho da home')
+    expect(shortcutButton().textContent).toBe('Não definido')
+  })
+
+  it('SHORTCUT-4: clicking the shortcut button calls onEditShortcut', () => {
+    const { onEditShortcut } = open({}, vi.fn(), vi.fn(), vi.fn(), 'Ctrl+Shift+Y')
+    shortcutButton().click()
+    expect(onEditShortcut).toHaveBeenCalledTimes(1)
   })
 
   it('CFG-7: closes via ✕, Esc and backdrop click', () => {

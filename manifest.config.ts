@@ -45,8 +45,17 @@ export default defineManifest({
     '48': 'icons/icon48.png',
     '128': 'icons/icon128.png',
   },
-  chrome_url_overrides: {
-    newtab: 'newtab/index.html',
+  // The curated home is a normal packaged page opened on demand (popup button or
+  // the open_home shortcut), NOT a new-tab override: overriding newtab hijacks
+  // every new tab and triggers Chrome's un-suppressable "keep this page?" consent
+  // prompt, which scares users off at install. See src/home-page.ts.
+  commands: {
+    // Key must stay in sync with OPEN_HOME_COMMAND in src/home-page.ts (the
+    // worker's onCommand match and the popup's shortcut lookup use that constant).
+    open_home: {
+      suggested_key: { default: 'Ctrl+Shift+Y', mac: 'Command+Shift+Y' },
+      description: 'Open the MyTube home',
+    },
   },
   content_scripts: [
     {
