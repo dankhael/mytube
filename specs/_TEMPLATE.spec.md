@@ -28,6 +28,12 @@ Stable IDs (`<PREFIX>-N`). Each row becomes one `it('<ID>: …')`. Keep them
 | **XXX-1** | <starting state> | <action / message> | <observable result> |
 | **XXX-2** |  |  |  |
 
+## Decisions
+
+<Design rationale worth keeping: the WHY behind a non-obvious approach, an
+alternative rejected and why, a constraint from YouTube's DOM / Chrome quotas.
+Omit for small features — this replaces the old separate OpenSpec design.md.>
+
 ## Out of scope / non-goals
 
 - <what this spec deliberately does NOT cover, so the agent doesn't gold-plate>

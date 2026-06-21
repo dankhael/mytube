@@ -19,57 +19,52 @@
 - Reference issue numbers / commit SHAs when a line exists because
   of a specific bug or upstream constraint.
 
-## Spec-driven development
+## Workflow (tiered by change size)
 
-- Specs live in `specs/*.spec.md` with stable acceptance-criteria IDs (e.g.
-  `SAVE-3`). The matching Vitest test names the ID in its `it(...)` title.
-- The `Message` union + `StorageData` schema in `src/types.ts` are the contract.
-- All persistence flows through the `MyTubeStore` reducer over an injected
-  `StorageBackend`; tests inject `FakeStorageBackend` (no Chrome runtime).
-- New feature loop: change (OpenSpec) → spec → contract (types) → failing test →
-  implement → green. DOM/content-script and React UI use the **Manual acceptance**
-  checklists in the spec files instead of unit tests. See `specs/README.md`.
+Pick the tier by the size of the change. Don't pay feature ceremony for a typo.
+Worked, step-by-step recipes for every entry path live in `specs/WORKFLOW.md`.
 
-## Spec handshake (who owns what)
+**Tier 0 — trivial**: one-line fixes, copy/i18n tweaks, CSS/DOM nudges, dep bumps.
+No spec, no handshake.
+- Bug fix with testable logic → write the failing regression test, fix, green.
+- Pure DOM/CSS/copy with nothing a unit test can assert → just make the change.
 
-The agent may draft and execute specs, but a human owns the criteria. This is the
-one boundary that keeps SDD honest — the author of success can't also be its only
-judge. Start from `specs/_TEMPLATE.spec.md`.
+**Tier 1 — feature or behavior change**: new criteria, a new `Message` variant,
+reducer logic. One spec file, the handshake, tests bound to IDs.
 
-1. **Draft** — agent writes `specs/<feature>.spec.md` with `Status: Draft` from the
-   human's feature description. Stop here and ask for approval. Do NOT write code.
-2. **Approve** — the human reviews/edits the acceptance criteria and flips
-   `Status: Approved`. Only a human sets Approved.
-3. **Implement** — only against an `Approved` spec: for each ID, write the failing
-   `it('<ID>: …')`, then implement until green.
-4. **Changing criteria** — never silently edit an `Approved` criterion to make a red
-   test pass. Propose the change as its own spec diff and get human sign-off.
+1. **Draft** — copy `specs/_TEMPLATE.spec.md` → `specs/<feature>.spec.md` with
+   `Status: Draft`. Stop and ask for approval. Do NOT write code.
+2. **Approve** — the human reviews/edits the criteria and flips `Status: Approved`.
+   Only a human sets Approved.
+3. **Contract** — if needed, encode it in `src/types.ts` (a `Message` variant or
+   `StorageData` field) before the test.
+4. **Implement** — for each ID, write the failing `it('<ID>: …')`, then code to green.
+5. **Changing criteria** — never silently edit an `Approved` criterion to turn a red
+   test green. Propose the edit and get human sign-off first.
 
-Rules of thumb: keep criteria **observable** (a test can assert them); if a behavior
-can't be unit-tested (YouTube DOM), it belongs in **Manual acceptance**, not faked in
-a test. For a clean separation, draft the spec in one session and implement in a fresh
-one so the implementer works only from the approved text.
+The spec file is the **single source per feature**. It holds `## Why`, the
+acceptance-criteria table (stable `PREFIX-N` IDs, e.g. `SAVE-3`, one per
+`it('<ID>: …')`), `## Decisions` for design rationale worth keeping, and
+`## Manual acceptance` for DOM/UI behavior a unit test can't assert.
 
-## OpenSpec layer (capability baseline + change tracking)
+Rules of thumb: criteria must be **observable** (a test can assert them); behavior
+that can't be unit-tested (YouTube DOM, render quirks) goes in **Manual acceptance**,
+never faked in a test. Grep an ID to see spec ↔ test in one shot — a criterion with
+no matching test name is a visible coverage gap. For a clean separation, draft the
+spec in one session and implement in a fresh one.
 
-OpenSpec sits *above* the handshake, not in place of it. The two layers divide
-cleanly — keep one source of truth per concern:
+**Contract & persistence (always):** the `Message` union + `StorageData` schema in
+`src/types.ts` are the typed contract. All persistence flows through the `MyTubeStore`
+reducer over an injected `StorageBackend`; tests inject `FakeStorageBackend` (no
+Chrome runtime).
 
-- `openspec/specs/<capability>/spec.md` — the durable **capability baseline**:
-  "what the system does today," in Requirement/Scenario form. Source of truth for
-  the capability map.
-- `openspec/changes/<name>/` — a **proposed change**: `/opsx:propose` drafts it,
-  `/opsx:archive` folds its delta back into the baseline.
-- `specs/*.spec.md` + the handshake above — the **implementation layer**: granular,
-  human-Approved, test-bound criteria with stable IDs. **Unchanged** — the human
-  still owns Approved.
+**Capability map:** `specs/CAPABILITIES.md` is the living "what the app does today"
+index — one digest entry per capability pointing at the authoritative spec IDs.
+Update the relevant bullet in the same PR that lands a Tier-1 spec.
 
-Per-feature flow: `/opsx:propose` a change → refine its delta into granular
-`specs/<feature>.spec.md` criteria (handshake applies) → failing test per ID →
-green → `/opsx:archive`. **Never edit an `openspec/specs/` baseline directly to
-describe new behavior — that change goes through an OpenSpec change.** The baselines
-carry `TODO` notes where legacy criteria IDs aren't yet reconciled 1:1; reconcile a
-capability's TODOs the first time it gets a change.
+**OpenSpec is retired.** `openspec/` is frozen, read-only history — do not run
+`/opsx:propose` or `/opsx:archive`, add new changes, or edit baselines. Spec new
+behavior only in `specs/*.spec.md`.
 
 ## Tests
 
@@ -81,6 +76,9 @@ capability's TODOs the first time it gets a change.
   the edit-time hook because it's slow and needs a browser.
 - A PostToolUse hook (`.claude/settings.json` → `scripts/test-hook.mjs`) runs
   `vitest run` after any source edit and blocks on red. Don't finish on a red gate.
+- A Stop hook (`scripts/capabilities-map-hook.mjs`) blocks finishing when a
+  `specs/*.spec.md` changed in the working tree but `specs/CAPABILITIES.md` did
+  not — keeping the capability map from drifting. Update the map and continue.
 - Every new function gets a test. Bug fixes get a regression test.
 - Mock external I/O (API, DB, filesystem) with named fake classes,
   not inline stubs.

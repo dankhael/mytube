@@ -12,6 +12,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/capabilities-map-hook.mjs",
+            "timeout": 30,
+            "statusMessage": "Checking capability map…"
+          }
+        ]
+      }
     ]
   }
 }
