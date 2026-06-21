@@ -419,8 +419,18 @@ function injectWatchButton() {
     existing?.remove()
     return
   }
-  // Already injected for this video — nothing to do (avoids observer loops).
-  if (existing && existing.getAttribute('data-vid') === data.id) return
+  
+  // Already injected for this video in the correct container.
+  if (existing && existing.getAttribute('data-vid') === data.id && existing.parentElement === actions) {
+    // Ensure our button stays at the end of the flex row if YouTube's SPA logic inserts new native buttons.
+    if (actions.lastElementChild !== existing) {
+      actions.appendChild(existing)
+      const existingBtn = existing.querySelector<HTMLElement>('.mytube-btn')
+      if (buttonRow && existingBtn) matchActionBarMetrics(existing, existingBtn, buttonRow)
+    }
+    return
+  }
+  
   existing?.remove()
 
   const wrapper = document.createElement('div')
