@@ -69,27 +69,41 @@ function gatedIcon(icon: unknown): IconKey | undefined {
   return isIconKey(icon) ? icon : undefined
 }
 
-function validatedSaveVideo(message: Extract<Message, { action: 'SAVE_VIDEO' }>): ValidationResult {
-  const { video } = message
-  if (!isYoutubeVideoId(video.id)) return rejectedId(video.id)
+// The save-shaped payload carried by SAVE_VIDEO and each IMPORT_VIDEOS entry.
+type VideoPayload = Extract<Message, { action: 'SAVE_VIDEO' }>['video']
+
+// Sanitize one incoming video the same way for single-save and batch-import:
+// canonical thumbnail, clamped text, host-gated avatar. Returns null when the id
+// is malformed so the caller decides (SAVE rejects; IMPORT drops the entry).
+function gateVideo(video: VideoPayload): VideoPayload | null {
+  if (!isYoutubeVideoId(video.id)) return null
   return {
-    ok: true,
-    message: {
-      ...message,
-      category: clampText(message.category),
-      video: {
-        ...video,
-        title: clampText(video.title),
-        thumbnail: canonicalThumbnail(video.id, video.thumbnail),
-        channelName: clampText(video.channelName),
-        // Keep the avatar only if it's an https URL on an allowlisted host;
-        // anything else is dropped (undefined) without failing the save.
-        channelThumbnail: isAllowedAvatarUrl(video.channelThumbnail)
-          ? video.channelThumbnail
-          : undefined,
-      },
-    },
+    ...video,
+    title: clampText(video.title),
+    thumbnail: canonicalThumbnail(video.id, video.thumbnail),
+    channelName: clampText(video.channelName),
+    // Keep the avatar only if it's an https URL on an allowlisted host;
+    // anything else is dropped (undefined) without failing the save.
+    channelThumbnail: isAllowedAvatarUrl(video.channelThumbnail) ? video.channelThumbnail : undefined,
   }
+}
+
+function validatedSaveVideo(message: Extract<Message, { action: 'SAVE_VIDEO' }>): ValidationResult {
+  const gated = gateVideo(message.video)
+  if (!gated) return rejectedId(message.video.id)
+  return { ok: true, message: { ...message, category: clampText(message.category), video: gated } }
+}
+
+// Drop malformed entries instead of rejecting the whole batch: one garbage
+// playlist row must never fail a 100-video import (IMPORT-7). An all-invalid
+// payload resolves to an empty, harmless import (IMPORT-9).
+function validatedImportVideos(
+  message: Extract<Message, { action: 'IMPORT_VIDEOS' }>,
+): ValidationResult {
+  const videos = message.videos
+    .map(gateVideo)
+    .filter((v): v is VideoPayload => v !== null)
+  return { ok: true, message: { ...message, category: clampText(message.category), videos } }
 }
 
 // Lookup-only fields (UPDATE_CATEGORY.oldName, DELETE_CATEGORY.name, REORDER_*
@@ -98,6 +112,8 @@ export function validateIncomingMessage(message: Message): ValidationResult {
   switch (message.action) {
     case 'SAVE_VIDEO':
       return validatedSaveVideo(message)
+    case 'IMPORT_VIDEOS':
+      return validatedImportVideos(message)
     case 'DELETE_VIDEO':
     case 'MARK_WATCHED':
       return isYoutubeVideoId(message.id) ? { ok: true, message } : rejectedId(message.id)

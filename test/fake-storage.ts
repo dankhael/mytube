@@ -36,12 +36,20 @@ export class FakeStorageBackend implements StorageBackend {
     return snapshot
   }
 
+  // Commit counter so a test can assert a batch mutation is a SINGLE write
+  // (IMPORT-1: a whole playlist is one commit, not N).
+  private writes = 0
+  get writeCount(): number {
+    return this.writes
+  }
+
   async write(data: StorageData): Promise<void> {
     if (this.nextWriteError) {
       const error = this.nextWriteError
       this.nextWriteError = undefined
       throw error
     }
+    this.writes += 1
     this.data = structuredClone(data)
   }
 

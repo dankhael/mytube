@@ -126,6 +126,13 @@ const EN = {
   'content.savedToast': 'Saved in {category} ✨',
   'content.newCategory': '+ New category',
   'content.categoryNamePlaceholder': 'Category name…',
+
+  'content.import.button': 'Import to MyTube',
+  'content.import.loading': 'Importing…',
+  'content.import.pickCategory': 'Import playlist to…',
+  'content.import.empty': 'No videos found on this playlist.',
+  'content.import.done': '{count} videos imported ✨',
+  'content.import.failed': 'Import failed. Try again.',
 } as const
 
 export type MessageKey = keyof typeof EN
@@ -222,6 +229,13 @@ const PT_BR: Record<MessageKey, string> = {
   'content.savedToast': 'Salvo em {category} ✨',
   'content.newCategory': '+ Nova categoria',
   'content.categoryNamePlaceholder': 'Nome da categoria…',
+
+  'content.import.button': 'Importar para o MyTube',
+  'content.import.loading': 'Importando…',
+  'content.import.pickCategory': 'Importar playlist para…',
+  'content.import.empty': 'Nenhum vídeo encontrado nesta playlist.',
+  'content.import.done': '{count} vídeos importados ✨',
+  'content.import.failed': 'Falha na importação. Tente de novo.',
 }
 
 const CATALOG: Record<Language, Record<MessageKey, string>> = { en: EN, 'pt-BR': PT_BR }

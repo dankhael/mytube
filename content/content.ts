@@ -3,10 +3,10 @@
 // try/catch since the DOM structure shifts often.
 
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
-import { MISSING_CHANNEL, MISSING_TITLE } from '../src/metadata'
-import { isYoutubeVideoId } from '../src/validate-message'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
+import { CardData, extractCard, extractWatchPage } from './extract-card'
+import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 
 // Active interface language, refreshed from the store on init and on change.
 // The content script is plain DOM (no React context), so it threads `lang`
@@ -27,91 +27,6 @@ let savedIds: Map<string, string> = new Map() // videoId -> category
 // Module-scope so teardown() (finding M4) can detach them after orphaning.
 let observer: MutationObserver | null = null
 let torndown = false
-
-interface CardData {
-  id: string
-  title: string
-  thumbnail: string
-  channelName: string
-  channelThumbnail?: string // channel avatar URL when the DOM exposes one
-}
-
-// Best-effort read of the channel avatar <img> within a card/owner scope. Covers
-// classic renderers (#avatar img / yt-img-shadow) and the newer lockup/owner
-// view-models. Returns undefined when absent — the worker host-gates the value
-// anyway (channel-avatar), and the home card falls back to the initial letter.
-function extractAvatar(scope: ParentNode): string | undefined {
-  const img =
-    scope.querySelector<HTMLImageElement>('#avatar img') ||
-    scope.querySelector<HTMLImageElement>('yt-img-shadow img') ||
-    scope.querySelector<HTMLImageElement>('.yt-spec-avatar-shape img') ||
-    scope.querySelector<HTMLImageElement>('yt-decorated-avatar-view-model img')
-  const src = img?.currentSrc || img?.src || ''
-  return src.startsWith('https://') ? src : undefined
-}
-
-function extractCard(card: HTMLElement): CardData | null {
-  const link =
-    card.querySelector<HTMLAnchorElement>('a#thumbnail') ||
-    card.querySelector<HTMLAnchorElement>('a[href*="watch?v="]')
-  const href = link?.getAttribute('href') || ''
-  const match = href.match(/[?&]v=([\w-]{11})/)
-  if (!match) return null
-  const id = match[1]
-
-  // Cover classic renderers (#video-title) and the newer lockup view-models.
-  const titleEl = card.querySelector<HTMLElement>(
-    '#video-title, #video-title-link, .yt-lockup-metadata-view-model-wiz__title, h3 a',
-  )
-  const title =
-    titleEl?.textContent?.trim() ||
-    titleEl?.getAttribute('title')?.trim() ||
-    link?.getAttribute('title')?.trim() ||
-    link?.getAttribute('aria-label')?.trim() ||
-    MISSING_TITLE
-
-  const channelEl =
-    card.querySelector<HTMLElement>('#channel-name a') ||
-    card.querySelector<HTMLElement>('ytd-channel-name a') ||
-    card.querySelector<HTMLElement>('#channel-name #text') ||
-    card.querySelector<HTMLElement>('.yt-content-metadata-view-model-wiz__metadata-text') ||
-    // New lockup renderer (watch suggestions) uses camelCase classes; the first
-    // metadata-text span is the channel (followed by views, then date).
-    card.querySelector<HTMLElement>('.ytContentMetadataViewModelMetadataText')
-  const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
-
-  // mqdefault is stable regardless of YouTube's lazy-loaded <img> state.
-  const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
-
-  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(card) }
-}
-
-// Reads the video currently open on a /watch page (the one in the player).
-function extractWatchPage(): CardData | null {
-  if (!location.pathname.startsWith('/watch')) return null
-  const id = new URLSearchParams(location.search).get('v')
-  // Same 11-char shape check the card path's href regex applies (finding S2) —
-  // a garbage ?v= never becomes a save pill or a message payload.
-  if (!id || !isYoutubeVideoId(id)) return null
-
-  const titleEl = document.querySelector<HTMLElement>(
-    'ytd-watch-metadata #title h1, h1.ytd-watch-metadata, #title h1.style-scope.ytd-watch-metadata',
-  )
-  const title =
-    titleEl?.textContent?.trim() || document.title.replace(/ - YouTube$/, '').trim() || MISSING_TITLE
-
-  const channelEl = document.querySelector<HTMLElement>(
-    'ytd-watch-metadata ytd-channel-name a, #owner #channel-name a, #upload-info #channel-name a',
-  )
-  const channelName = channelEl?.textContent?.trim() || MISSING_CHANNEL
-
-  const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
-  // Scope to the owner block so we read the channel's avatar, not some other
-  // avatar elsewhere on the watch page (comments, suggestions).
-  const ownerScope =
-    document.querySelector<HTMLElement>('ytd-video-owner-renderer, #owner') ?? document
-  return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(ownerScope) }
-}
 
 // When the extension is reloaded/updated, already-injected scripts are orphaned
 // and chrome.runtime.sendMessage throws "Extension context invalidated"
@@ -145,7 +60,7 @@ function teardown(): void {
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', onVisibilityChange)
   document
-    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast')
+    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast, #mytube-import-btn')
     .forEach((node) => node.remove())
 }
 
@@ -241,7 +156,18 @@ function positionDropdown(dropdown: HTMLElement, btn: HTMLElement) {
   dropdown.style.right = `${Math.round(window.innerWidth - r.right)}px`
 }
 
-async function openDropdown(btn: HTMLElement, card: CardData) {
+// Headers the generic picker can show — both are catalog keys (i18n).
+type PickerHeaderKey = 'content.saveTo' | 'content.import.pickCategory'
+
+// Generic category chooser: builds the themed dropdown, lists categories plus an
+// inline "+ Nova categoria", and hands the chosen name to `onPick`. Both the
+// per-card save and the playlist import (content/playlist-import.ts) drive it —
+// the action is injected, not baked in.
+async function openCategoryPicker(
+  btn: HTMLElement,
+  onPick: (category: string) => void,
+  headerKey: PickerHeaderKey = 'content.saveTo',
+) {
   closeAllDropdowns()
   const categories = await getCategories()
 
@@ -250,29 +176,12 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
 
   const header = document.createElement('div')
   header.className = 'mytube-dropdown-header'
-  header.textContent = t('content.saveTo', lang)
+  header.textContent = t(headerKey, lang)
   dropdown.appendChild(header)
 
-  const saveTo = async (category: string) => {
-    const res = await sendMessage({
-      action: 'SAVE_VIDEO',
-      video: {
-        id: card.id,
-        title: card.title,
-        thumbnail: card.thumbnail,
-        channelName: card.channelName,
-        channelThumbnail: card.channelThumbnail,
-      },
-      category,
-    })
+  const choose = (category: string) => {
     closeAllDropdowns()
-    if (res.ok) {
-      savedIds.set(card.id, category)
-      setSavedState(btn, category)
-      btn.classList.add('mytube-flash')
-      setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
-      showToast(t('content.savedToast', lang, { category }))
-    }
+    onPick(category)
   }
 
   categories.forEach((cat) => {
@@ -281,7 +190,7 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
     item.textContent = `${cat.emoji} ${cat.name}`
     item.addEventListener('click', (e) => {
       e.stopPropagation()
-      void saveTo(cat.name)
+      choose(cat.name)
     })
     dropdown.appendChild(item)
   })
@@ -299,7 +208,7 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
     input.addEventListener('keydown', (ev) => {
       ev.stopPropagation()
       if (ev.key === 'Enter' && input.value.trim()) {
-        void saveTo(input.value.trim())
+        choose(input.value.trim())
       } else if (ev.key === 'Escape') {
         closeAllDropdowns()
       }
@@ -314,6 +223,32 @@ async function openDropdown(btn: HTMLElement, card: CardData) {
   // pill lives deep inside #top-level-buttons-computed).
   document.documentElement.appendChild(dropdown)
   positionDropdown(dropdown, btn)
+}
+
+// Saves a single card into the chosen category and reflects it on the button.
+async function saveCardToCategory(btn: HTMLElement, card: CardData, category: string) {
+  const res = await sendMessage({
+    action: 'SAVE_VIDEO',
+    video: {
+      id: card.id,
+      title: card.title,
+      thumbnail: card.thumbnail,
+      channelName: card.channelName,
+      channelThumbnail: card.channelThumbnail,
+    },
+    category,
+  })
+  if (res.ok) {
+    savedIds.set(card.id, category)
+    setSavedState(btn, category)
+    btn.classList.add('mytube-flash')
+    setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
+    showToast(t('content.savedToast', lang, { category }))
+  }
+}
+
+function openSaveDropdown(btn: HTMLElement, card: CardData) {
+  void openCategoryPicker(btn, (category) => void saveCardToCategory(btn, card, category))
 }
 
 function injectButton(card: HTMLElement) {
@@ -361,7 +296,7 @@ function injectButton(card: HTMLElement) {
     } catch {
       current = null
     }
-    void openDropdown(btn, current ?? data!)
+    openSaveDropdown(btn, current ?? data!)
   })
 
   wrapper.appendChild(btn)
@@ -446,12 +381,23 @@ function injectWatchButton() {
     e.stopPropagation()
     const isOpen = document.querySelector('.mytube-dropdown')
     if (isOpen) closeAllDropdowns()
-    else void openDropdown(btn, data)
+    else openSaveDropdown(btn, data)
   })
 
   wrapper.appendChild(btn)
   actions.appendChild(wrapper)
   if (buttonRow) matchActionBarMetrics(wrapper, btn, buttonRow)
+}
+
+// Shared chrome handed to the playlist importer so it owns only playlist DOM and
+// never imports back into content.ts (no cycle). The picker opens with the
+// import-specific header.
+const playlistImportDeps: PlaylistImportDeps = {
+  sendMessage,
+  openCategoryPicker: (anchor, onPick) =>
+    void openCategoryPicker(anchor, onPick, 'content.import.pickCategory'),
+  showToast,
+  getLang: () => lang,
 }
 
 function scan() {
@@ -468,6 +414,11 @@ function scan() {
     injectWatchButton()
   } catch {
     // ignore if the watch action bar isn't ready yet
+  }
+  try {
+    scanPlaylistPage(playlistImportDeps)
+  } catch {
+    // ignore if the playlist header isn't ready yet
   }
 }
 
@@ -607,6 +558,22 @@ function injectStyles() {
     .mytube-dropdown-input {
       width: 100%; box-sizing: border-box; background: #121212; color: #fff;
       border: 1px solid #3ea6ff; border-radius: 6px; padding: 8px; font-size: 13px; margin-top: 4px;
+    }
+
+    /* Playlist-import button (spec IMPORT-DOM-1). Themed accent pill; in the
+       header it sits inline, the floating fallback pins to the bottom-right. */
+    .mytube-import-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: Roboto, system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent);
+      border: 1px solid transparent; border-radius: 999px;
+      padding: 10px 18px; margin: 8px; cursor: pointer; transition: background .15s, transform .15s;
+    }
+    .mytube-import-btn:hover { background: var(--mytube-accent-2); }
+    .mytube-import-btn:disabled { opacity: .6; cursor: default; }
+    .mytube-import-btn--floating {
+      position: fixed; bottom: 24px; right: 24px; z-index: 2147483000; margin: 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
     }
   `
   document.documentElement.appendChild(style)

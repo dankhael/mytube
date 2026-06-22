@@ -12,6 +12,7 @@ here in the same PR that lands the spec.
 | Capability | What it does | Authoritative specs (ID prefix) |
 |---|---|---|
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar` |
+| [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
 | [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar` |
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
@@ -34,6 +35,18 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   best-effort `channelThumbnail`); "+ Nova categoria" creates-and-saves inline.
 - Re-saving a known id **moves** it instead of duplicating (SAVE-3).
 - Injected buttons re-sync their Salvo/Salvar state from `storage.onChanged`.
+
+## Playlist import
+
+Content script [content/playlist-import.ts](../content/playlist-import.ts) (+ shared
+[content/extract-card.ts](../content/extract-card.ts)) ↔ service worker over `IMPORT_VIDEOS`.
+
+- Scrapes the rendered rows of a `youtube.com/playlist?list=…` page (Watch Later
+  `WL`, Liked `LL`, any created playlist) via the content script — no API/OAuth.
+- A button injected on the playlist header opens the category picker; the whole
+  list imports into the chosen category in one `IMPORT_VIDEOS` batch commit.
+- Re-importing a known video moves it (consistent with SAVE-3); huge playlists are
+  best-effort (auto-scroll, IMPORT-DOM-5).
 
 ## Curated home
 

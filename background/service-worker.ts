@@ -140,6 +140,14 @@ async function handle(incoming: Message): Promise<MessageResponse> {
         await updateBadge(data)
         return { ok: true, data }
       }
+      case 'IMPORT_VIDEOS': {
+        // No per-row oEmbed enrichment here: a large playlist would mean dozens
+        // of fetches blocking the import. The guarded backfill pass fills any
+        // missing title/channel later (see metadata / backfill).
+        const data = await store.importVideos(message.videos, message.category)
+        await updateBadge(data)
+        return { ok: true, data }
+      }
       case 'GET_ALL': {
         const data = await store.getData()
         // Fire-and-forget: the new tab updates live via storage.onChanged.

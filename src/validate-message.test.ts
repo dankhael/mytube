@@ -147,6 +147,59 @@ describe('security-hardening.spec — validate-message', () => {
     }
   })
 
+  it('IMPORT-7: an IMPORT_VIDEOS batch drops malformed entries and keeps valid ones', () => {
+    const message: Message = {
+      action: 'IMPORT_VIDEOS',
+      videos: [
+        { id: VALID_ID, title: 'ok', thumbnail: CANONICAL, channelName: 'X' },
+        { id: 'bad?id!!', title: 'garbage', thumbnail: CANONICAL, channelName: 'X' },
+        { id: 'aaaaaaaaaaa', title: 'ok2', thumbnail: CANONICAL, channelName: 'X' },
+      ],
+      category: 'Watch Later',
+    }
+    const validated = accepted(validateIncomingMessage(message))
+    if (validated.action !== 'IMPORT_VIDEOS') throw new Error('action changed by validation')
+    expect(validated.videos.map((v) => v.id)).toEqual([VALID_ID, 'aaaaaaaaaaa'])
+  })
+
+  it('IMPORT-8: each kept entry is canonicalized, clamped and avatar host-gated', () => {
+    const long = 'z'.repeat(400)
+    const message: Message = {
+      action: 'IMPORT_VIDEOS',
+      videos: [
+        {
+          id: VALID_ID,
+          title: long,
+          thumbnail: 'https://evil.example/pixel.gif',
+          channelName: long,
+          channelThumbnail: 'https://evil.example/avatar.gif',
+        },
+      ],
+      category: 'C',
+    }
+    const validated = accepted(validateIncomingMessage(message))
+    if (validated.action !== 'IMPORT_VIDEOS') throw new Error('action changed by validation')
+    const v = validated.videos[0]
+    expect(v.thumbnail).toBe(CANONICAL)
+    expect(v.title).toHaveLength(300)
+    expect(v.channelName).toHaveLength(300)
+    expect(v.channelThumbnail).toBeUndefined()
+  })
+
+  it('IMPORT-9: an all-invalid IMPORT_VIDEOS batch resolves to an empty import, not a rejection', () => {
+    const message: Message = {
+      action: 'IMPORT_VIDEOS',
+      videos: [
+        { id: 'nope', title: 'x', thumbnail: CANONICAL, channelName: 'X' },
+        { id: '', title: 'y', thumbnail: CANONICAL, channelName: 'X' },
+      ],
+      category: 'C',
+    }
+    const validated = accepted(validateIncomingMessage(message))
+    if (validated.action !== 'IMPORT_VIDEOS') throw new Error('action changed by validation')
+    expect(validated.videos).toEqual([])
+  })
+
   it('SEC-12: an icon outside the closed set reads as unset in category messages', () => {
     const add: Message = { action: 'ADD_CATEGORY', name: 'Caveiras', emoji: '💀', icon: 'skull' as IconKey }
     const update: Message = {

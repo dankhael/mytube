@@ -119,6 +119,68 @@ describe('save-video.spec', () => {
   })
 })
 
+describe('playlist-import.spec', () => {
+  const v1 = { id: 'aaaaaaaaaaa', title: 'A', thumbnail: 't', channelName: 'C' }
+  const v2 = { id: 'bbbbbbbbbbb', title: 'B', thumbnail: 't', channelName: 'C' }
+  const v3 = { id: 'ccccccccccc', title: 'D', thumbnail: 't', channelName: 'C' }
+
+  it('IMPORT-1: a batch is stored with category/addedAt/watched in a single write', async () => {
+    const backend = new FakeStorageBackend(seed([], []))
+    const store = new MyTubeStore(backend)
+    const data = await store.importVideos([v1, v2, v3], 'Música')
+    expect(data.videos).toHaveLength(3)
+    for (const v of data.videos) {
+      expect(v.category).toBe('Música')
+      expect(v.watched).toBe(false)
+      expect(typeof v.addedAt).toBe('number')
+    }
+    expect(backend.writeCount).toBe(1)
+  })
+
+  it('IMPORT-2: importing into an unknown category creates it once', async () => {
+    const backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], []))
+    const store = new MyTubeStore(backend)
+    const data = await store.importVideos([v1], 'Música')
+    expect(data.categories.filter((c) => c.name === 'Música')).toHaveLength(1)
+    expect(data.videos[0].category).toBe('Música')
+  })
+
+  it('IMPORT-3: re-importing a saved video moves it, preserving addedAt/watched', async () => {
+    const existing: Video = { ...v1, category: 'A', addedAt: 42, watched: true, watchedAt: 7 }
+    const backend = new FakeStorageBackend(
+      seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [existing]),
+    )
+    const store = new MyTubeStore(backend)
+    const data = await store.importVideos([v1], 'B')
+    expect(data.videos.filter((v) => v.id === v1.id)).toHaveLength(1)
+    expect(data.videos[0]).toMatchObject({ category: 'B', addedAt: 42, watched: true })
+  })
+
+  it('IMPORT-4: imported videos are prepended in the given array order', async () => {
+    const store = new MyTubeStore(new FakeStorageBackend(seed([], [])))
+    const data = await store.importVideos([v1, v2, v3], 'C')
+    expect(data.videos.map((v) => v.id)).toEqual([v1.id, v2.id, v3.id])
+  })
+
+  it('IMPORT-5: a duplicate id within one payload collapses to a single entry', async () => {
+    const store = new MyTubeStore(new FakeStorageBackend(seed([], [])))
+    const dup = { ...v1, title: 'newer' }
+    const data = await store.importVideos([v1, dup], 'C')
+    const matches = data.videos.filter((v) => v.id === v1.id)
+    expect(matches).toHaveLength(1)
+    expect(matches[0].title).toBe('newer') // later occurrence wins
+  })
+
+  it('IMPORT-6: importing an empty list is a no-op (no category, no write)', async () => {
+    const backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A')]))
+    const store = new MyTubeStore(backend)
+    const data = await store.importVideos([], 'C')
+    expect(data.videos.map((v) => v.id)).toEqual(['x'])
+    expect(data.categories.map((c) => c.name)).toEqual(['A'])
+    expect(backend.writeCount).toBe(0)
+  })
+})
+
 describe('categories.spec', () => {
   it('CAT-1: adding a duplicate category name is a no-op', async () => {
     const store = new MyTubeStore(new FakeStorageBackend(seed([], [])))
