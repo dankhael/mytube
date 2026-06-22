@@ -61,6 +61,10 @@ const EN = {
   'config.shortcut.sub': 'Keyboard shortcut to open your home',
   'config.shortcut.change': 'Change shortcut',
   'config.shortcut.unset': 'Not set',
+  'config.startup.label': 'Open home on startup',
+  'config.startup.sub': 'Show your library when the browser opens',
+  'config.remind.label': 'Remind me on YouTube',
+  'config.remind.sub': 'A nudge on the YouTube home to watch your saved videos',
   'config.donate.title': 'Buy me a coffee',
   'config.donate.sub': 'Support the developer',
   'config.donate.soon': 'SOON',
@@ -133,6 +137,10 @@ const EN = {
   'content.import.empty': 'No videos found on this playlist.',
   'content.import.done': '{count} videos imported ✨',
   'content.import.failed': 'Import failed. Try again.',
+
+  'content.nudge.text': 'You have {count} saved videos waiting in MyTube.',
+  'content.nudge.open': 'Open MyTube',
+  'content.nudge.dismiss': 'Dismiss',
 } as const
 
 export type MessageKey = keyof typeof EN
@@ -164,6 +172,10 @@ const PT_BR: Record<MessageKey, string> = {
   'config.shortcut.sub': 'Atalho de teclado para abrir sua home',
   'config.shortcut.change': 'Alterar atalho',
   'config.shortcut.unset': 'Não definido',
+  'config.startup.label': 'Abrir a home ao iniciar',
+  'config.startup.sub': 'Mostrar sua biblioteca quando o navegador abrir',
+  'config.remind.label': 'Lembrar no YouTube',
+  'config.remind.sub': 'Um lembrete na home do YouTube para assistir seus vídeos salvos',
   'config.donate.title': 'Pague um café',
   'config.donate.sub': 'Apoie o dev',
   'config.donate.soon': 'BREVE',
@@ -236,6 +248,10 @@ const PT_BR: Record<MessageKey, string> = {
   'content.import.empty': 'Nenhum vídeo encontrado nesta playlist.',
   'content.import.done': '{count} vídeos importados ✨',
   'content.import.failed': 'Falha na importação. Tente de novo.',
+
+  'content.nudge.text': 'Você tem {count} vídeos salvos esperando no MyTube.',
+  'content.nudge.open': 'Abrir o MyTube',
+  'content.nudge.dismiss': 'Dispensar',
 }
 
 const CATALOG: Record<Language, Record<MessageKey, string>> = { en: EN, 'pt-BR': PT_BR }

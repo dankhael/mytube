@@ -3,6 +3,8 @@
 // "keep this page?" consent prompt and hijacks every new tab). So callers open
 // it on demand via its runtime URL, never chrome://newtab.
 
+import { MessageResponse } from './types'
+
 // Path of the home page inside the extension bundle (relative to the root).
 export const HOME_PAGE_PATH = 'newtab/index.html'
 
@@ -25,6 +27,15 @@ export function openHomeTab(
   getUrl: (path: string) => string = chrome.runtime.getURL,
 ): void {
   tabs.create({ url: getUrl(HOME_PAGE_PATH) })
+}
+
+// Worker handler for the OPEN_HOME message: opens the home and acknowledges.
+// Extracted (with an injectable opener) so the trivial handler is unit-tested
+// without importing the service worker, which touches chrome.* at module load
+// (spec watch-reminders, REMIND-7).
+export function handleOpenHome(open: () => void = openHomeTab): MessageResponse {
+  open()
+  return { ok: true }
 }
 
 // Opens Chrome's shortcut settings so the user can bind/rebind the open-home

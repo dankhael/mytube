@@ -12,15 +12,24 @@ function open(
   onPickLanguage = vi.fn(),
   homeShortcut = '',
   onEditShortcut = vi.fn(),
+  onToggleStartup = vi.fn(),
+  onToggleHomeReminder = vi.fn(),
 ) {
-  const settings: Settings = { soundEffects: false, accent: 'violet', language: 'en', ...partial }
+  const settings: Settings = {
+    soundEffects: false,
+    accent: 'violet',
+    language: 'en',
+    openHomeOnStartup: false,
+    remindOnYoutubeHome: false,
+    ...partial,
+  }
   const modal = createConfigModal(
     settings,
-    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut },
+    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder },
     homeShortcut,
   )
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut }
+  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder }
 }
 
 // The sound row is the .cfg-row that owns the toggle (the language row is first now).
@@ -154,6 +163,36 @@ describe('popup-config.spec (modal)', () => {
     const { onEditShortcut } = open({}, vi.fn(), vi.fn(), vi.fn(), 'Ctrl+Shift+Y')
     shortcutButton().click()
     expect(onEditShortcut).toHaveBeenCalledTimes(1)
+  })
+
+  it('REMIND-11: the startup toggle reflects the setting and reports the negated value', () => {
+    const { onToggleStartup } = open(
+      { openHomeOnStartup: false },
+      vi.fn(), vi.fn(), vi.fn(), '', vi.fn(),
+      vi.fn(),
+    )
+    const toggle = document.querySelector<HTMLElement>('.cfg-toggle--startup')!
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    const row = toggle.closest('.cfg-row')!
+    expect(row.querySelector('.cfg-row-label')?.textContent).toBe('Open home on startup')
+    toggle.click()
+    expect(onToggleStartup).toHaveBeenCalledWith(true)
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('REMIND-12: the YouTube-home reminder toggle reflects the setting and reports the negated value', () => {
+    const { onToggleHomeReminder } = open(
+      { remindOnYoutubeHome: true },
+      vi.fn(), vi.fn(), vi.fn(), '', vi.fn(), vi.fn(),
+      vi.fn(),
+    )
+    const toggle = document.querySelector<HTMLElement>('.cfg-toggle--remind')!
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    const row = toggle.closest('.cfg-row')!
+    expect(row.querySelector('.cfg-row-label')?.textContent).toBe('Remind me on YouTube')
+    toggle.click()
+    expect(onToggleHomeReminder).toHaveBeenCalledWith(false)
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
   })
 
   it('CFG-7: closes via ✕, Esc and backdrop click', () => {

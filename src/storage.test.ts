@@ -292,4 +292,15 @@ describe('popup-config.spec (settings)', () => {
     const persisted = await new MyTubeStore(backend).getData()
     expect(persisted.settings.soundEffects).toBe(true)
   })
+
+  it('REMIND-4: updating one reminder toggle leaves the other settings untouched', async () => {
+    const backend = new FakeStorageBackend()
+    const store = new MyTubeStore(backend)
+    await store.updateSettings({ openHomeOnStartup: true })
+    const persisted = await new MyTubeStore(backend).getData()
+    expect(persisted.settings.openHomeOnStartup).toBe(true)
+    // The partial patch must not flip the sibling toggle or the other prefs.
+    expect(persisted.settings.remindOnYoutubeHome).toBe(false)
+    expect(persisted.settings.soundEffects).toBe(false)
+  })
 })

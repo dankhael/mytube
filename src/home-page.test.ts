@@ -3,6 +3,7 @@ import {
   HOME_PAGE_PATH,
   OPEN_HOME_COMMAND,
   SHORTCUTS_PAGE,
+  handleOpenHome,
   homeShortcut,
   openHomeTab,
   openShortcutSettings,
@@ -22,6 +23,15 @@ describe('home-page — openHomeTab', () => {
     expect(getUrl).toHaveBeenCalledWith(HOME_PAGE_PATH)
     expect(create).toHaveBeenCalledWith({ url: 'chrome-extension://abc/newtab/index.html' })
     expect(create).not.toHaveBeenCalledWith({ url: 'chrome://newtab' })
+  })
+})
+
+describe('home-page — handleOpenHome (OPEN_HOME message)', () => {
+  it('REMIND-7: opens the home once and acknowledges with { ok: true }', () => {
+    const open = vi.fn()
+    const response = handleOpenHome(open)
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(response).toEqual({ ok: true })
   })
 })
 

@@ -32,12 +32,18 @@ export interface Settings {
   soundEffects: boolean
   accent: AccentPreset // accent color; applied via --accent-h (see src/theme.ts)
   language: Language // interface language; UI copy comes from src/i18n.ts
+  // Watch-reminder toggles (spec watch-reminders / REMIND). Both opt-in: they
+  // deliver the old new-tab reminder value WITHOUT claiming the new tab.
+  openHomeOnStartup: boolean // open the home in one tab when the browser launches
+  remindOnYoutubeHome: boolean // dismissible nudge on the YouTube home page
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   soundEffects: false, // opt-in: no surprise audio on first install
   accent: DEFAULT_ACCENT, // preserves the original look (--accent-h: 290)
   language: DEFAULT_LANGUAGE, // English-first; pt-BR is opt-in (spec I18N-1)
+  openHomeOnStartup: false, // off by default: a fresh install opens no surprise tab (REMIND-1)
+  remindOnYoutubeHome: false, // off by default: no banner until the user opts in (REMIND-1)
 }
 
 export interface StorageData {
@@ -80,6 +86,10 @@ export type Message =
   | { action: 'REORDER_VIDEOS'; category: string; order: string[] }
   | { action: 'GET_SAVED_IDS' }
   | { action: 'UPDATE_SETTINGS'; settings: Partial<Settings> }
+  // Opens the curated home in a new tab. Sent by the YouTube-home reminder nudge
+  // (content script), which can't navigate the page to a chrome-extension:// URL
+  // itself; the worker opens it via openHomeTab (spec watch-reminders, D3).
+  | { action: 'OPEN_HOME' }
 
 export interface SavedIdInfo {
   id: string
