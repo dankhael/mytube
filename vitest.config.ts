@@ -10,12 +10,20 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'newtab/**/*.test.tsx', 'newtab/**/*.test.ts', 'popup/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'content/**/*.test.ts',
+      'newtab/**/*.test.tsx',
+      'newtab/**/*.test.ts',
+      'popup/**/*.test.ts',
+    ],
     setupFiles: ['./test/setup.ts'],
-    // The default 'forks' pool is broken under vite 8 + vitest 4 on Windows: every
-    // suite dies before collection with "Cannot read properties of undefined
-    // (reading 'config')" / "failed to find the current suite". The 'threads' pool
-    // runs the same suite green (and faster). Cross-platform safe, so pinned here.
-    pool: 'threads',
+    // Run suites serially. On vite 8 + vitest 4 (Windows, Node 22.22) parallel
+    // worker startup races and whole suites die before collection with "Cannot
+    // read properties of undefined (reading 'config')" / "failed to find the
+    // current suite" — flakily, regardless of the pool (threads/forks/vmThreads
+    // each pass a single file but fail the full parallel run). Serial startup is
+    // deterministic and green; the suite is small (~13s), so the cost is fine.
+    fileParallelism: false,
   },
 })

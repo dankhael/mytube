@@ -35,6 +35,11 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   best-effort `channelThumbnail`); "+ Nova categoria" creates-and-saves inline.
 - Re-saving a known id **moves** it instead of duplicating (SAVE-3).
 - Injected buttons re-sync their Salvo/Salvar state from `storage.onChanged`.
+- Both the card and the `/watch` pill **re-read the video on click** so a recycled
+  node or late-loading watch metadata can't save a stale title/channel (M3, SALVAR-FRESH).
+- The category menu flips above its button when there's no room below and stays
+  pinned to it on scroll/resize, so a top-of-page save is always reachable
+  (`content/dropdown-position.ts`; SALVAR-MENU-1..4, SALVAR-MENU-TRACK).
 
 ## Playlist import
 

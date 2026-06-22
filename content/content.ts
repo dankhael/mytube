@@ -6,6 +6,7 @@ import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
 import { CardData, extractCard, extractWatchPage } from './extract-card'
+import { placeDropdown } from './dropdown-position'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 
 // Active interface language, refreshed from the store on init and on change.
@@ -144,16 +145,50 @@ function showToast(text: string) {
   toastTimer = window.setTimeout(() => toast?.classList.remove('mytube-toast--show'), 2500)
 }
 
+// Detaches the scroll/resize tracking of the currently open dropdown; set by
+// trackDropdown(), cleared here so listeners never outlive the menu.
+let untrackDropdown: (() => void) | null = null
+
 function closeAllDropdowns() {
+  untrackDropdown?.()
+  untrackDropdown = null
   document.querySelectorAll('.mytube-dropdown').forEach((d) => d.remove())
 }
 
 // The dropdown is portaled to <html>, so anchor it to the button in viewport
-// space. Right-aligned to the button's right edge, opening downward.
+// space (placeDropdown handles flip-when-no-room-below + viewport clamping).
+// `position: fixed` is forced inline so a stray YouTube rule can't turn the menu
+// into a scroll-with-the-page box that drifts away from the button.
 function positionDropdown(dropdown: HTMLElement, btn: HTMLElement) {
-  const r = btn.getBoundingClientRect()
-  dropdown.style.top = `${Math.round(r.bottom + 4)}px`
-  dropdown.style.right = `${Math.round(window.innerWidth - r.right)}px`
+  dropdown.style.setProperty('position', 'fixed', 'important')
+  const { top, right } = placeDropdown(btn.getBoundingClientRect(), dropdown.offsetHeight, {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  })
+  dropdown.style.top = `${top}px`
+  dropdown.style.right = `${right}px`
+}
+
+// Keep the menu pinned to its button while the page scrolls or resizes — without
+// this the fixed menu stays put while the button moves, leaving it floating
+// mid-page (the reported "menu scrolls away" bug). Capture catches scrolls in
+// YouTube's nested scrollers too, and an rAF guard coalesces the bursts.
+function trackDropdown(dropdown: HTMLElement, btn: HTMLElement) {
+  let scheduled = false
+  const reposition = () => {
+    if (scheduled) return
+    scheduled = true
+    requestAnimationFrame(() => {
+      scheduled = false
+      positionDropdown(dropdown, btn)
+    })
+  }
+  window.addEventListener('scroll', reposition, true)
+  window.addEventListener('resize', reposition)
+  untrackDropdown = () => {
+    window.removeEventListener('scroll', reposition, true)
+    window.removeEventListener('resize', reposition)
+  }
 }
 
 // Headers the generic picker can show — both are catalog keys (i18n).
@@ -223,6 +258,7 @@ async function openCategoryPicker(
   // pill lives deep inside #top-level-buttons-computed).
   document.documentElement.appendChild(dropdown)
   positionDropdown(dropdown, btn)
+  trackDropdown(dropdown, btn)
 }
 
 // Saves a single card into the chosen category and reflects it on the button.
@@ -380,8 +416,23 @@ function injectWatchButton() {
     e.preventDefault()
     e.stopPropagation()
     const isOpen = document.querySelector('.mytube-dropdown')
-    if (isOpen) closeAllDropdowns()
-    else openSaveDropdown(btn, data)
+    if (isOpen) {
+      closeAllDropdowns()
+      return
+    }
+    // YouTube loads the watch title/channel asynchronously after the ?v= id is
+    // known, and keeps this recycled node across SPA nav (the data-vid guard
+    // above re-injects only when the id changes). So the title/channel captured
+    // at inject time can be stale even though the id is right — re-read the open
+    // video on click and save what's currently shown, falling back to inject-time
+    // data (issue #5, the watch-page twin of the card-recycling fix M3).
+    let current: CardData | null = null
+    try {
+      current = extractWatchPage()
+    } catch {
+      current = null
+    }
+    openSaveDropdown(btn, current ?? data)
   })
 
   wrapper.appendChild(btn)
