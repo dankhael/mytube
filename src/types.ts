@@ -65,6 +65,10 @@ export const DEFAULT_DATA: StorageData = {
 
 export type Message =
   | { action: 'SAVE_VIDEO'; video: Omit<Video, 'category' | 'addedAt' | 'watched'>; category: string }
+  // Batch import (e.g. a whole YouTube playlist scraped by the content script).
+  // Stored in a single read-modify-write so an N-item playlist is one commit,
+  // not N races against the sync quota — see specs/playlist-import.spec.md (D5).
+  | { action: 'IMPORT_VIDEOS'; videos: Omit<Video, 'category' | 'addedAt' | 'watched'>[]; category: string }
   | { action: 'GET_ALL' }
   | { action: 'DELETE_VIDEO'; id: string }
   | { action: 'MOVE_VIDEO'; id: string; category: string }

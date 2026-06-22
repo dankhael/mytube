@@ -63,6 +63,42 @@ export class MyTubeStore {
     })
   }
 
+  // Batch import (a whole YouTube playlist). One read-modify-write for the whole
+  // list so an N-item playlist is a single commit, not N races (spec IMPORT,
+  // D5). Re-importing a known id moves it (keeps addedAt/watched), consistent
+  // with saveVideo / SAVE-3 (D6). New rows are prepended in the given order.
+  async importVideos(
+    videos: Omit<Video, 'category' | 'addedAt' | 'watched'>[],
+    category: string,
+  ): Promise<StorageData> {
+    return this.enqueue(async () => {
+      const data = await this.getData()
+      if (videos.length === 0) return data // IMPORT-6: nothing to do, no spurious write
+
+      // De-dupe within the payload: first occurrence fixes the order slot, later
+      // occurrences win on fields (IMPORT-5). Map preserves first-set order.
+      const unique = new Map<string, Omit<Video, 'category' | 'addedAt' | 'watched'>>()
+      for (const v of videos) unique.set(v.id, { ...unique.get(v.id), ...v })
+
+      if (!data.categories.some((c) => c.name === category)) {
+        data.categories.push({ name: category, emoji: '📁' })
+      }
+
+      const byId = new Map(data.videos.map((v) => [v.id, v]))
+      const fresh: Video[] = []
+      for (const v of unique.values()) {
+        const existing = byId.get(v.id)
+        if (existing) {
+          existing.category = category // move in place; keep addedAt/watched (IMPORT-3)
+        } else {
+          fresh.push({ ...v, category, addedAt: Date.now(), watched: false })
+        }
+      }
+      data.videos = [...fresh, ...data.videos]
+      return this.commit(data)
+    })
+  }
+
   async deleteVideo(id: string): Promise<StorageData> {
     return this.enqueue(async () => {
       const data = await this.getData()
