@@ -25,7 +25,7 @@ the extension feels like one product. The two reference images define the target
 a themed main screen (logo + unwatched count + gear, icon-tile category rows with
 count pills and chevrons, a violet "Open my home" button) and a themed Settings
 modal (titled card, single sound toggle with a subtitle, a "Buy me a coffee" card
-with a SOON badge).
+— originally a SOON placeholder, now an actionable Ko-fi link, see PUI-7/CFG-6).
 
 ## Acceptance criteria
 
@@ -40,7 +40,7 @@ add **only** what the redesign makes newly observable.
 | **PUI-4** | the footer button | it renders | it is the **accent-filled** "Open my home" pill with a play glyph — no longer the old red (`#ff0000`) button |
 | **PUI-5** | the Settings modal | it opens (CFG-1) | its title is the English **"Settings"** with a close (✕) control |
 | **PUI-6** | the sound-effects row in the modal | it renders | it shows **"Sound effects"** plus a secondary subtitle line **"Little chimes as you browse"** (accurate copy — see Decision §4), and the toggle reflecting the persisted value (CFG-2) |
-| **PUI-7** | the donate entry in the modal | it renders | it is a **card** with an icon tile (coffee), a title **"Buy me a coffee"**, a subtitle **"Support the developer"** and a **"SOON" badge**; it stays a non-actionable placeholder (CFG-6) |
+| **PUI-7** | the donate entry in the modal | it renders | it is an **actionable card** with an icon tile (coffee), a title **"Buy me a coffee"** and a subtitle **"Support the developer"** (no "SOON" badge); clicking it opens Ko-fi (CFG-6) |
 | **PUI-8** | the new tab **and** the popup | the accent hue (`--accent-h`) is changed in the one shared token file | **both** surfaces re-theme — accent + surfaces in the popup resolve from the shared tokens, no second edit needed |
 | **PUI-9** | `categoryIcon(name)` | called with a known category, an unknown/arbitrary name, and an empty string | returns a defined icon key for each, falling back to a **default icon** for unmatched/empty names; never throws |
 
@@ -79,7 +79,7 @@ reloading the unpacked extension.
       rounded thumbnails + 2-line titles + channel; violet "Open my home" pill.
 - [ ] Settings modal matches image 2: dark backdrop, titled card with ✕, sound row
       with subtitle + violet toggle, "Buy me a coffee" card with coffee icon tile
-      and SOON badge.
+      (actionable, opens Ko-fi — no SOON badge).
 - [ ] Palette reads as the same product as the new-tab home (surfaces, text, accent).
 - [ ] Flipping `--accent-h` in the shared token file visibly re-themes the popup too.
 - [ ] Category icons are legible and sensible; arbitrary new categories get the

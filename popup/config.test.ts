@@ -14,6 +14,7 @@ function open(
   onEditShortcut = vi.fn(),
   onToggleStartup = vi.fn(),
   onToggleHomeReminder = vi.fn(),
+  onDonate = vi.fn(),
 ) {
   const settings: Settings = {
     soundEffects: false,
@@ -25,11 +26,11 @@ function open(
   }
   const modal = createConfigModal(
     settings,
-    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder },
+    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate },
     homeShortcut,
   )
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder }
+  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate }
 }
 
 // The sound row is the .cfg-row that owns the toggle (the language row is first now).
@@ -55,12 +56,14 @@ describe('popup-config.spec (modal)', () => {
     expect(toggle.getAttribute('aria-checked')).toBe('true')
   })
 
-  it('CFG-6: the footer shows a disabled donate placeholder', () => {
-    open({ soundEffects: false })
+  it('CFG-6: the footer shows an actionable donate card that reports clicks', () => {
+    const { onDonate } = open({ soundEffects: false })
     const donate = document.querySelector<HTMLButtonElement>('.cfg-donate')!
-    expect(donate.disabled).toBe(true)
+    expect(donate.disabled).toBe(false)
     expect(donate.textContent).toMatch(/coffee/i)
-    expect(document.querySelector('.cfg-soon')?.textContent).toMatch(/soon/i)
+    expect(document.querySelector('.cfg-soon')).toBeNull()
+    donate.click()
+    expect(onDonate).toHaveBeenCalledTimes(1)
   })
 
   it('PUI-5: the modal title is "Settings" with a close control', () => {
@@ -106,11 +109,11 @@ describe('popup-config.spec (modal)', () => {
     expect(document.querySelectorAll('.cfg-lang.selected').length).toBe(1)
   })
 
-  it('PUI-7: the donate card has a title, subtitle and SOON badge', () => {
+  it('PUI-7: the donate card has a coffee icon, title and subtitle (no SOON badge)', () => {
     open({ soundEffects: false })
     expect(document.querySelector('.cfg-donate-title')?.textContent).toBe('Buy me a coffee')
     expect(document.querySelector('.cfg-donate-sub')?.textContent).toBe('Support the developer')
-    expect(document.querySelector('.cfg-soon')?.textContent).toBe('SOON')
+    expect(document.querySelector('.cfg-soon')).toBeNull()
     expect(document.querySelector('.cfg-donate-ico svg')).not.toBeNull()
   })
 

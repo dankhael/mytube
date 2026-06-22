@@ -18,6 +18,10 @@ export const OPEN_HOME_COMMAND = 'open_home'
 // row can only deep-link the user here to set/clear the open-home binding.
 export const SHORTCUTS_PAGE = 'chrome://extensions/shortcuts'
 
+// The developer's Ko-fi page, opened by the "Buy me a coffee" settings card
+// (CFG-6). Single source of truth so the URL can't drift across callers.
+export const KOFI_URL = 'https://ko-fi.com/dankhael'
+
 // Opens the MyTube home in a new tab. Shared by the popup button and the
 // `open_home` keyboard shortcut so both resolve the same packaged URL.
 // Injected `tabs`/`getUrl` default to the real chrome APIs but are overridable
@@ -44,6 +48,14 @@ export function openShortcutSettings(
   tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
 ): void {
   tabs.create({ url: SHORTCUTS_PAGE })
+}
+
+// Opens the developer's Ko-fi page from the "Buy me a coffee" settings card
+// (CFG-6). Injectable for tests; no permission needed (chrome.tabs.create).
+export function openDonatePage(
+  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
+): void {
+  tabs.create({ url: KOFI_URL })
 }
 
 // The shortcut currently bound to the open-home command, '' when the user hasn't

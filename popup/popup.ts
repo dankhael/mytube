@@ -8,7 +8,7 @@ import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
-import { openHomeTab, openShortcutSettings, homeShortcut } from '../src/home-page'
+import { openHomeTab, openShortcutSettings, openDonatePage, homeShortcut } from '../src/home-page'
 
 function send(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
@@ -98,6 +98,8 @@ async function init(): Promise<void> {
           settings = { ...settings, remindOnYoutubeHome: enabled }
           void send({ action: 'UPDATE_SETTINGS', settings: { remindOnYoutubeHome: enabled } })
         },
+        // Opens Ko-fi in a new tab; closes the popup, so no live refresh needed.
+        onDonate: () => openDonatePage(),
       },
       shortcut,
     )

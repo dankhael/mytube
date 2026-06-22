@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   HOME_PAGE_PATH,
+  KOFI_URL,
   OPEN_HOME_COMMAND,
   SHORTCUTS_PAGE,
   handleOpenHome,
   homeShortcut,
+  openDonatePage,
   openHomeTab,
   openShortcutSettings,
 } from './home-page'
@@ -58,5 +60,14 @@ describe('home-page — open-home shortcut', () => {
 
     const absent = vi.fn().mockResolvedValue([{ name: 'other', shortcut: 'Ctrl+K' }])
     await expect(homeShortcut({ getAll: absent })).resolves.toBe('')
+  })
+})
+
+describe('home-page — openDonatePage (CFG-6)', () => {
+  it('opens the developer’s Ko-fi page in a new tab', () => {
+    const create = vi.fn()
+    openDonatePage({ create })
+    expect(create).toHaveBeenCalledWith({ url: KOFI_URL })
+    expect(KOFI_URL).toBe('https://ko-fi.com/dankhael')
   })
 })
