@@ -27,7 +27,15 @@ function wellFormedSnapshot(): StorageData {
   return {
     categories: [{ name: 'Tutoriais', emoji: '🎓', icon: 'book' }],
     videos: [storedVideo('dQw4w9WgXcQ'), { ...storedVideo('aqz-KE-bpKQ'), watched: true, watchedAt: 1_700_000_001_000 }],
-    settings: { soundEffects: true, accent: 'mint', language: 'pt-BR' },
+    // Key order mirrors DEFAULT_SETTINGS so the merge preserves it (SEC-14
+    // byte-identical): soundEffects, accent, language, then the reminder toggles.
+    settings: {
+      soundEffects: true,
+      accent: 'mint',
+      language: 'pt-BR',
+      openHomeOnStartup: false,
+      remindOnYoutubeHome: false,
+    },
   }
 }
 
@@ -74,6 +82,37 @@ describe('security-hardening.spec — sanitize-storage', () => {
         settings: { soundEffects: true, accent: 'mint', language: bad },
       }
       expect(sanitizeStorageData(snapshot).settings.language, `language ${JSON.stringify(bad)}`).toBe('en')
+    }
+  })
+
+  it('REMIND-2: a snapshot missing the reminder toggles fills both from defaults (false)', () => {
+    const snapshot = {
+      ...wellFormedSnapshot(),
+      settings: { soundEffects: true, accent: 'mint', language: 'pt-BR' },
+    }
+    const settings = sanitizeStorageData(snapshot).settings
+    expect(settings.openHomeOnStartup).toBe(false)
+    expect(settings.remindOnYoutubeHome).toBe(false)
+    // The other settings are untouched by the fill.
+    expect(settings.soundEffects).toBe(true)
+    expect(settings.accent).toBe('mint')
+    expect(settings.language).toBe('pt-BR')
+  })
+
+  it('REMIND-3: a non-boolean reminder toggle is coerced to false on read', () => {
+    for (const bad of ['yes', 1, null, {}]) {
+      const snapshot = {
+        ...wellFormedSnapshot(),
+        settings: {
+          soundEffects: true,
+          accent: 'mint',
+          openHomeOnStartup: bad,
+          remindOnYoutubeHome: bad,
+        },
+      }
+      const settings = sanitizeStorageData(snapshot).settings
+      expect(settings.openHomeOnStartup, `openHomeOnStartup ${JSON.stringify(bad)}`).toBe(false)
+      expect(settings.remindOnYoutubeHome, `remindOnYoutubeHome ${JSON.stringify(bad)}`).toBe(false)
     }
   })
 

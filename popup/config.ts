@@ -4,7 +4,7 @@
 
 import { Settings } from '../src/types'
 import { AccentPreset, ACCENT_PRESETS, accentHue } from '../src/theme'
-import { Language, LANGUAGES, t } from '../src/i18n'
+import { Language, LANGUAGES, MessageKey, t } from '../src/i18n'
 
 export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
@@ -12,6 +12,9 @@ export interface ConfigModalCallbacks {
   onPickLanguage: (language: Language) => void
   // Opens Chrome's shortcut settings; extensions can't bind shortcuts themselves.
   onEditShortcut: () => void
+  // Watch-reminder toggles (spec watch-reminders, REMIND-11/12).
+  onToggleStartup: (enabled: boolean) => void
+  onToggleHomeReminder: (enabled: boolean) => void
 }
 
 // `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
@@ -57,7 +60,7 @@ export function createConfigModal(
         cb.onPickLanguage(next)
         render() // re-localize the whole modal in place
       }),
-      soundRow(shown.soundEffects, lang, (on) => {
+      toggleRow('config.sound.label', 'config.sound.sub', shown.soundEffects, lang, (on) => {
         shown.soundEffects = on
         cb.onToggleSound(on)
       }),
@@ -66,6 +69,17 @@ export function createConfigModal(
         cb.onPickAccent(accent)
       }),
       shortcutRow(homeShortcut, lang, cb.onEditShortcut),
+      // Watch reminders: opt-in nudges that replace the old new-tab takeover
+      // (spec watch-reminders, REMIND-11/12). Placed after sound so the existing
+      // ".cfg-toggle" (sound) stays first in the DOM for the sound-row tests.
+      toggleRow('config.startup.label', 'config.startup.sub', shown.openHomeOnStartup, lang, (on) => {
+        shown.openHomeOnStartup = on
+        cb.onToggleStartup(on)
+      }, 'cfg-toggle--startup'),
+      toggleRow('config.remind.label', 'config.remind.sub', shown.remindOnYoutubeHome, lang, (on) => {
+        shown.remindOnYoutubeHome = on
+        cb.onToggleHomeReminder(on)
+      }, 'cfg-toggle--remind'),
     )
     return node
   }
@@ -211,20 +225,27 @@ function accentRow(
   return row
 }
 
-function soundRow(
+// A label/subtitle row with a right-aligned on/off switch. Shared by every
+// boolean preference (sound, open-on-startup, YouTube-home reminder) so they
+// look and behave identically. `modifier` adds a class to the toggle so a test
+// can target a specific one (e.g. 'cfg-toggle--startup').
+function toggleRow(
+  labelKey: MessageKey,
+  subKey: MessageKey,
   initial: boolean,
   lang: Language,
   onToggle: (enabled: boolean) => void,
+  modifier = '',
 ): HTMLElement {
   const row = el('div', 'cfg-row')
   const text = el('div', 'cfg-row-text')
   text.append(
-    textEl('span', 'cfg-row-label', t('config.sound.label', lang)),
-    textEl('span', 'cfg-row-sub', t('config.sound.sub', lang)),
+    textEl('span', 'cfg-row-label', t(labelKey, lang)),
+    textEl('span', 'cfg-row-sub', t(subKey, lang)),
   )
   row.appendChild(text)
 
-  const toggle = el('button', 'cfg-toggle')
+  const toggle = el('button', modifier ? `cfg-toggle ${modifier}` : 'cfg-toggle')
   toggle.setAttribute('role', 'switch')
   const set = (on: boolean) => {
     toggle.setAttribute('aria-checked', String(on))

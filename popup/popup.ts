@@ -90,6 +90,14 @@ async function init(): Promise<void> {
         // Chrome forbids extensions from binding shortcuts; deep-link the user to
         // its shortcut page. Opening it closes the popup, so no live refresh.
         onEditShortcut: () => openShortcutSettings(),
+        onToggleStartup: (enabled) => {
+          settings = { ...settings, openHomeOnStartup: enabled }
+          void send({ action: 'UPDATE_SETTINGS', settings: { openHomeOnStartup: enabled } })
+        },
+        onToggleHomeReminder: (enabled) => {
+          settings = { ...settings, remindOnYoutubeHome: enabled }
+          void send({ action: 'UPDATE_SETTINGS', settings: { remindOnYoutubeHome: enabled } })
+        },
       },
       shortcut,
     )

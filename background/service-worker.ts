@@ -7,7 +7,8 @@ import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
 import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
-import { openHomeTab, OPEN_HOME_COMMAND } from '../src/home-page'
+import { openHomeTab, handleOpenHome, OPEN_HOME_COMMAND } from '../src/home-page'
+import { openHomeOnStartup } from '../src/watch-reminders'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const store = new MyTubeStore(new ChromeSyncBackend())
@@ -107,7 +108,16 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onStartup.addListener(() => {
   void refreshAction()
   void backfill.run()
+  void maybeOpenHomeOnStartup()
 })
+
+// Opt-in reminder: open the curated home once when the browser launches, so the
+// user sees their backlog instead of postponing it (spec watch-reminders,
+// REMIND-5). Off by default; never claims the new tab.
+async function maybeOpenHomeOnStartup(): Promise<void> {
+  const data = await store.getData()
+  openHomeOnStartup(data.settings, () => openHomeTab())
+}
 
 // Keyboard shortcut to open the curated home (commands.open_home). The home is a
 // packaged page, not a new-tab override, so it has to be opened explicitly.
@@ -180,6 +190,10 @@ async function handle(incoming: Message): Promise<MessageResponse> {
         return { ok: true, data: await store.reorderVideos(message.category, message.order) }
       case 'UPDATE_SETTINGS':
         return { ok: true, data: await store.updateSettings(message.settings) }
+      case 'OPEN_HOME':
+        // Opens the home for the YouTube-home reminder nudge, which can't open a
+        // chrome-extension:// URL from the page itself (spec watch-reminders, D3).
+        return handleOpenHome()
       case 'GET_SAVED_IDS': {
         const data = await store.getData()
         return { ok: true, ids: data.videos.map((v) => ({ id: v.id, category: v.category })) }

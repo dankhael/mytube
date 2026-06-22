@@ -5,6 +5,7 @@
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
+import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
 import { CardData, extractCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
@@ -24,6 +25,13 @@ const CARD_SELECTORS = [
 const PROCESSED = 'data-mytube'
 
 let savedIds: Map<string, string> = new Map() // videoId -> category
+
+// YouTube-home reminder state (spec watch-reminders, REMIND-8..10). Refreshed
+// from the store; the nudge shows only when opted in, with a backlog, on the
+// home, and not dismissed this session. Dismissal is in-memory (session-scoped).
+let remindOnYoutubeHome = false
+let unwatchedSavedCount = 0
+let homeNudgeDismissed = false
 
 // Module-scope so teardown() (finding M4) can detach them after orphaning.
 let observer: MutationObserver | null = null
@@ -61,7 +69,7 @@ function teardown(): void {
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', onVisibilityChange)
   document
-    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast, #mytube-import-btn')
+    .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast, #mytube-import-btn, #mytube-nudge')
     .forEach((node) => node.remove())
 }
 
@@ -471,6 +479,11 @@ function scan() {
   } catch {
     // ignore if the playlist header isn't ready yet
   }
+  try {
+    syncHomeNudge()
+  } catch {
+    // ignore: a missing/odd DOM must never break card injection
+  }
 }
 
 function refreshSavedIds(ids: SavedIdInfo[]) {
@@ -626,6 +639,29 @@ function injectStyles() {
       position: fixed; bottom: 24px; right: 24px; z-index: 2147483000; margin: 0;
       box-shadow: 0 10px 30px rgba(0,0,0,.5);
     }
+
+    /* YouTube-home reminder banner (spec watch-reminders). Fixed bottom-left so
+       it doesn't collide with the bottom-right import/toast; themed accent pill. */
+    .mytube-nudge {
+      position: fixed; bottom: 24px; left: 24px; z-index: 2147483000;
+      display: inline-flex; align-items: center; gap: 12px;
+      font-family: Roboto, system-ui, sans-serif; font-size: 14px; font-weight: 600;
+      color: var(--mytube-accent-ink); background: var(--mytube-accent);
+      padding: 12px 14px 12px 18px; border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    }
+    .mytube-nudge-text { line-height: 1.2; }
+    .mytube-nudge-open {
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+      color: var(--mytube-accent); background: var(--mytube-accent-ink);
+      border: 0; border-radius: 999px; padding: 7px 14px;
+    }
+    .mytube-nudge-open:hover { opacity: .9; }
+    .mytube-nudge-dismiss {
+      font-family: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+      color: var(--mytube-accent-ink); background: transparent; border: 0; padding: 4px 6px;
+    }
+    .mytube-nudge-dismiss:hover { opacity: .7; }
   `
   document.documentElement.appendChild(style)
 }
@@ -657,16 +693,75 @@ function scheduleScan() {
   })
 }
 
-// Pull the persisted interface language so the pill/menu render localized.
-// Best-effort: a failed round-trip leaves the English default in place.
-async function refreshLanguage() {
+// Pull the persisted interface language and the YouTube-home reminder state so
+// the pill/menu render localized and the nudge knows whether to show. Best-
+// effort: a failed round-trip leaves the prior values in place.
+async function refreshFromStore() {
   const res = await sendMessage({ action: 'GET_ALL' })
-  if (res.ok && 'data' in res && res.data) lang = res.data.settings.language
+  if (res.ok && 'data' in res && res.data) {
+    lang = res.data.settings.language
+    remindOnYoutubeHome = res.data.settings.remindOnYoutubeHome
+    unwatchedSavedCount = res.data.videos.filter((v) => !v.watched).length
+  }
+}
+
+// Shows, updates, or removes the YouTube-home reminder banner to match the
+// current state (spec watch-reminders). Idempotent: safe to call on every scan
+// (SPA nav, mutations) — it reuses the existing node and only rebuilds when the
+// banner needs to appear. The "open" action routes through the worker
+// (OPEN_HOME) because a content script can't navigate to a chrome-extension://
+// URL itself (D3).
+function syncHomeNudge() {
+  const show = shouldShowHomeNudge({
+    remindOnYoutubeHome,
+    unwatched: unwatchedSavedCount,
+    onYoutubeHome: isYoutubeHomePath(location.pathname),
+    dismissed: homeNudgeDismissed,
+  })
+  const existing = document.getElementById('mytube-nudge')
+  if (!show) {
+    existing?.remove()
+    return
+  }
+  if (existing) {
+    const text = existing.querySelector<HTMLElement>('.mytube-nudge-text')
+    if (text) text.textContent = t('content.nudge.text', lang, { count: unwatchedSavedCount })
+    return
+  }
+  document.documentElement.appendChild(buildHomeNudge())
+}
+
+function buildHomeNudge(): HTMLElement {
+  const nudge = document.createElement('div')
+  nudge.id = 'mytube-nudge'
+  nudge.className = 'mytube-nudge'
+
+  const text = document.createElement('span')
+  text.className = 'mytube-nudge-text'
+  text.textContent = t('content.nudge.text', lang, { count: unwatchedSavedCount })
+
+  const open = document.createElement('button')
+  open.className = 'mytube-nudge-open'
+  open.textContent = t('content.nudge.open', lang)
+  open.addEventListener('click', () => void sendMessage({ action: 'OPEN_HOME' }))
+
+  const dismiss = document.createElement('button')
+  dismiss.className = 'mytube-nudge-dismiss'
+  dismiss.setAttribute('aria-label', t('content.nudge.dismiss', lang))
+  dismiss.title = t('content.nudge.dismiss', lang)
+  dismiss.textContent = '✕'
+  dismiss.addEventListener('click', () => {
+    homeNudgeDismissed = true
+    nudge.remove()
+  })
+
+  nudge.append(text, open, dismiss)
+  return nudge
 }
 
 async function init() {
   injectStyles()
-  await refreshLanguage()
+  await refreshFromStore()
   const res = await sendMessage({ action: 'GET_SAVED_IDS' })
   if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
 
@@ -683,8 +778,9 @@ async function init() {
   // ids through the worker (which assembles the shards) on any of them changing.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
-    // Re-localize too: the language may have changed from the popup/new-tab.
-    void refreshLanguage().then(() => scan())
+    // Re-localize and re-evaluate the nudge: language, the reminder toggle, or
+    // the unwatched count may have changed from the popup/new-tab.
+    void refreshFromStore().then(() => scan())
     void sendMessage({ action: 'GET_SAVED_IDS' }).then((res) => {
       if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
     })

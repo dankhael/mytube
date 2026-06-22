@@ -76,6 +76,11 @@ function sanitizedSettings(value: unknown): Settings {
   // An unknown/garbage language (synced from another version, or a hostile
   // UPDATE_SETTINGS from the content script) falls back to English (I18N-2).
   if (!isLanguage(merged.language)) merged.language = DEFAULT_LANGUAGE
+  // The reminder toggles are read on startup / on youtube.com; a non-boolean
+  // (synced from a newer schema or a hostile sender) reads as the safe OFF
+  // default rather than a truthy string opening tabs / banners (REMIND-3).
+  if (typeof merged.openHomeOnStartup !== 'boolean') merged.openHomeOnStartup = false
+  if (typeof merged.remindOnYoutubeHome !== 'boolean') merged.remindOnYoutubeHome = false
   return merged
 }
 
