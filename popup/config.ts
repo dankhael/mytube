@@ -15,6 +15,8 @@ export interface ConfigModalCallbacks {
   // Watch-reminder toggles (spec watch-reminders, REMIND-11/12).
   onToggleStartup: (enabled: boolean) => void
   onToggleHomeReminder: (enabled: boolean) => void
+  // Opens the developer's Ko-fi page in a new tab (CFG-6).
+  onDonate: () => void
 }
 
 // `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
@@ -49,7 +51,7 @@ export function createConfigModal(
 
   function render(): void {
     const lang = shown.language
-    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang))
+    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang, cb.onDonate))
   }
 
   function body(lang: Language): HTMLElement {
@@ -102,9 +104,9 @@ function header(lang: Language, onClose: () => void): HTMLElement {
   return node
 }
 
-function footer(lang: Language): HTMLElement {
+function footer(lang: Language, onDonate: () => void): HTMLElement {
   const node = el('div', 'cfg-footer')
-  node.appendChild(donateCard(lang))
+  node.appendChild(donateCard(lang, onDonate))
   return node
 }
 
@@ -115,10 +117,11 @@ const COFFEE_SVG =
   '<path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>' +
   '</svg>'
 
-// Non-actionable "Buy me a coffee" placeholder card with a SOON badge (PUI-7).
-function donateCard(lang: Language): HTMLElement {
+// Actionable "Buy me a coffee" card: opens the developer's Ko-fi page in a new
+// tab via the injected onDonate callback (CFG-6, PUI-7).
+function donateCard(lang: Language, onDonate: () => void): HTMLElement {
   const card = el('button', 'cfg-donate') as HTMLButtonElement
-  card.disabled = true
+  card.type = 'button'
 
   const ico = el('span', 'cfg-donate-ico')
   ico.innerHTML = COFFEE_SVG
@@ -129,7 +132,8 @@ function donateCard(lang: Language): HTMLElement {
     textEl('span', 'cfg-donate-sub', t('config.donate.sub', lang)),
   )
 
-  card.append(ico, text, textEl('span', 'cfg-soon', t('config.donate.soon', lang)))
+  card.append(ico, text)
+  card.addEventListener('click', onDonate)
   return card
 }
 
