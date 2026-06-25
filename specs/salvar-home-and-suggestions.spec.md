@@ -49,6 +49,11 @@ Manual acceptance). IDs are stable so the OpenSpec delta and the checklist align
 | **SUGGEST-MINI** | a watch-page suggestion in `#secondary` (current lockup renderer) | the user hovers the card | a compact **mini** Salvar control is revealed; clicking it opens the same category picker |
 | **SUGGEST-EXTRACT** | a suggestion rendered by the lockup view-model | the button is injected | `extractCard` resolves a real id, title, channel and `mqdefault` thumbnail (no `MISSING_*` placeholders) |
 | **HOME-NOSHRINK** | a home-feed/search card using the lockup renderer | the button is injected | it uses the **normal** (non-mini) size — only sidebar (`#secondary`) cards get the mini variant (D3) |
+| **SALVAR-PREVIEW-1** | a card whose thumbnail YouTube covers with its inline hover preview (`ytd-video-preview`) | the preview mounts | a Save pill is shown **inside the preview's controls** (top-left, clear of the mute/CC controls), since a thumbnail-overlay pill is buried by the preview's separate, later-painting `ytd-app` branch (z-index can't beat it) |
+| **SALVAR-PREVIEW-2** | the preview Save pill | the user clicks it | the category picker opens and saves the **currently-previewed** video (id re-read on click, so swapping between cards saves the right one); title/channel may backfill via oEmbed (metadata enrichment) |
+| **SALVAR-PREVIEW-3** | the shared, reused preview overlay | it swaps to another card or hides | exactly **one** pill exists (re-targeted to the new id, `✓ Salvo` state in sync), and it is removed when the preview hides — never left floating |
+| **SALVAR-PREVIEW-4** | a home/search card whose preview is up (the overlay pill could otherwise paint **alongside** the preview pill, as on the home feed) | the preview is active | the card's own thumbnail-overlay pill is **hidden** (only the preview's left pill shows — no double Save button); it reappears when the preview goes away, so a user with inline playback off still has it |
+| **SALVAR-LEFT** | any thumbnail-overlay card (feed / search / **channel Videos tab** / sidebar) | the pill is shown | it sits at the **top-left** of the thumbnail, not top-right — YouTube owns the top-right corner with its hover controls (Watch Later / queue / ⋮), which overlapped the pill on channel + feed cards. The watch pill and its action-bar alignment are unaffected |
 
 ## Out of scope / non-goals
 
@@ -66,4 +71,9 @@ Manual acceptance). IDs are stable so the OpenSpec delta and the checklist align
 - [ ] **SUGGEST-MINI** — Hovering a watch-page suggestion reveals the mini control; clicking opens the picker.
 - [ ] **SUGGEST-EXTRACT** — Saving a suggestion stores a real title/channel/thumbnail (check the new-tab card).
 - [ ] **HOME-NOSHRINK** — Home/search lockup cards keep the normal-size button; only `#secondary` is mini.
+- [ ] **SALVAR-PREVIEW-1** — Let a search/home thumbnail's inline preview mount; a Save pill shows in the preview's top-left controls.
+- [ ] **SALVAR-PREVIEW-2** — Click it; the picker opens and the **previewed** video is saved (verify the right title/channel on the new-tab card).
+- [ ] **SALVAR-PREVIEW-3** — Move across several cards: one pill, re-targeted each time; `✓ Salvo` reflects already-saved videos; pill gone once the preview hides.
+- [ ] **SALVAR-PREVIEW-4** — On the home feed with a preview up, only the left preview pill shows (no second pill top-right); the overlay pill returns when the preview closes.
+- [ ] **SALVAR-LEFT** — Overlay pill sits top-left on feed/search/channel-Videos/sidebar cards; no overlap with YouTube's top-right Watch Later/queue/⋮ controls; watch pill alignment unchanged.
 - [ ] No regression: watch pill + dropdown, toast, badge, and `SALVAR-NOEXPAND` (no thumbnail expansion) still hold.

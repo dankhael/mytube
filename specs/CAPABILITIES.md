@@ -29,8 +29,15 @@ here in the same PR that lands the spec.
 
 Content script [content/content.ts](../content/content.ts) ↔ service worker over `SAVE_VIDEO`.
 
-- Injects a "+ Salvar" button on feed/search/sidebar cards and a pill on `/watch`;
-  survives SPA nav via `MutationObserver`; skips cards with no valid 11-char id.
+- Injects a "+ Salvar" button on feed/search/channel/sidebar cards and a pill on
+  `/watch`; survives SPA nav via `MutationObserver`; skips cards with no valid
+  11-char id. Card overlay pills sit **top-left** to clear YouTube's top-right
+  hover controls (Watch Later / queue / ⋮) — SALVAR-LEFT.
+- When YouTube's inline hover preview (`ytd-video-preview`) covers a thumbnail
+  pill — it paints from a separate, later `ytd-app` branch that z-index can't beat
+  — a Save pill rides the preview's own controls instead, re-targeted to the
+  currently-previewed video; while the preview is up the card's own overlay pill
+  is hidden so only one Save button shows (SALVAR-PREVIEW-1..4).
 - Picking a category sends `SAVE_VIDEO` (id, title, channel, canonical thumbnail,
   best-effort `channelThumbnail`); "+ Nova categoria" creates-and-saves inline.
 - Re-saving a known id **moves** it instead of duplicating (SAVE-3).
