@@ -67,6 +67,28 @@ export function extractCard(card: HTMLElement): CardData | null {
   return { id, title, thumbnail, channelName, channelThumbnail: extractAvatar(card) }
 }
 
+// Reads the video shown in YouTube's shared hover-preview overlay
+// (`ytd-video-preview`). The preview is a single reused element YouTube positions
+// over whichever card is being hovered; it lives in a separate, later-painting
+// `ytd-app` branch (`ytd-video-preview-loader`) that covers our thumbnail pills no
+// matter their z-index — so we ride the preview's own controls instead (see the
+// SALVAR-PREVIEW criteria in salvar-home-and-suggestions). Its watch link is the
+// reliable id source; title is best-effort (the overlay rarely exposes channel),
+// and the worker backfills title/channel via oEmbed on save (metadata enrichment),
+// so a `MISSING_*` placeholder here never blocks the save.
+export function extractPreviewCard(preview: HTMLElement): CardData | null {
+  const link = preview.querySelector<HTMLAnchorElement>('a[href*="watch?v="]')
+  const href = link?.getAttribute('href') || ''
+  const match = href.match(/[?&]v=([\w-]{11})/)
+  if (!match) return null
+  const id = match[1]
+
+  const title =
+    link?.getAttribute('aria-label')?.trim() || link?.getAttribute('title')?.trim() || MISSING_TITLE
+  const thumbnail = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
+  return { id, title, thumbnail, channelName: MISSING_CHANNEL, channelThumbnail: extractAvatar(preview) }
+}
+
 // Reads the video currently open on a /watch page (the one in the player).
 export function extractWatchPage(): CardData | null {
   if (!location.pathname.startsWith('/watch')) return null

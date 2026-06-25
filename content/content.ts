@@ -6,7 +6,7 @@ import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
 import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
-import { CardData, extractCard, extractWatchPage } from './extract-card'
+import { CardData, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 
@@ -448,6 +448,79 @@ function injectWatchButton() {
   if (buttonRow) matchActionBarMetrics(wrapper, btn, buttonRow)
 }
 
+// Flags (on <html>) that the hover preview is up, so CSS hides the underlying
+// card's own thumbnail-overlay pill — otherwise the card pill and the preview pill
+// both show (the reported "two Save buttons" on the home feed). Idempotent.
+function setPreviewActive(active: boolean): void {
+  document.documentElement.classList.toggle('mytube-has-preview', active)
+}
+
+// Injects a Save pill into YouTube's shared hover-preview overlay
+// (`ytd-video-preview`). Thumbnail-overlay pills are buried by the preview because
+// it paints in a separate, later `ytd-app` branch that z-index can't beat (see
+// SALVAR-PREVIEW); riding the preview's own controls puts Save on the only layer
+// that stays on top, exactly over the card the user is looking at. One reused
+// button, re-targeted as the preview swaps between cards.
+function injectPreviewButton() {
+  const preview = document.querySelector<HTMLElement>('ytd-video-preview')
+  const container = preview?.querySelector<HTMLElement>('.ytInlinePlayerControlsControlsContainer')
+  const existing = preview?.querySelector<HTMLElement>('.mytube-preview-wrapper') ?? null
+
+  // Preview hidden/not ready (it's a persistent node YouTube toggles): drop any
+  // stale button so it never lingers on top of nothing, and clear the flag that
+  // hides the underlying card pill (so it's reachable again with no preview).
+  if (!preview || !container || getComputedStyle(preview).display === 'none') {
+    existing?.remove()
+    setPreviewActive(false)
+    return
+  }
+  const data = extractPreviewCard(preview)
+  if (!data) {
+    existing?.remove()
+    setPreviewActive(false)
+    return
+  }
+
+  // Preview is up over a card: flag it so the card's own thumbnail-overlay pill is
+  // hidden and only this (left-side) preview pill shows — no double Save button.
+  setPreviewActive(true)
+
+  // Already injected for this video in the right container — leave it be.
+  if (existing && existing.getAttribute('data-vid') === data.id && existing.parentElement === container) {
+    return
+  }
+  existing?.remove()
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'mytube-wrapper mytube-preview-wrapper'
+  wrapper.setAttribute('data-vid', data.id)
+
+  const btn = document.createElement('button')
+  btn.className = 'mytube-btn'
+  setSavedState(btn, savedIds.get(data.id) ?? null)
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (document.querySelector('.mytube-dropdown')) {
+      closeAllDropdowns()
+      return
+    }
+    // The shared preview is recycled across cards (like the watch node, M3) — read
+    // the currently-previewed video on click, falling back to inject-time data.
+    let current: CardData | null = null
+    try {
+      current = extractPreviewCard(preview)
+    } catch {
+      current = null
+    }
+    openSaveDropdown(btn, current ?? data)
+  })
+
+  wrapper.appendChild(btn)
+  container.appendChild(wrapper)
+}
+
 // Shared chrome handed to the playlist importer so it owns only playlist DOM and
 // never imports back into content.ts (no cycle). The picker opens with the
 // import-specific header.
@@ -475,6 +548,11 @@ function scan() {
     // ignore if the watch action bar isn't ready yet
   }
   try {
+    injectPreviewButton()
+  } catch {
+    // ignore if the hover-preview overlay isn't mounted yet
+  }
+  try {
     scanPlaylistPage(playlistImportDeps)
   } catch {
     // ignore if the playlist header isn't ready yet
@@ -490,6 +568,14 @@ function refreshSavedIds(ids: SavedIdInfo[]) {
   savedIds = new Map(ids.map((i) => [i.id, i.category]))
   // Re-sync any already-injected buttons.
   document.querySelectorAll<HTMLElement>('.mytube-btn').forEach((btn) => {
+    // Preview + watch pills carry their id on the wrapper (no enclosing card to
+    // read the href from), so resolve their state from data-vid directly.
+    const previewWrap = btn.closest<HTMLElement>('.mytube-preview-wrapper')
+    if (previewWrap) {
+      const vid = previewWrap.getAttribute('data-vid')
+      if (vid) setSavedState(btn, savedIds.get(vid) ?? null)
+      return
+    }
     const watchWrap = btn.closest<HTMLElement>('.mytube-watch-wrapper')
     if (watchWrap) {
       const vid = watchWrap.getAttribute('data-vid')
@@ -520,7 +606,11 @@ function injectStyles() {
       --mytube-accent-line: oklch(0.815 0.125 290 / 0.32);
       --mytube-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .mytube-wrapper { position: absolute; top: 8px; right: 8px; z-index: 60; }
+    /* Top-LEFT, not top-right: YouTube owns the thumbnail's top-right corner with
+       its hover controls (Watch Later / queue / ⋮), which overlapped our pill on
+       channel + feed cards. The left corner is consistently free and matches the
+       preview pill's side. */
+    .mytube-wrapper { position: absolute; top: 8px; left: 8px; z-index: 60; }
     .mytube-btn {
       position: relative; /* anchors the corner sparkle */
       box-sizing: border-box; /* so a measured native height maps to total height */
@@ -547,6 +637,22 @@ function injectStyles() {
     }
     .mytube-btn.mytube-flash { background: var(--mytube-accent-2); }
 
+    /* No reveal delay: the overlay pill and the preview pill now share the
+       top-left corner, so when the preview mounts (~0.6s) the handoff is a
+       same-spot swap (the html.mytube-has-preview rule below hides the overlay
+       pill, the preview pill takes its place) — no left/right flash to defer, so
+       the pill appears immediately on hover (base 0.15s fade). (Earlier this card
+       carried a 0.9s transition-delay back when the overlay sat top-right and
+       jumped to the left preview pill; obsolete once both moved left.)
+
+       While the shared preview is up (its own left pill showing), hide the card's
+       thumbnail-overlay pill outright so only ONE Save button appears — the home
+       feed showed both because the overlay pill paints above the in-feed preview
+       there. The preview pill mirrors saved state, so nothing is lost. Cleared the
+       instant the preview goes away, restoring the normal overlay pill. */
+    html.mytube-has-preview ytd-rich-item-renderer .mytube-btn,
+    html.mytube-has-preview ytd-video-renderer .mytube-btn { opacity: 0 !important; }
+
     /* Quirky glyphs: a 4-point sparkle pinned to the corner (shown only on the
        themed surfaces) and a "+" that spins on hover so the control reads as an
        "extra" you tack on (spec SALVAR-ROTATE). The sparkle is absolute so it
@@ -568,7 +674,7 @@ function injectStyles() {
       /* This wrapper also carries .mytube-wrapper (top:8px; right:8px) for the
          thumbnail overlay case; reset those offsets here or the relative pill
          lands 8px down + 8px left of the native chips. */
-      position: relative; top: auto; right: auto;
+      position: relative; top: auto; right: auto; left: auto;
       display: inline-flex; align-items: center; align-self: center;
       margin-left: 8px; vertical-align: middle; /* margin is overridden by measured value */
     }
@@ -584,7 +690,7 @@ function injectStyles() {
 
     /* Mini Salvar on the dense "Up next" sidebar (spec SALVAR-MINI). */
     ytd-compact-video-renderer .mytube-wrapper,
-    yt-lockup-view-model .mytube-wrapper { top: 4px; right: 4px; }
+    yt-lockup-view-model .mytube-wrapper { top: 4px; left: 4px; }
     .mytube-btn.mytube-btn--mini {
       padding: 3px 9px; font-size: 10px; gap: 4px; font-weight: 700;
       color: var(--mytube-accent-ink); background: var(--mytube-accent); border-color: transparent;
@@ -594,6 +700,15 @@ function injectStyles() {
       color: var(--mytube-accent); background: rgba(0,0,0,.6);
       border: 1px solid var(--mytube-accent-line);
     }
+
+    /* Save pill riding YouTube's hover-preview controls (spec SALVAR-PREVIEW).
+       The preview overlay paints above every thumbnail pill from a separate
+       ytd-app branch (z-index can't win), so we inject INTO its controls
+       container and pin to the top-left — the mute/CC controls own the top-right.
+       Always visible: the preview only appears on hover, so there's nothing to
+       hover-gate, and the cursor sits over the player (not our wrapper) anyway. */
+    .mytube-preview-wrapper { top: 8px; left: 8px; right: auto; z-index: 40; }
+    .mytube-preview-wrapper .mytube-btn { opacity: 1; }
 
     /* Transient confirmation toast — fixed and non-blocking (spec SALVAR-TOAST). */
     .mytube-toast {
