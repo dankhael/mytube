@@ -28,10 +28,11 @@ function wellFormedSnapshot(): StorageData {
     categories: [{ name: 'Tutoriais', emoji: '🎓', icon: 'book' }],
     videos: [storedVideo('dQw4w9WgXcQ'), { ...storedVideo('aqz-KE-bpKQ'), watched: true, watchedAt: 1_700_000_001_000 }],
     // Key order mirrors DEFAULT_SETTINGS so the merge preserves it (SEC-14
-    // byte-identical): soundEffects, accent, language, then the reminder toggles.
+    // byte-identical): soundEffects, accent, theme, language, then the reminder toggles.
     settings: {
       soundEffects: true,
       accent: 'mint',
+      theme: 'smpte',
       language: 'pt-BR',
       openHomeOnStartup: false,
       remindOnYoutubeHome: false,
@@ -68,6 +69,21 @@ describe('security-hardening.spec — sanitize-storage', () => {
   it('THEME-4: an unknown accent preset falls back to the default on read', () => {
     const snapshot = { ...wellFormedSnapshot(), settings: { soundEffects: true, accent: 'puce' } }
     expect(sanitizeStorageData(snapshot).settings.accent).toBe(DEFAULT_ACCENT)
+  })
+
+  it('CRT-1: a snapshot with no theme key defaults to aurora on read (no migration)', () => {
+    const snapshot = { ...wellFormedSnapshot(), settings: { soundEffects: true, accent: 'mint' } }
+    expect(sanitizeStorageData(snapshot).settings.theme).toBe('aurora')
+  })
+
+  it('CRT-4: an unknown/garbage theme preset falls back to aurora on read', () => {
+    for (const bad of ['vaporwave', 42, null, '']) {
+      const snapshot = {
+        ...wellFormedSnapshot(),
+        settings: { soundEffects: true, accent: 'mint', theme: bad },
+      }
+      expect(sanitizeStorageData(snapshot).settings.theme, `theme ${JSON.stringify(bad)}`).toBe('aurora')
+    }
   })
 
   it('I18N-1: a snapshot with no language key defaults to English on read', () => {

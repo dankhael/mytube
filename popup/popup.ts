@@ -8,6 +8,7 @@ import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
+import { applyThemePreset } from '../src/theme-preset'
 import { openHomeTab, openShortcutSettings, openDonatePage, homeShortcut } from '../src/home-page'
 
 function send(message: Message): Promise<MessageResponse> {
@@ -46,8 +47,10 @@ async function init(): Promise<void> {
   const player = createClickPlayer()
   const click = () => playClick(settings, player)
 
-  // Recolor the popup from the persisted accent before first paint (THEME-7).
+  // Recolor the popup from the persisted accent before first paint (THEME-7),
+  // and re-skin it from the persisted theme preset (CRT-8).
   applyAccent(document.documentElement, settings.accent)
+  applyThemePreset(document.documentElement, settings.theme)
 
   // Paints every language-dependent surface. Re-run when the user switches
   // language so the popup re-localizes immediately, with no reopen (Decisions §2).
@@ -81,6 +84,11 @@ async function init(): Promise<void> {
           settings = { ...settings, accent }
           applyAccent(document.documentElement, accent) // live recolor, no reopen
           void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
+        },
+        onPickTheme: (theme) => {
+          settings = { ...settings, theme }
+          applyThemePreset(document.documentElement, theme) // live re-skin (CRT-6/8)
+          void send({ action: 'UPDATE_SETTINGS', settings: { theme } })
         },
         onPickLanguage: (language) => {
           settings = { ...settings, language }

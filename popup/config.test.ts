@@ -15,10 +15,12 @@ function open(
   onToggleStartup = vi.fn(),
   onToggleHomeReminder = vi.fn(),
   onDonate = vi.fn(),
+  onPickTheme = vi.fn(),
 ) {
   const settings: Settings = {
     soundEffects: false,
     accent: 'violet',
+    theme: 'aurora',
     language: 'en',
     openHomeOnStartup: false,
     remindOnYoutubeHome: false,
@@ -26,11 +28,11 @@ function open(
   }
   const modal = createConfigModal(
     settings,
-    { onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate },
+    { onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate },
     homeShortcut,
   )
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate }
+  return { modal, onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate }
 }
 
 // The sound row is the .cfg-row that owns the toggle (the language row is first now).
@@ -134,6 +136,24 @@ describe('popup-config.spec (modal)', () => {
     expect(red.classList.contains('selected')).toBe(true)
     expect(red.getAttribute('aria-checked')).toBe('true')
     expect(document.querySelectorAll('.cfg-swatch.selected').length).toBe(1)
+  })
+
+  it('CRT-5: the Theme row renders a radiogroup with the persisted preset selected', () => {
+    open({ theme: 'smpte' })
+    const swatches = document.querySelectorAll<HTMLElement>('.cfg-theme-swatch')
+    expect(swatches.length).toBe(2)
+    const selected = document.querySelector<HTMLElement>('.cfg-theme-swatch.selected')
+    expect(selected?.dataset.themePreset).toBe('smpte')
+    expect(selected?.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('CRT-6: picking the other theme swatch reports it and moves the selection', () => {
+    const { onPickTheme } = open({ theme: 'aurora' })
+    const smpte = document.querySelector<HTMLElement>('.cfg-theme-swatch[data-theme-preset="smpte"]')!
+    smpte.click()
+    expect(onPickTheme).toHaveBeenCalledWith('smpte')
+    expect(smpte.getAttribute('aria-checked')).toBe('true')
+    expect(document.querySelectorAll('.cfg-theme-swatch.selected').length).toBe(1)
   })
 
   // The shortcut row owns the .cfg-shortcut button.

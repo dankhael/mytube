@@ -13,7 +13,7 @@ describe('popup-config.spec (sound)', () => {
   it('CFG-4: plays the click when sound effects are on', () => {
     const player = fakePlayer()
     playClick(
-      { soundEffects: true, accent: 'violet', language: 'en', openHomeOnStartup: false, remindOnYoutubeHome: false },
+      { soundEffects: true, accent: 'violet', theme: 'aurora', language: 'en', openHomeOnStartup: false, remindOnYoutubeHome: false },
       player,
     )
     expect(player.play).toHaveBeenCalledOnce()
@@ -22,7 +22,7 @@ describe('popup-config.spec (sound)', () => {
   it('CFG-5: stays silent when sound effects are off', () => {
     const player = fakePlayer()
     playClick(
-      { soundEffects: false, accent: 'violet', language: 'en', openHomeOnStartup: false, remindOnYoutubeHome: false },
+      { soundEffects: false, accent: 'violet', theme: 'aurora', language: 'en', openHomeOnStartup: false, remindOnYoutubeHome: false },
       player,
     )
     expect(player.play).not.toHaveBeenCalled()
