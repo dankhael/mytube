@@ -1,5 +1,7 @@
 import { Category, Video } from '../../src/types'
+import { resolveCategoryIcon } from '../../src/category-icon'
 import { ModalShell } from './AddCategoryModal'
+import CategoryIcon from './CategoryIcon'
 import { useT } from '../i18n-context'
 
 interface Props {
@@ -27,7 +29,9 @@ export default function SaveToModal({ video, categories, onClose, onMove }: Prop
                 current ? 'cursor-default bg-[#3ea6ff]/10 text-[#3ea6ff]' : 'text-yt-text hover:bg-yt-hover'
               }`}
             >
-              <span>{cat.emoji}</span>
+              {/* Resolved icon, not the legacy emoji — keeps this list consistent
+                  with the home tiles and the content-script picker (HICON-4). */}
+              <CategoryIcon icon={resolveCategoryIcon(cat)} size={16} />
               <span>{cat.name}</span>
               {current && <span className="ml-auto text-xs">{tr('modal.current')}</span>}
             </button>
