@@ -47,6 +47,18 @@ export function isAllowedAvatarUrl(value: unknown): value is string {
   }
 }
 
+// Duration is a display label captured from the YouTube card overlay (DUR spec),
+// not a URL — so unlike the avatar it's gated by shape, not host. Accept only a
+// clock: optional hours, then M:SS / MM:SS. The regex also bounds length (max
+// "999:99:99"), so an oversized/garbage string ("LIVE", a pasted essay) fails
+// the same way an off-host avatar does — dropped, never stored. Rendered as
+// text (React escapes it), so this is data hygiene, not injection defense.
+const DURATION_SHAPE = /^(?:\d{1,3}:)?\d{1,2}:\d{2}$/
+
+export function isDurationLabel(value: unknown): value is string {
+  return typeof value === 'string' && DURATION_SHAPE.test(value)
+}
+
 const ICON_KEYS: ReadonlySet<string> = new Set(ALL_ICONS)
 
 export function isIconKey(value: unknown): value is IconKey {
@@ -85,6 +97,9 @@ function gateVideo(video: VideoPayload): VideoPayload | null {
     // Keep the avatar only if it's an https URL on an allowlisted host;
     // anything else is dropped (undefined) without failing the save.
     channelThumbnail: isAllowedAvatarUrl(video.channelThumbnail) ? video.channelThumbnail : undefined,
+    // Keep the duration only if it's a clock-shaped label; garbage / "LIVE" /
+    // oversized values are dropped (undefined) without failing the save (DUR-3).
+    duration: isDurationLabel(video.duration) ? video.duration : undefined,
   }
 }
 

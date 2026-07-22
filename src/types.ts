@@ -14,6 +14,12 @@ export interface Video {
   // many cards have none and old saves predate this field — the home card falls
   // back to the initial-letter avatar. Host-gated on save/read (see channel-avatar).
   channelThumbnail?: string
+  // Clock label as YouTube shows it ("12:34", "1:02:03"). Optional: there is no
+  // deterministic per-videoId duration (oEmbed returns none), so it's captured
+  // from the card's DOM overlay at save time and many saves have none — Shorts,
+  // live/upcoming, and older saves predate this field. Shape-gated on save/read
+  // (see isDurationLabel); the home card simply shows no badge when absent.
+  duration?: string
   category: string
   addedAt: number // timestamp
   watched: boolean

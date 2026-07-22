@@ -11,9 +11,9 @@ here in the same PR that lands the spec.
 
 | Capability | What it does | Authoritative specs (ID prefix) |
 |---|---|---|
-| [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar` |
+| [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar`, `video-duration` (DUR) |
 | [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
-| [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar` |
+| [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
@@ -39,7 +39,8 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   currently-previewed video; while the preview is up the card's own overlay pill
   is hidden so only one Save button shows (SALVAR-PREVIEW-1..4).
 - Picking a category sends `SAVE_VIDEO` (id, title, channel, canonical thumbnail,
-  best-effort `channelThumbnail`); "+ Nova categoria" creates-and-saves inline.
+  best-effort `channelThumbnail` and `duration` clock label scraped from the
+  card's overlay); "+ Nova categoria" creates-and-saves inline.
 - Re-saving a known id **moves** it instead of duplicating (SAVE-3).
 - Injected buttons re-sync their Salvo/Salvar state from `storage.onChanged`.
 - Both the card and the `/watch` pill **re-read the video on click** so a recycled
@@ -74,6 +75,8 @@ Content script [content/playlist-import.ts](../content/playlist-import.ts) (+ sh
 - Watched-visibility toggle; per-card open / move / toggle-watched / delete (hover
   + right-click menu); drag-drop reorder of categories and of videos within one.
 - Channel avatar with initial-letter fallback; quota warning banner.
+- Duration badge (bottom-right of the thumbnail, YouTube-style) when the save
+  captured a clock label; absent for Shorts/live and older saves (DUR).
 
 ## Category management
 
@@ -151,7 +154,8 @@ Reducer [src/storage.ts](../src/storage.ts) over [src/storage-backend.ts](../src
 - Explicit CSP for extension pages (self + `i.ytimg.com` + allowlisted avatar
   hosts + bundled fonts; `object-src 'none'`).
 - Every message validated at the SW boundary: 11-char id shape, canonical
-  thumbnail, avatar-host allowlist, closed icon set, 300-char text clamp.
+  thumbnail, avatar-host allowlist, clock-shape duration gate, closed icon set,
+  300-char text clamp.
 - No computed HTML in privileged pages (DOM APIs only); no third-party requests
   (fonts vendored).
 

@@ -11,6 +11,7 @@ import {
   canonicalThumbnail,
   clampText,
   isAllowedAvatarUrl,
+  isDurationLabel,
   isIconKey,
   isYoutubeVideoId,
   validateIncomingMessage,
@@ -198,6 +199,58 @@ describe('security-hardening.spec — validate-message', () => {
     const validated = accepted(validateIncomingMessage(message))
     if (validated.action !== 'IMPORT_VIDEOS') throw new Error('action changed by validation')
     expect(validated.videos).toEqual([])
+  })
+
+  it('DUR-2: a SAVE_VIDEO with a clock-shaped duration keeps the label', () => {
+    const valid = ['0:00', '9:59', '12:34', '1:02:03', '10:00:00']
+    for (const label of valid) {
+      expect(isDurationLabel(label), `expected ${label} to be a duration`).toBe(true)
+      const message = saveVideoMessage()
+      message.video.duration = label
+      const validated = accepted(validateIncomingMessage(message))
+      if (validated.action !== 'SAVE_VIDEO') throw new Error('action changed by validation')
+      expect(validated.video.duration).toBe(label)
+    }
+  })
+
+  it('DUR-3: a malformed, non-string or oversized duration is dropped to undefined', () => {
+    const rejected: unknown[] = [
+      'LIVE',
+      '1:2:3', // seconds/minutes not zero-padded
+      '12:3', // seconds must be two digits
+      '12', // no colon
+      ':45',
+      '9'.repeat(400), // oversized
+      42,
+      '',
+    ]
+    for (const value of rejected) {
+      expect(isDurationLabel(value), `expected ${JSON.stringify(value)} to be rejected`).toBe(false)
+      const message = saveVideoMessage()
+      message.video.duration = value as string
+      const validated = accepted(validateIncomingMessage(message))
+      if (validated.action !== 'SAVE_VIDEO') throw new Error('action changed by validation')
+      expect(validated.video.duration).toBeUndefined()
+      // The rest of the save still succeeds untouched.
+      expect(validated.video.id).toBe(VALID_ID)
+    }
+  })
+
+  it('DUR-4: an IMPORT_VIDEOS batch gates each duration independently', () => {
+    const message: Message = {
+      action: 'IMPORT_VIDEOS',
+      videos: [
+        { id: VALID_ID, title: 'ok', thumbnail: CANONICAL, channelName: 'X', duration: '4:20' },
+        { id: 'aaaaaaaaaaa', title: 'ok2', thumbnail: CANONICAL, channelName: 'X', duration: 'LIVE' },
+      ],
+      category: 'Watch Later',
+    }
+    const validated = accepted(validateIncomingMessage(message))
+    if (validated.action !== 'IMPORT_VIDEOS') throw new Error('action changed by validation')
+    // Both entries survive (a bad duration never drops the entry); only the label is gated.
+    expect(validated.videos.map((v) => v.id)).toEqual([VALID_ID, 'aaaaaaaaaaa'])
+    expect(validated.videos[0].duration).toBe('4:20')
+    expect(validated.videos[1].duration).toBeUndefined()
   })
 
   it('SEC-12: an icon outside the closed set reads as unset in category messages', () => {

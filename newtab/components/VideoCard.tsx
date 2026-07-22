@@ -74,6 +74,9 @@ export function VideoCardView({
         ) : (
           <span className="unwatch-dot" title={tr('card.notWatched')} />
         )}
+        {/* Clock label captured at save time (DUR-6); bottom-right is the only
+            free corner (watched tag/dot top-left, hover actions top-right). */}
+        {video.duration && <span className="vduration">{video.duration}</span>}
         <div className="play">
           <Play size={22} className="fill-current" />
         </div>

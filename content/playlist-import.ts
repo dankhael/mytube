@@ -85,6 +85,7 @@ async function runImport(deps: PlaylistImportDeps, btn: HTMLButtonElement, categ
       thumbnail: c.thumbnail,
       channelName: c.channelName,
       channelThumbnail: c.channelThumbnail,
+      duration: c.duration,
     }))
     const res = await deps.sendMessage({ action: 'IMPORT_VIDEOS', videos, category })
     deps.showToast(

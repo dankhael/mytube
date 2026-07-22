@@ -65,6 +65,20 @@ describe('channel-avatar.spec — VideoCard avatar', () => {
   })
 })
 
+describe('video-duration.spec — VideoCard duration badge', () => {
+  it('DUR-6: renders the duration badge with the label when duration is present', () => {
+    const { container } = renderCard(makeVideo({ duration: '12:34' }))
+    const badge = container.querySelector('.vduration')
+    expect(badge).not.toBeNull()
+    expect(badge?.textContent).toBe('12:34')
+  })
+
+  it('DUR-7: renders no duration badge when duration is absent', () => {
+    const { container } = renderCard(makeVideo())
+    expect(container.querySelector('.vduration')).toBeNull()
+  })
+})
+
 describe('card-menu-clip.spec — context menu placement', () => {
   // Renders with fresh per-test handlers so call assertions are isolated.
   function renderWithHandlers(video: Video, handlers: Partial<CardActions> = {}) {
