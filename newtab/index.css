@@ -416,6 +416,22 @@ body {
   font-size: 11px;
   font-weight: 700;
 }
+/* Duration badge, bottom-right — the same corner YouTube uses. Opaque dark pill
+   so the clock label stays legible over any thumbnail (DUR-6). */
+.vduration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(8, 8, 10, 0.82);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
 
 /* card hover actions */
 .vactions {

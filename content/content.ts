@@ -273,6 +273,7 @@ async function saveCardToCategory(btn: HTMLElement, card: CardData, category: st
       thumbnail: card.thumbnail,
       channelName: card.channelName,
       channelThumbnail: card.channelThumbnail,
+      duration: card.duration,
     },
     category,
   })
