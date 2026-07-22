@@ -8,6 +8,7 @@ import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
 import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
 import { CardData, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
+import { pickerCategoryItem } from './picker-item'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 
 // Active interface language, refreshed from the store on init and on change.
@@ -228,14 +229,7 @@ async function openCategoryPicker(
   }
 
   categories.forEach((cat) => {
-    const item = document.createElement('button')
-    item.className = 'mytube-dropdown-item'
-    item.textContent = `${cat.emoji} ${cat.name}`
-    item.addEventListener('click', (e) => {
-      e.stopPropagation()
-      choose(cat.name)
-    })
-    dropdown.appendChild(item)
+    dropdown.appendChild(pickerCategoryItem(cat, choose))
   })
 
   // "Nova categoria" — expands into an inline input.
@@ -279,6 +273,7 @@ async function saveCardToCategory(btn: HTMLElement, card: CardData, category: st
       thumbnail: card.thumbnail,
       channelName: card.channelName,
       channelThumbnail: card.channelThumbnail,
+      duration: card.duration,
     },
     category,
   })
@@ -729,9 +724,13 @@ function injectStyles() {
     }
     .mytube-dropdown-header { color: #aaa; font-size: 11px; padding: 4px 8px; text-transform: uppercase; letter-spacing: .04em; }
     .mytube-dropdown-item {
-      display: block; width: 100%; text-align: left; color: #f1f1f1; background: transparent;
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+      color: #f1f1f1; background: transparent;
       border: 0; border-radius: 6px; padding: 8px; font-size: 13px; cursor: pointer;
     }
+    /* Resolved category icon (picker-item.ts) — sized here since the SVG carries
+       no width/height attributes, only the 24×24 viewBox. */
+    .mytube-dropdown-item svg { width: 15px; height: 15px; flex: none; opacity: .85; }
     .mytube-dropdown-item:hover { background: #383838; }
     .mytube-dropdown-new { color: #3ea6ff; }
     .mytube-dropdown-input {

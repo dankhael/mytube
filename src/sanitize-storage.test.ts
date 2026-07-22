@@ -155,6 +155,29 @@ describe('security-hardening.spec — sanitize-storage', () => {
     expect(result[2].id).toBe('9bZkp7q19f0')
   })
 
+  it('DUR-1: a video without duration round-trips with the field undefined', () => {
+    const video = storedVideo('dQw4w9WgXcQ')
+    const [result] = sanitizeStorageData({ ...wellFormedSnapshot(), videos: [video] }).videos
+    expect(result.duration).toBeUndefined()
+    expect(result).toEqual(video)
+  })
+
+  it('DUR-5: a malformed or non-string duration reads back absent, rest byte-identical', () => {
+    const good = { ...storedVideo('dQw4w9WgXcQ'), duration: '12:34' }
+    const malformed = { ...storedVideo('aqz-KE-bpKQ'), duration: 'LIVE' }
+    const nonString = { ...storedVideo('9bZkp7q19f0'), duration: 42 as unknown as string }
+    const snapshot = { ...wellFormedSnapshot(), videos: [good, malformed, nonString] }
+
+    const result = sanitizeStorageData(snapshot).videos
+    // A clock-shaped duration survives untouched (byte-identical, SEC-14).
+    expect(result[0]).toEqual(good)
+    // Malformed / non-string: the field is gone, every other field intact.
+    expect(result[1].duration).toBeUndefined()
+    expect(result[1]).toEqual({ ...malformed, duration: undefined })
+    expect(result[2].duration).toBeUndefined()
+    expect(result[2].id).toBe('9bZkp7q19f0')
+  })
+
   it('SEC-17: a category with an unknown icon is kept with the icon unset', () => {
     const snapshot = wellFormedSnapshot()
     snapshot.categories = [{ name: 'Caveiras', emoji: '💀', icon: 'skull' as IconKey }]

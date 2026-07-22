@@ -5,7 +5,7 @@
 // bytes stay untouched until the next legitimate mutation, and well-formed
 // data passes through byte-identical (original references, original key order).
 
-import { isAllowedAvatarUrl, isIconKey } from './validate-message'
+import { isAllowedAvatarUrl, isDurationLabel, isIconKey } from './validate-message'
 import { isAccentPreset, DEFAULT_ACCENT } from './theme'
 import { isThemePreset, DEFAULT_THEME } from './theme-preset'
 import { isLanguage, DEFAULT_LANGUAGE } from './i18n'
@@ -41,9 +41,21 @@ function withGatedAvatar(video: Video): Video {
   return gated
 }
 
+// A malformed / non-string duration (synced from another version or hand-edited)
+// reads as absent so the home card shows no badge (DUR-5) — the same clock-shape
+// gate the worker applies on save. Drops only the field, never the video; a
+// valid/missing duration keeps the original reference for byte-identical
+// pass-through (SEC-14).
+function withGatedDuration(video: Video): Video {
+  if (video.duration === undefined || isDurationLabel(video.duration)) return video
+  const gated = { ...video }
+  delete gated.duration
+  return gated
+}
+
 function sanitizedVideos(value: unknown): Video[] {
   if (!Array.isArray(value)) return []
-  return value.filter(isStoredVideo).map(withGatedAvatar)
+  return value.filter(isStoredVideo).map(withGatedAvatar).map(withGatedDuration)
 }
 
 function isStoredCategory(entry: unknown): entry is Category {
