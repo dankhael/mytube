@@ -28,6 +28,7 @@ import { filterVideos } from './search'
 import { bindingQuotaLimit, shouldWarnQuota } from './quota'
 import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
 import { applyAccent } from '../src/theme'
+import { applyThemePreset } from '../src/theme-preset'
 import { applyAccentFavicon } from './favicon'
 import { DEFAULT_LANGUAGE, t } from '../src/i18n'
 import { LanguageProvider, useT } from './i18n-context'
@@ -50,6 +51,16 @@ export default function App() {
     applyAccent(document.documentElement, accent)
     applyAccentFavicon(document, accent)
   }, [accent])
+
+  // Re-skin the home from the persisted theme preset (CRT-7); re-runs when it
+  // changes elsewhere (popup pick / another device via storage.onChanged → load,
+  // CRT-10). Its own effect, independent of the accent one, so the two settings
+  // compose without re-triggering each other (CRT-9).
+  const theme = data?.settings.theme
+  useEffect(() => {
+    if (!theme) return
+    applyThemePreset(document.documentElement, theme)
+  }, [theme])
 
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)

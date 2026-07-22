@@ -501,6 +501,89 @@ body {
   color: oklch(0.7 0.16 25);
 }
 
+/* ============================================================
+   SMPTE / CRT effect layers (spec crt-theme). Everything below is
+   gated by the data-theme knob on :root — pure CSS, no JS on the
+   card hot path, and every overlay is pointer-events: none so the
+   hover actions / menus stay reachable.
+   ============================================================ */
+
+/* The CRT front glass over the whole screen: full-page scanlines (subtler than
+   the thumbnail ones) under a curved-glass vignette. Fixed and inert; sits
+   above content, modals included — it's the tube. */
+[data-theme='smpte'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 90;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, var(--crt-scanline-page) 3px 4px),
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* Thumbnail glass: a soft top-left reflection, an aperture-grille RGB triad
+   (vertical stripes) and the heavier scanlines from the mockup, in one layer. */
+[data-theme='smpte'] .vthumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.07), transparent 40%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.05) 0 1px,
+      rgba(0, 255, 0, 0.04) 1px 2px,
+      rgba(0, 80, 255, 0.05) 2px 3px
+    ),
+    repeating-linear-gradient(0deg, transparent 0 2px, var(--crt-scanline) 2px 3px);
+}
+/* Over-driven tube color on the art itself. */
+[data-theme='smpte'] .vthumb .art {
+  filter: saturate(1.15) contrast(1.05);
+}
+/* The play overlay must float above the scanline layer. */
+[data-theme='smpte'] .vthumb .play {
+  z-index: 2;
+}
+
+/* SMPTE color-bar strip bleeding in along the bottom edge on hover. */
+[data-theme='smpte'] .vthumb::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--smpte-bars);
+  opacity: 0;
+  transition: opacity 0.18s var(--ease);
+}
+[data-theme='smpte'] .vcard:hover .vthumb::before {
+  opacity: 1;
+}
+
+/* The unwatched dot reads as a glowing power LED (steady — no blink, D2). */
+[data-theme='smpte'] .unwatch-dot {
+  background: var(--crt-led);
+  box-shadow:
+    0 0 0 3px var(--crt-led-halo),
+    0 0 12px 2px var(--crt-led-bloom);
+}
+
+/* Phosphor headings: same faces, but bright glyphs bloom and pick up the
+   red/cyan convergence fringe of a real tube (D1 — type carries the glow,
+   not a novelty font). Static shadows only — no flicker (D2). */
+[data-theme='smpte'] .greet h1,
+[data-theme='smpte'] .cat-title,
+[data-theme='smpte'] .brand .word {
+  text-shadow: var(--crt-text-glow);
+}
+
 /* empty category */
 .empty {
   border: 1.5px dashed var(--border);

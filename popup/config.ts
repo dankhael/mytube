@@ -4,11 +4,14 @@
 
 import { Settings } from '../src/types'
 import { AccentPreset, ACCENT_PRESETS, accentHue } from '../src/theme'
+import { ThemePreset, THEME_PRESETS } from '../src/theme-preset'
 import { Language, LANGUAGES, MessageKey, t } from '../src/i18n'
 
 export interface ConfigModalCallbacks {
   onToggleSound: (enabled: boolean) => void
   onPickAccent: (accent: AccentPreset) => void
+  // Theme skin picker (spec crt-theme, CRT-5/6) — composes with the accent pick.
+  onPickTheme: (theme: ThemePreset) => void
   onPickLanguage: (language: Language) => void
   // Opens Chrome's shortcut settings; extensions can't bind shortcuts themselves.
   onEditShortcut: () => void
@@ -65,6 +68,10 @@ export function createConfigModal(
       toggleRow('config.sound.label', 'config.sound.sub', shown.soundEffects, lang, (on) => {
         shown.soundEffects = on
         cb.onToggleSound(on)
+      }),
+      themeRow(shown.theme, lang, (theme) => {
+        shown.theme = theme
+        cb.onPickTheme(theme)
       }),
       accentRow(shown.accent, lang, (accent) => {
         shown.accent = accent
@@ -172,6 +179,61 @@ function languageRow(selected: Language, onPick: (language: Language) => void): 
       const on = option.dataset.lang === code
       option.setAttribute('aria-checked', String(on))
       option.classList.toggle('selected', on)
+    }
+  }
+  select(selected)
+
+  row.appendChild(group)
+  return row
+}
+
+// Human names shown on the theme swatches (aria-label/title). The union is
+// closed, so a plain map beats threading these through i18n for proper nouns.
+const THEME_SWATCH_NAMES: Record<ThemePreset, string> = {
+  aurora: 'Aurora',
+  smpte: 'SMPTE',
+}
+
+// The theme-skin picker (spec crt-theme, CRT-5/6). Same radio-group behavior as
+// the accent row below, but each swatch previews a whole skin: Aurora shows the
+// default dark gradient, SMPTE shows the color-bars test pattern. The previews
+// themselves are painted by popup.css off data-theme-preset — this stays DOM-only.
+function themeRow(
+  selected: ThemePreset,
+  lang: Language,
+  onPick: (theme: ThemePreset) => void,
+): HTMLElement {
+  const row = el('div', 'cfg-row')
+  const text = el('div', 'cfg-row-text')
+  text.append(
+    textEl('span', 'cfg-row-label', t('config.skin.label', lang)),
+    textEl('span', 'cfg-row-sub', t('config.skin.sub', lang)),
+  )
+  row.appendChild(text)
+
+  const group = el('div', 'cfg-theme-swatches')
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', t('config.skin.label', lang))
+
+  const swatches = THEME_PRESETS.map((preset) => {
+    const swatch = el('button', 'cfg-theme-swatch') as HTMLButtonElement
+    swatch.setAttribute('role', 'radio')
+    swatch.dataset.themePreset = preset
+    swatch.setAttribute('aria-label', THEME_SWATCH_NAMES[preset])
+    swatch.title = THEME_SWATCH_NAMES[preset]
+    swatch.addEventListener('click', () => {
+      select(preset)
+      onPick(preset)
+    })
+    group.appendChild(swatch)
+    return swatch
+  })
+
+  function select(preset: ThemePreset): void {
+    for (const swatch of swatches) {
+      const on = swatch.dataset.themePreset === preset
+      swatch.setAttribute('aria-checked', String(on))
+      swatch.classList.toggle('selected', on)
     }
   }
   select(selected)

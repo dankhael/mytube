@@ -7,6 +7,7 @@
 
 import { isAllowedAvatarUrl, isDurationLabel, isIconKey } from './validate-message'
 import { isAccentPreset, DEFAULT_ACCENT } from './theme'
+import { isThemePreset, DEFAULT_THEME } from './theme-preset'
 import { isLanguage, DEFAULT_LANGUAGE } from './i18n'
 import { Category, DEFAULT_DATA, DEFAULT_SETTINGS, Settings, StorageData, Video } from './types'
 
@@ -85,6 +86,9 @@ function sanitizedSettings(value: unknown): Settings {
   if (!isRecord(value) || typeof value.soundEffects !== 'boolean') return { ...DEFAULT_SETTINGS }
   const merged = { ...DEFAULT_SETTINGS, ...value }
   if (!isAccentPreset(merged.accent)) merged.accent = DEFAULT_ACCENT
+  // An unknown/garbage theme preset falls back to the default skin rather than
+  // reaching :root as a junk data-theme attribute (CRT-4).
+  if (!isThemePreset(merged.theme)) merged.theme = DEFAULT_THEME
   // An unknown/garbage language (synced from another version, or a hostile
   // UPDATE_SETTINGS from the content script) falls back to English (I18N-2).
   if (!isLanguage(merged.language)) merged.language = DEFAULT_LANGUAGE

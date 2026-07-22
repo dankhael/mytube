@@ -313,6 +313,64 @@ describe('home-category-chips.spec', () => {
   })
 })
 
+describe('crt-theme.spec (home)', () => {
+  // GET_ALL scripted with non-default settings (theme/accent) — spec crt-theme.
+  function scriptStoreWithSettings(
+    data: Omit<StorageData, 'settings'>,
+    settings: Partial<StorageData['settings']>,
+  ) {
+    const full: StorageData = { ...data, settings: { ...DEFAULT_SETTINGS, ...settings } }
+    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+      ((_msg: unknown, cb: (r: unknown) => void) => cb({ ok: true, data: full })) as never,
+    )
+  }
+
+  const LIB = {
+    categories: [{ name: 'Jogos', emoji: '🎮' }],
+    videos: [video('aaaaaaaaaaa', 'Jogos', 'Gameplay')],
+  }
+
+  // applyThemePreset writes to the real <html>; scrub it so tests stay independent.
+  afterEach(() => document.documentElement.removeAttribute('data-theme'))
+
+  it('CRT-7: a stored smpte theme sets data-theme on <html> on init', async () => {
+    scriptStoreWithSettings(LIB, { theme: 'smpte' })
+    render(<App />)
+    await waitFor(() => expect(document.documentElement.getAttribute('data-theme')).toBe('smpte'))
+  })
+
+  it('CRT-9: the theme attribute and the accent hue compose (both applied)', async () => {
+    scriptStoreWithSettings(LIB, { theme: 'smpte', accent: 'mint' })
+    render(<App />)
+    await waitFor(() => expect(document.documentElement.getAttribute('data-theme')).toBe('smpte'))
+    expect(document.documentElement.style.getPropertyValue('--accent-h')).toBe('168')
+  })
+
+  it('CRT-10: a theme changed elsewhere re-applies via storage.onChanged', async () => {
+    let theme = 'aurora'
+    const reply = (cb: (r: unknown) => void) =>
+      cb({ ok: true, data: { ...LIB, settings: { ...DEFAULT_SETTINGS, theme } } })
+    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+      ((_msg: unknown, cb: (r: unknown) => void) => reply(cb)) as never,
+    )
+    // addListener is a shared vi.fn() across the file; clear it so calls[0] is
+    // this App's storage listener, not a leftover from an earlier test.
+    vi.mocked(chrome.storage.onChanged.addListener).mockClear()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Jogos' })
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+
+    // The theme flips in the store (e.g. picked in the popup); firing
+    // storage.onChanged makes the home reload and re-skin (CRT-10).
+    theme = 'smpte'
+    const fire = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0]
+    await act(async () => {
+      fire({ 'mytube:meta': {} } as never, 'sync')
+    })
+    await waitFor(() => expect(document.documentElement.getAttribute('data-theme')).toBe('smpte'))
+  })
+})
+
 describe('design-rework.spec (home)', () => {
   it('HOME-2: the greeting renders', async () => {
     scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })

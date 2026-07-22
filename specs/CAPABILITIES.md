@@ -17,7 +17,7 @@ here in the same PR that lands the spec.
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
-| [Preferences](#preferences) | Settings: sound effects, interface language, open-home shortcut, watch reminders | `popup-config` (CFG), `i18n-language` (I18N), `watch-reminders` (REMIND) |
+| [Preferences](#preferences) | Settings: sound effects, theme skin, interface language, open-home shortcut, watch reminders | `popup-config` (CFG), `crt-theme` (CRT), `i18n-language` (I18N), `watch-reminders` (REMIND) |
 | [Metadata enrichment](#metadata-enrichment) | Backfill missing title/channel from YouTube oEmbed | `metadata` (META), `security-hardening` (SEC-18/19) |
 | [Persistence & sync](#persistence--sync) | Sharded `chrome.storage.sync` store via the reducer; live cross-surface updates | `watched-quota` (QUOTA-1), `storage-robustness` (ROB), `security-hardening` (SEC-14..17) |
 | [Extension security](#extension-security) | Least-privilege manifest, CSP, message validation, no HTML sinks / 3rd-party fetches | `security-hardening` (SEC) |
@@ -119,6 +119,13 @@ Reducer [src/storage.ts](../src/storage.ts); badge [background/service-worker.ts
   startup, and a dismissible nudge on the YouTube home (shown when there's an unwatched
   backlog). Delivers the old new-tab reminder value without claiming the new tab
   (`watch-reminders`, REMIND).
+- **Theme preset** — Aurora (today's look, default) vs. SMPTE, a 90's/00's Y2K/CRT
+  skin: full-screen scanlines + tube-glass vignette, RGB-grille thumbnails, SMPTE
+  color-bar hover strip, phosphor-LED unwatched dot, phosphor-glow headings (no
+  pixel font — D1). Toggled via a `data-theme` attribute on `:root`
+  (`src/theme-preset.ts`), picked from a color-bars swatch in the Settings modal,
+  applied on both surfaces and synced live; composes with the accent knob
+  (`crt-theme`, CRT-1..10).
 
 ## Metadata enrichment
 

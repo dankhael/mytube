@@ -111,4 +111,50 @@
   --font: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-display: 'Bricolage Grotesque', var(--font);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* The 7 hard-stop 75%-amplitude SMPTE bars (crt-theme, D5). Lives on the base
+     root — not the smpte block — because the theme picker's SMPTE swatch must
+     preview the bars while Aurora is still the active theme (CRT-5). */
+  --smpte-bars: linear-gradient(
+    90deg,
+    #b4b4b4 0 14.28%,
+    #b4b400 0 28.57%,
+    #00b4b4 0 42.85%,
+    #00b400 0 57.14%,
+    #b400b4 0 71.42%,
+    #b40000 0 85.71%,
+    #0000b4 0 100%
+  );
+}
+
+/* ============================================================
+   SMPTE — the 90's/00's · Y2K · CRT special theme (spec crt-theme).
+   Applied by src/theme-preset.ts toggling data-theme on :root; Aurora
+   is the unprefixed default above. Only tokens live here — the effect
+   layers (scanlines, color bars, vignette) sit with each surface's CSS,
+   all gated by [data-theme='smpte'].
+   ============================================================ */
+:root[data-theme='smpte'] {
+  --hue: 220; /* cool phosphor neutrals instead of warm 70 */
+  --bg: oklch(0.115 0.008 var(--hue)); /* tube-off near-black */
+  --bg-grad: oklch(0.145 0.012 var(--hue));
+
+  /* Squarer, bezel-era geometry. Type stays Bricolage/Jakarta — the theme is
+     carried by the tube effects, not a novelty face (D1, owner direction). */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+
+  /* CRT effect ingredients consumed by the surface stylesheets. */
+  --crt-scanline: rgba(0, 0, 0, 0.28);
+  --crt-scanline-page: rgba(0, 0, 0, 0.11); /* subtler: covers the whole screen */
+  --crt-led: oklch(0.82 0.19 152); /* phosphor-green power LED */
+  --crt-led-halo: oklch(0.82 0.19 152 / 0.28);
+  --crt-led-bloom: oklch(0.82 0.19 152 / 0.5);
+  /* Phosphor type treatment: accent bloom + the red/cyan convergence fringe a
+     miscalibrated tube puts on bright glyphs. Used as text-shadow on headings. */
+  --crt-text-glow:
+    0 0 16px oklch(0.815 var(--accent-c) var(--accent-h) / 0.35),
+    0.7px 0 0 rgba(255, 70, 70, 0.32),
+    -0.7px 0 0 rgba(70, 220, 255, 0.32);
 }

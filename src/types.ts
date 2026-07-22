@@ -2,6 +2,7 @@
 
 import { IconKey } from './category-icon'
 import { AccentPreset, DEFAULT_ACCENT } from './theme'
+import { ThemePreset, DEFAULT_THEME } from './theme-preset'
 import { Language, DEFAULT_LANGUAGE } from './i18n'
 
 export interface Video {
@@ -37,6 +38,7 @@ export interface Category {
 export interface Settings {
   soundEffects: boolean
   accent: AccentPreset // accent color; applied via --accent-h (see src/theme.ts)
+  theme: ThemePreset // visual skin; applied via data-theme on :root (see src/theme-preset.ts, CRT)
   language: Language // interface language; UI copy comes from src/i18n.ts
   // Watch-reminder toggles (spec watch-reminders / REMIND). Both opt-in: they
   // deliver the old new-tab reminder value WITHOUT claiming the new tab.
@@ -47,6 +49,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   soundEffects: false, // opt-in: no surprise audio on first install
   accent: DEFAULT_ACCENT, // preserves the original look (--accent-h: 290)
+  theme: DEFAULT_THEME, // aurora = today's skin; smpte is the opt-in CRT look (CRT-1)
   language: DEFAULT_LANGUAGE, // English-first; pt-BR is opt-in (spec I18N-1)
   openHomeOnStartup: false, // off by default: a fresh install opens no surprise tab (REMIND-1)
   remindOnYoutubeHome: false, // off by default: no banner until the user opts in (REMIND-1)
