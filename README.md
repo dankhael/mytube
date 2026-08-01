@@ -1,21 +1,66 @@
 # MyTube
 
-A **Chrome Extension (Manifest V3)** that turns Chrome's new tab into a **YouTube home curated by you**. Instead of dumping everything into "Watch Later" (which becomes a graveyard), you save videos straight from the YouTube cards into **categories** you define yourself.
+A **Chrome Extension (Manifest V3)** that gives you a **YouTube home curated by
+you**. Instead of dumping everything into "Watch Later" (which becomes a
+graveyard), you save videos straight from the YouTube cards into **categories**
+you define yourself, and browse them on a dedicated home page.
+
+> **The home is not a new-tab override.** Overriding the new tab hijacks every
+> tab and triggers Chrome's un-suppressable "keep this page?" consent prompt, so
+> the home is a normal packaged page you open on demand — from the toolbar popup
+> or with **Ctrl+Shift+Y** (**Cmd+Shift+Y** on Mac). See
+> [src/home-page.ts](src/home-page.ts).
 
 ## Stack
 
 - Vite + [CRXJS](https://crxjs.dev/) (`@crxjs/vite-plugin`) — extension hot reload
 - React 18 + TypeScript
 - Tailwind CSS
-- `chrome.storage.sync` (syncs across devices)
+- `chrome.storage.sync` (syncs across your signed-in Chrome browsers)
 - Lucide React (icons) + `@dnd-kit` (drag & drop)
 
 ## Features
 
-- **Content script:** injects a **“+ Salvar”** button on home cards (`ytd-rich-item-renderer`), search results (`ytd-video-renderer`) and the suggested sidebar (`ytd-compact-video-renderer`). Uses a `MutationObserver` (YouTube is an SPA) and an inline dropdown to pick/create a category. Shows **“✓ Salvo”** with the category in the tooltip.
-- **Service worker:** owns the storage. Handles `SAVE_VIDEO`, `GET_ALL`, `DELETE_VIDEO`, `MOVE_VIDEO`, `MARK_WATCHED`, `ADD_CATEGORY`, `UPDATE_CATEGORY`, `DELETE_CATEGORY`, `REORDER_CATEGORIES`, `REORDER_VIDEOS`. Updates the **badge** with the unwatched count.
-- **New tab (curated home):** grid of cards per category (up to 4, with an expandable “+N”), hover play, open in a new tab, context menu (Move / Mark watched / Remove), drag & drop of videos and of categories, watched toggle, YouTube-style dark theme. Empty states and a quota warning (`storage.sync` 100KB limit).
-- **Popup:** per-category video summary + shortcut to the home.
+- **Content script:** injects a **"+ Save"** button on feed, search, channel and
+  suggested-sidebar cards, a pill on `/watch`, and an import button on playlist
+  pages. Uses a `MutationObserver` (YouTube is an SPA) and an inline dropdown to
+  pick or create a category. Shows **"Saved"** with the category in the tooltip.
+  Re-saving a known video **moves** it rather than duplicating it.
+- **Playlist import:** one click on a `youtube.com/playlist?list=…` header
+  imports the rendered rows into a chosen category as a single batch commit — no
+  API key, no OAuth.
+- **Service worker:** owns the storage and validates every incoming message at
+  the trust boundary. Handles `SAVE_VIDEO`, `IMPORT_VIDEOS`, `GET_ALL`,
+  `DELETE_VIDEO`, `MOVE_VIDEO`, `MARK_WATCHED`, `ADD_CATEGORY`,
+  `UPDATE_CATEGORY`, `DELETE_CATEGORY`, `REORDER_CATEGORIES`, `REORDER_VIDEOS`,
+  `GET_SAVED_IDS`, `UPDATE_SETTINGS`, `OPEN_HOME`. Updates the toolbar **badge**
+  with the unwatched count.
+- **Curated home:** a grid of cards per category, plus smart sections
+  ("Recently added", "Gathering dust" for unwatched videos older than 21 days).
+  Category chips jump to a section, search filters title/channel, and cards carry
+  a duration badge, channel avatar, hover play, and a context menu (Move / Mark
+  watched / Remove). Drag & drop reorders both videos and categories. Empty
+  states and a quota warning for the `storage.sync` limit.
+- **Popup:** per-category video summary, unwatched count, and a shortcut to the
+  home.
+- **Settings:** interface language (English default, Portuguese-BR option),
+  accent color, sound effects, the open-home shortcut, and two **opt-in** watch
+  reminders (open the home on browser startup; a dismissible nudge on the YouTube
+  home). All reminders are off on a fresh install.
+- **Metadata enrichment:** when a title or channel can't be read from the DOM,
+  the worker backfills it from YouTube's public oEmbed endpoint. Best effort — a
+  failed lookup never blocks a save.
+
+## Privacy & permissions
+
+MyTube requests exactly `storage` plus host access to `https://www.youtube.com/*`
+— no `tabs`, no `history`. It has no server, no account, and no analytics: your
+library lives in your own browser storage and never reaches the developer. The
+only network request is the oEmbed lookup above.
+
+See [docs/PRIVACY.md](docs/PRIVACY.md) for the full policy and
+[specs/security-hardening.spec.md](specs/security-hardening.spec.md) for the
+message-validation, CSP and least-privilege criteria.
 
 ## Development
 
@@ -27,8 +72,19 @@ npm run dev      # Vite with HMR; load the dist/ folder in Chrome
 ## Production build
 
 ```bash
-npm run build    # generates dist/
+npm run build    # tsc --noEmit && vite build → dist/
 ```
+
+## Tests
+
+```bash
+npm test         # Vitest: reducer, content-script helpers, popup, new-tab components
+npm run test:watch
+npm run test:e2e # Playwright: loads the real built extension in headed Chromium
+```
+
+`npm run test:e2e` needs `npx playwright install chromium` once. A PostToolUse
+hook runs `vitest run` after any source edit and blocks on red.
 
 ## Load in Chrome
 
@@ -36,12 +92,45 @@ npm run build    # generates dist/
 2. Open `chrome://extensions`
 3. Enable **Developer mode**
 4. **Load unpacked** → select the **`dist/`** folder
-5. Open a new tab to see the home; browse YouTube and click **“+ Salvar”** on videos.
+5. Browse YouTube and click **"+ Save"** on videos, then open your home from the
+   toolbar popup or with **Ctrl+Shift+Y**.
 
-> The icons are generated by `node scripts/gen-icons.mjs` (already included in `icons/`).
+> The icons are generated by `node scripts/gen-icons.mjs` (already included in
+> `icons/`).
+
+## Localization
+
+Interface copy lives in a single catalog, [src/i18n.ts](src/i18n.ts), keyed by
+the persisted `Settings.language` so the user can switch language without
+changing their browser locale. English is the default; Portuguese (Brazil) is
+opt-in.
+
+Store-facing manifest strings are separate: they live in
+[`_locales/`](_locales/) and resolve against the **browser** UI locale, which is
+what the Chrome Web Store listing and `chrome://extensions` display.
+
+## Contributing / workflow
+
+Work is spec-first for anything beyond a trivial fix. Each feature owns one
+`specs/<feature>.spec.md` with a table of stable, observable acceptance criteria
+(`SAVE-3`, `DUR-1`, …), and every criterion is bound to a test named after its
+ID — so grepping an ID shows spec ↔ test in one shot.
+
+- [specs/WORKFLOW.md](specs/WORKFLOW.md) — the tiered process, step by step
+- [specs/CAPABILITIES.md](specs/CAPABILITIES.md) — living index of what the
+  extension does today
+- [CLAUDE.md](CLAUDE.md) — code style and conventions
+
+`openspec/` is frozen, read-only history; new behavior is specced only in
+`specs/*.spec.md`.
+
+## Publishing
+
+[docs/chrome-web-store-submission.md](docs/chrome-web-store-submission.md) holds
+the listing copy, permission justifications and packaging checklist for the
+Chrome Web Store.
 
 ## Roadmap (not implemented)
 
+- Export the video library (import from playlists already works)
 - YouTube Data API integration
-- Authentication / backend
-- Import/export the video list

@@ -1,0 +1,10 @@
+{
+  "appDesc": {
+    "message": "Your YouTube home, curated by you. Save videos into categories you control.",
+    "description": "Extension description shown in the Chrome Web Store listing and on chrome://extensions. Max 132 chars."
+  },
+  "cmdOpenHome": {
+    "message": "Open the MyTube home",
+    "description": "Label for the keyboard shortcut (Ctrl+Shift+Y) on the chrome://extensions/shortcuts page."
+  }
+}

@@ -10,7 +10,15 @@ export default defineManifest({
   manifest_version: 3,
   name: 'MyTube',
   version: pkg.version,
-  description: 'Sua home do YouTube curada por você',
+  // Store-facing strings resolve against the BROWSER UI locale via _locales/,
+  // which is independent of Settings.language (the in-app catalog in src/i18n.ts
+  // that the user switches by hand). English is the default in both places, so a
+  // pt-BR browser gets a Portuguese listing and everyone else gets English —
+  // previously every install saw the Portuguese string regardless of locale.
+  // CRXJS globs _locales/**/messages.json into dist/ only when default_locale is
+  // set, and Chrome refuses to load if _locales/en/messages.json is missing.
+  default_locale: 'en',
+  description: '__MSG_appDesc__',
   // chrome.tabs.create needs no permission; 'tabs'/'activeTab' were unused and
   // triggered the "Read your browsing history" install warning (finding S1).
   permissions: ['storage'],
@@ -54,7 +62,7 @@ export default defineManifest({
     // worker's onCommand match and the popup's shortcut lookup use that constant).
     open_home: {
       suggested_key: { default: 'Ctrl+Shift+Y', mac: 'Command+Shift+Y' },
-      description: 'Open the MyTube home',
+      description: '__MSG_cmdOpenHome__',
     },
   },
   content_scripts: [
