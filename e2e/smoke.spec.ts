@@ -1,6 +1,6 @@
 // Smoke E2E: loads the real built extension into Chromium and proves the two
 // MV3 entry points come up — the background service worker registers (so we can
-// read the extension id) and the new-tab override actually renders.
+// read the extension id) and the packaged curated-home page actually renders.
 //
 // Run with: npm run test:e2e  (builds dist/ first, then `playwright test`)
 // Requires: npx playwright install chromium. Extensions need a headed context.
@@ -42,6 +42,6 @@ test('SMOKE-1: the new tab page renders the curated-home welcome screen', async 
   const page = await context.newPage()
   await page.goto(`chrome-extension://${id}/newtab/index.html`)
 
-  await expect(page.getByText(/curada por você/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /curated by you/i })).toBeVisible()
   await expect(page.getByText('MyTube')).toBeVisible()
 })
