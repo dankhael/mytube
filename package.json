@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "store:assets": "npm run build && node scripts/capture-store-assets.mjs",
+    "promo:video": "npm run build && node scripts/make-promo-video.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test"
