@@ -140,4 +140,4 @@ export async function recordHomeScenes(page, clipsDir) {
   await recordMove(page, clipsDir)
 }
 
-export { recordThemeFlip }
+export { recordThemeFlip, openHome }

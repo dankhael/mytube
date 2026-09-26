@@ -33,6 +33,7 @@ function buildArrow() {
 
 function mountCursor() {
   const cursor = document.createElement('div')
+  cursor.className = 'promo-cursor' // lets stills hide it (store-promo capture)
   cursor.style.cssText =
     'position:fixed;left:-4px;top:-2px;z-index:2147483647;pointer-events:none;' +
     'filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));transform:translate(-100px,-100px)'

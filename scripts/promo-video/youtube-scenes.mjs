@@ -112,3 +112,5 @@ async function recordHomeReminder(context, settingsPage, clipsDir) {
 }
 
 export { recordSaveCard, recordPlaylistImport, recordHomeReminder }
+// Shared with the store-promo stills (scripts/store-promo/capture-youtube.mjs).
+export { SEARCH_URL, HOME_URL, openYoutube, dropdownItem, frameCard }
