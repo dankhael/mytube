@@ -31,33 +31,33 @@ export const STORYBOARD = [
   {
     id: 'home-library',
     layout: 'window',
-    url: 'MyTube — New Tab',
-    caption: 'Your new tab becomes your own YouTube home',
+    url: 'MyTube — Home',
+    caption: 'Your own YouTube home, one click away',
     speed: 1.25,
   },
   {
     id: 'home-search',
     layout: 'window',
-    url: 'MyTube — New Tab',
+    url: 'MyTube — Home',
     caption: 'Find anything instantly',
   },
   {
     id: 'home-category',
     layout: 'window',
-    url: 'MyTube — New Tab',
+    url: 'MyTube — Home',
     caption: 'Organize with your own categories',
   },
   {
     id: 'home-move',
     layout: 'window',
-    url: 'MyTube — New Tab',
+    url: 'MyTube — Home',
     caption: 'Move videos where they belong',
     speed: 1.2,
   },
   {
     id: 'popup',
     layout: 'popup',
-    url: 'MyTube — New Tab',
+    url: 'MyTube — Home',
     caption: 'Your library, one click from the toolbar',
   },
   {
@@ -72,7 +72,7 @@ export const STORYBOARD = [
   {
     id: 'home-theme',
     layout: 'window',
-    url: 'MyTube — New Tab',
+    url: 'MyTube — Home',
     caption: 'Make it yours: accent colors and a retro CRT skin',
   },
   { id: 'outro', layout: 'card', seconds: 4.5 },

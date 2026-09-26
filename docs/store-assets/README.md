@@ -11,7 +11,30 @@ npm run store:assets
 The generator lives in [`scripts/capture-store-assets.mjs`](../../scripts/capture-store-assets.mjs)
 with one module per surface under `scripts/store-assets/`.
 
-## Chrome Web Store listing (1280×800 / 440×280)
+## Designed listing images — `listing/` (use these for the store)
+
+Marketing boards built from clean stills of the real extension (dark YouTube,
+ad slots hidden), laid out after the Dopamine Toll store set in MyTube's brand:
+
+```bash
+npm run store:promo                          # build + capture stills + render
+node scripts/make-store-promo.mjs render     # re-render after a copy/layout edit
+```
+
+| File | Upload as | Says |
+|---|---|---|
+| `listing/screenshot-1-hero-1280x800.png` | Screenshot 1 | "Your YouTube, curated by you." — the home + popup |
+| `listing/screenshot-2-save-1280x800.png` | Screenshot 2 | "One click. It's saved." — Save pill, category menu, toast |
+| `listing/screenshot-3-organize-1280x800.png` | Screenshot 3 | "Organize it your way." — new-category and move modals |
+| `listing/screenshot-4-home-1280x800.png` | Screenshot 4 | "A home page with nothing recommended." — search, popup, reminder |
+| `listing/screenshot-5-yours-1280x800.png` | Screenshot 5 | "Your colors. Your library." — accents, CRT skin, no account/server/ads |
+| `listing/small-promo-440x280.png` | Small promo tile | Mark, name, tagline |
+| `listing/marquee-1400x560.png` | Marquee promo tile | Headline + the home in a window |
+
+Copy lives in `scripts/store-promo/boards-*.mjs`; every claim must match the
+listing text in `docs/chrome-web-store-submission.md`.
+
+## Raw UI captures (1280×800 / 440×280)
 
 Store screenshots must be 1280×800 or 640×400, so only these are uploadable:
 

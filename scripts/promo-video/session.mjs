@@ -26,15 +26,18 @@ const YOUTUBE_DARK_COOKIE = {
 
 /**
  * Headless Chromium with the extension loaded, laying pages out at `viewport`.
+ * `deviceScaleFactor` only affects screenshots (stills): the screencast used
+ * for video takes stays at 1× regardless.
  * @example const context = await launchRecordingBrowser('dist', VERTICAL.take)
  */
-export async function launchRecordingBrowser(extensionPath, viewport) {
+export async function launchRecordingBrowser(extensionPath, viewport, { deviceScaleFactor = 1 } = {}) {
   const context = await chromium.launchPersistentContext('', {
     headless: true,
     channel: 'chromium',
     locale: 'en-US',
     colorScheme: 'dark',
     viewport,
+    deviceScaleFactor,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   })
   await enablePageOverlay(context)

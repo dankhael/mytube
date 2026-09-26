@@ -195,19 +195,19 @@ Chrome Web Store disclosure rules.
    <https://github.com/dankhael/mytube/blob/master/docs/PRIVACY.md> in the
    dashboard's Privacy policy URL field. Verify it remains publicly reachable
    immediately before submitting.
-2. **Screenshots:** upload
-   [`store-assets/home-library-1280x800.png`](./store-assets/home-library-1280x800.png)
-   as the primary image and
-   [`store-assets/home-welcome-1280x800.png`](./store-assets/home-welcome-1280x800.png)
-   as the first-run image. The store takes up to five, so fill the rest from the
-   1280×800 set in [`store-assets/README.md`](./store-assets/README.md) — the
-   YouTube Save pill, the playlist import and the search shots cover the features
-   the listing copy promises. All are generated from the real packaged extension.
-   The 340×600 popup images in that folder are documentation only; the store
-   rejects any screenshot that is not 1280×800 or 640×400.
-3. **Small promo tile:** upload
-   [`store-assets/small-promo-440x280.png`](./store-assets/small-promo-440x280.png).
-   Regenerate every asset with `npm run store:assets` after store-facing UI changes.
+2. **Screenshots:** upload the five designed boards in order —
+   [`store-assets/listing/screenshot-1-hero-1280x800.png`](./store-assets/listing/screenshot-1-hero-1280x800.png)
+   through `screenshot-5-yours-1280x800.png` (see
+   [`store-assets/README.md`](./store-assets/README.md)). They are built from
+   clean stills of the real packaged extension with `npm run store:promo`. The
+   raw captures in `store-assets/` are a fallback; several youtube.com ones show
+   live third-party ads/thumbnails, so check them before using any.
+3. **Promo tiles:** upload
+   [`store-assets/listing/small-promo-440x280.png`](./store-assets/listing/small-promo-440x280.png)
+   as the small promo tile and
+   [`store-assets/listing/marquee-1400x560.png`](./store-assets/listing/marquee-1400x560.png)
+   as the marquee (optional; used for featured placements). Re-run
+   `npm run store:promo` after store-facing UI or copy changes.
 4. **Build and package:**
    ```bash
    npm run build
