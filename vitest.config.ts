@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 // - src/**/*.test.ts   → pure reducer specs (Node)
 // - newtab/**/*.test.tsx → React component specs (jsdom, via per-file docblock)
 // - newtab/**/*.test.ts  → static HTML specs (Node, e.g. tab title/favicon)
+// - scripts/**/*.test.mjs → pure helpers of the build tooling (e.g. promo reframing)
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -16,6 +17,7 @@ export default defineConfig({
       'newtab/**/*.test.tsx',
       'newtab/**/*.test.ts',
       'popup/**/*.test.ts',
+      'scripts/**/*.test.mjs',
     ],
     setupFiles: ['./test/setup.ts'],
     // On vite 8 + vitest 4 (Windows, Node 22.22) the default worker pool dies

@@ -15,7 +15,7 @@ Backing OpenSpec change: openspec/changes/quirky-salvar-button/
 - **Contract:** no contract change — reuses `SAVE_VIDEO` in [src/types.ts](../src/types.ts).
   This is a content-script presentation/feedback change only.
 - **Tests:** `content/dropdown-position.test.ts` proves the category-menu
-  placement math (SALVAR-MENU-1..4). The rest are DOM/content-script behaviors
+  placement math (SALVAR-MENU-1..5). The rest are DOM/content-script behaviors
   verified by **Manual acceptance** below, per [specs/README.md](./README.md).
   Existing `SAVE_VIDEO` persistence proof stays in
   [src/storage.test.ts](../src/storage.test.ts).
@@ -48,6 +48,7 @@ line up.
 | **SALVAR-MENU-2** | a button pinned near the viewport bottom (no room below) | `placeDropdown` runs | the menu **flips above** the button and stays fully on-screen — a save from the top of a `/watch` page (action bar at the viewport bottom) is reachable, not clipped off-screen |
 | **SALVAR-MENU-3** | a button near/past the right edge | `placeDropdown` runs | the `right` offset is clamped so the menu never leaves the viewport |
 | **SALVAR-MENU-4** | a menu taller than the room above and below | `placeDropdown` runs | `top` is clamped to the viewport margin (the menu scrolls internally rather than overflowing) |
+| **SALVAR-MENU-5** | a button near the left edge (a narrow or portrait YouTube window, where every result card's pill sits at the left) | `placeDropdown` runs | the `right` offset is clamped so the menu's left edge stays at the viewport margin — the menu never leaves the viewport on the left, and its categories stay clickable; for a menu wider than the viewport the left edge wins |
 | **SALVAR-MENU-TRACK** | the category menu is open | the user scrolls or resizes the page | the menu stays pinned to its button (re-anchored on scroll/resize) instead of drifting away mid-page |
 
 ## Out of scope / non-goals
@@ -72,5 +73,6 @@ line up.
 - [ ] **SALVAR-NOEXPAND** — On the search results page, injected buttons do **not** enlarge/expand the video thumbnails (toggle the extension to compare).
 - [ ] **SALVAR-FRESH** — On a `/watch` page, navigate to another video via a suggestion (or leave the tab idle until YouTube refreshes, then re-focus), wait for the title/channel to update, then save with the pill: the entry on the home shows the open video's real title and channel, not the previous one.
 - [ ] **SALVAR-MENU-2** — On a `/watch` page scrolled to the top (action bar at the viewport bottom), click the pill: the category menu opens **above** the button and every category is reachable.
+- [ ] **SALVAR-MENU-5** — Narrow the YouTube window to ~760px (or half the screen) on a search page and click a result's pill: the category menu opens fully on-screen, pushed in from the left edge, and every category is clickable.
 - [ ] **SALVAR-MENU-TRACK** — With the category menu open, scroll the page: the menu stays attached to its button (and the click-outside dismiss still works) instead of floating off in the middle of the page.
 - [ ] Cross-context re-sync still works: saving from the new-tab page updates an already-injected button's state.

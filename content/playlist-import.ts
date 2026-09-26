@@ -7,7 +7,7 @@
 
 import { Message, MessageResponse } from '../src/types'
 import { Language, t } from '../src/i18n'
-import { CardData, extractCard } from './extract-card'
+import { findPlaylistRows, scrapePlaylistRows } from './playlist-rows'
 
 export interface PlaylistImportDeps {
   sendMessage: (message: Message) => Promise<MessageResponse>
@@ -16,7 +16,6 @@ export interface PlaylistImportDeps {
   getLang: () => Language
 }
 
-const PLAYLIST_ROW = 'ytd-playlist-video-renderer'
 const IMPORT_BTN_ID = 'mytube-import-btn'
 
 // Bound on the auto-scroll loop so a runaway playlist can't spin forever; each
@@ -28,6 +27,11 @@ function isPlaylistPage(): boolean {
   return location.pathname === '/playlist' && new URLSearchParams(location.search).has('list')
 }
 
+// The open playlist's id — rows are recognized by linking into it (playlist-rows.ts).
+function currentListId(): string {
+  return new URLSearchParams(location.search).get('list') ?? ''
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -35,10 +39,10 @@ function delay(ms: number): Promise<void> {
 // Best-effort: scroll to the bottom repeatedly until the row count stops growing
 // (or we hit the cap), so lazy-loaded rows render before we scrape them. A very
 // large playlist may still stop short — documented limitation (IMPORT-DOM-5).
-async function loadAllRows(): Promise<void> {
+async function loadAllRows(listId: string): Promise<void> {
   let previous = -1
   for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
-    const count = document.querySelectorAll(PLAYLIST_ROW).length
+    const count = findPlaylistRows(document, listId).length
     if (count === previous) break
     previous = count
     window.scrollTo(0, document.documentElement.scrollHeight)
@@ -47,34 +51,15 @@ async function loadAllRows(): Promise<void> {
   window.scrollTo(0, 0)
 }
 
-// Read every rendered playlist row, de-duped by id (a playlist can list the same
-// video twice; storage keys on id anyway).
-function scrapeRows(): CardData[] {
-  const seen = new Set<string>()
-  const cards: CardData[] = []
-  document.querySelectorAll<HTMLElement>(PLAYLIST_ROW).forEach((row) => {
-    let card: CardData | null = null
-    try {
-      card = extractCard(row)
-    } catch {
-      card = null // skip one broken row, keep the rest
-    }
-    if (card && !seen.has(card.id)) {
-      seen.add(card.id)
-      cards.push(card)
-    }
-  })
-  return cards
-}
-
 async function runImport(deps: PlaylistImportDeps, btn: HTMLButtonElement, category: string) {
   const lang = deps.getLang()
   const original = btn.textContent
   btn.disabled = true
   btn.textContent = t('content.import.loading', lang)
   try {
-    await loadAllRows()
-    const cards = scrapeRows()
+    const listId = currentListId()
+    await loadAllRows(listId)
+    const cards = scrapePlaylistRows(document, listId)
     if (cards.length === 0) {
       deps.showToast(t('content.import.empty', lang))
       return

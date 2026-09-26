@@ -1,6 +1,6 @@
 # MyTube — Privacy Policy
 
-**Last updated: 30 July 2026**
+**Last updated: 16 August 2026**
 
 MyTube is a Chrome extension that lets you save YouTube videos into categories
 you define and view them on a curated home page.
@@ -31,10 +31,12 @@ MyTube also stores the category list you create and your preferences (interface
 language, accent color, sound effects on/off, and the two watch-reminder
 toggles).
 
-**That is the complete list.** MyTube does not record your browsing history,
-does not track which pages you visit, does not read videos you merely watch or
-scroll past, and does not capture anything from any site other than the video
-cards you explicitly choose to save on `www.youtube.com`.
+**That is the complete list of data MyTube persists.** On `www.youtube.com`, the
+content script locally inspects rendered video-card metadata so it can place the
+Save controls and show whether a card is already in your library. It does not
+persist that metadata unless you explicitly save the video or import a playlist.
+MyTube does not record your browsing history, track which pages you visit, or
+send card metadata to the developer.
 
 ## Where that data lives
 
@@ -59,6 +61,17 @@ Google/YouTube image hosts (`i.ytimg.com`, `yt3.ggpht.com`,
 
 MyTube does not execute remote code. All code is contained in the published
 extension package, and fonts are bundled locally rather than fetched from a CDN.
+
+## Chrome Web Store Limited Use
+
+MyTube uses website content and the save/import/watch actions you explicitly
+perform only to provide its single purpose: organizing your selected YouTube
+videos in your personal library. The developer does not sell, transfer, or use
+that information for advertising, creditworthiness, analytics, or any unrelated
+purpose, and no human can read it through MyTube.
+
+MyTube's use of information received from Google APIs adheres to the Chrome Web
+Store User Data Policy, including the Limited Use requirements.
 
 ## The donation link
 
@@ -103,7 +116,7 @@ Questions: **danilokhael@gmail.com** — or open an issue at
 
 # MyTube — Política de Privacidade
 
-**Última atualização: 30 de julho de 2026**
+**Última atualização: 16 de agosto de 2026**
 
 O MyTube é uma extensão do Chrome que permite salvar vídeos do YouTube em
 categorias definidas por você e vê-los em uma home curada.
@@ -123,9 +136,13 @@ O MyTube também guarda a lista de categorias que você cria e suas preferência
 (idioma da interface, cor de destaque, efeitos sonoros e os dois lembretes
 opcionais).
 
-**Essa é a lista completa.** O MyTube não registra seu histórico de navegação,
-não rastreia as páginas que você visita e não captura nada de nenhum site além
-dos cards de vídeo que você escolhe salvar em `www.youtube.com`.
+**Essa é a lista completa de dados persistidos pelo MyTube.** Em
+`www.youtube.com`, o script de conteúdo inspeciona localmente os metadados dos
+cards renderizados para posicionar os controles de Salvar e indicar quais vídeos
+já estão na sua biblioteca. Esses metadados só são persistidos quando você salva
+o vídeo ou importa uma playlist. O MyTube não registra seu histórico de
+navegação, não rastreia as páginas que você visita e não envia os metadados dos
+cards ao desenvolvedor.
 
 ## Onde esses dados ficam
 
@@ -151,6 +168,18 @@ Google/YouTube. O MyTube não executa código remoto.
 
 O MyTube não solicita as permissões `tabs` ou `history` e não substitui sua página
 de nova aba.
+
+## Uso limitado da Chrome Web Store
+
+O MyTube usa o conteúdo do site e as ações de salvar, importar e marcar como
+assistido realizadas por você somente para cumprir seu único propósito: organizar
+os vídeos do YouTube escolhidos por você em sua biblioteca pessoal. O
+desenvolvedor não vende, transfere nem usa essas informações para publicidade,
+análises, avaliação de crédito ou qualquer finalidade não relacionada, e nenhuma
+pessoa consegue lê-las por meio do MyTube.
+
+O uso das informações recebidas das APIs do Google pelo MyTube segue a Política
+de Dados do Usuário da Chrome Web Store, incluindo os requisitos de Uso Limitado.
 
 ## Exclusão dos dados
 
