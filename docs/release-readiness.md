@@ -13,7 +13,8 @@ Last verified: **16 August 2026**
 - Packaged-extension smoke: passed in real Chromium
 - Live YouTube smoke: search-card Save control, category picker, save toast,
   saved item on the curated home, and `/watch` action-bar control all passed
-- Store artwork: two 1280×800 screenshots and one 440×280 promo tile generated
+- Store artwork: thirteen 1280×800 screenshots and one 440×280 promo tile
+  generated, plus three 340×600 popup images for the docs
 - Upload archive: `release/mytube-1.0.0.zip` validated with `manifest.json` at
   the archive root
 
@@ -22,7 +23,9 @@ Last verified: **16 August 2026**
 These require the Chrome Web Store account or a final human visual pass:
 
 - Commit and publish the updated privacy policy before using its `master` URL.
-- Upload the ZIP and the three files under `docs/store-assets/`.
+- Upload the ZIP, the promo tile, and up to five of the 1280×800 screenshots
+  listed in `docs/store-assets/README.md` (the 340×600 popup images are docs
+  only — the store rejects that size).
 - Paste the listing, single-purpose, permission, remote-code, and data-use answers
   from `docs/chrome-web-store-submission.md` into the Developer Dashboard.
 - Confirm **Website content** and **User activity** are disclosed in the Privacy

@@ -199,10 +199,15 @@ Chrome Web Store disclosure rules.
    [`store-assets/home-library-1280x800.png`](./store-assets/home-library-1280x800.png)
    as the primary image and
    [`store-assets/home-welcome-1280x800.png`](./store-assets/home-welcome-1280x800.png)
-   as the first-run image. Both are generated from the real packaged extension.
+   as the first-run image. The store takes up to five, so fill the rest from the
+   1280×800 set in [`store-assets/README.md`](./store-assets/README.md) — the
+   YouTube Save pill, the playlist import and the search shots cover the features
+   the listing copy promises. All are generated from the real packaged extension.
+   The 340×600 popup images in that folder are documentation only; the store
+   rejects any screenshot that is not 1280×800 or 640×400.
 3. **Small promo tile:** upload
    [`store-assets/small-promo-440x280.png`](./store-assets/small-promo-440x280.png).
-   Regenerate all three with `npm run store:assets` after store-facing UI changes.
+   Regenerate every asset with `npm run store:assets` after store-facing UI changes.
 4. **Build and package:**
    ```bash
    npm run build
