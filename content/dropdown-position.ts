@@ -13,6 +13,11 @@ export interface Viewport {
   height: number
 }
 
+export interface MenuSize {
+  width: number
+  height: number
+}
+
 export interface MenuPlacement {
   top: number
   right: number
@@ -32,9 +37,10 @@ function clamp(value: number, min: number, max: number): number {
 // always lands fully inside the viewport, whatever the button's position.
 export function placeDropdown(
   button: AnchorRect,
-  menuHeight: number,
+  menu: MenuSize,
   viewport: Viewport,
 ): MenuPlacement {
+  const menuHeight = menu.height
   const roomBelow = viewport.height - button.bottom - ANCHOR_GAP
   const roomAbove = button.top - ANCHOR_GAP
   const openUp = roomBelow < menuHeight && roomAbove >= menuHeight
@@ -43,6 +49,12 @@ export function placeDropdown(
   const maxTop = Math.max(DROPDOWN_MARGIN, viewport.height - menuHeight - DROPDOWN_MARGIN)
   const top = Math.round(clamp(rawTop, DROPDOWN_MARGIN, maxTop))
 
-  const right = Math.round(Math.max(DROPDOWN_MARGIN, viewport.width - button.right))
+  // Right-aligned to the button, but never past either side: a pill near the
+  // left edge (every result card in a narrow YouTube window) used to push the
+  // menu off-screen to the left. The left clamp wins for a menu wider than
+  // the viewport, so its start stays readable.
+  const keepRightInView = Math.max(viewport.width - button.right, DROPDOWN_MARGIN)
+  const keepLeftInView = viewport.width - menu.width - DROPDOWN_MARGIN
+  const right = Math.round(Math.min(keepRightInView, keepLeftInView))
   return { top, right }
 }

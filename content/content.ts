@@ -170,7 +170,8 @@ function closeAllDropdowns() {
 // into a scroll-with-the-page box that drifts away from the button.
 function positionDropdown(dropdown: HTMLElement, btn: HTMLElement) {
   dropdown.style.setProperty('position', 'fixed', 'important')
-  const { top, right } = placeDropdown(btn.getBoundingClientRect(), dropdown.offsetHeight, {
+  const menu = { width: dropdown.offsetWidth, height: dropdown.offsetHeight }
+  const { top, right } = placeDropdown(btn.getBoundingClientRect(), menu, {
     width: window.innerWidth,
     height: window.innerHeight,
   })
