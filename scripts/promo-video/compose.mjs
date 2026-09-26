@@ -1,18 +1,16 @@
-// Composes a finished cut for one output format (formats.mjs): every take is
-// framed on the stage as a segment (window, caption, optional zoom, and — in
-// the vertical cut — a slice that pans with the pointer), then the segments
-// are chained with cross-fades in storyboard order. Writes the MP4 plus a
-// timeline of where each scene starts, for laying narration and music on top.
+// Composes a finished cut for one output format (formats.mjs) from that
+// format's own takes: every take is framed on the stage as a segment (window,
+// caption, optional zoom), then the segments are chained with cross-fades in
+// storyboard order. Writes the MP4 plus a timeline of where each scene starts,
+// for laying narration and music on top.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { H264, ffmpeg, probeSeconds } from './ffmpeg.mjs'
-import { TAKE } from './formats.mjs'
 import { captionMarkup, introCard, outroCard, stageMarkup } from './markup.mjs'
 import { POPUP_BACKDROP } from './popup-scene.mjs'
-import { focusCropX, followCropXs, sendcmdScript } from './reframe.mjs'
 import { openStillRenderer } from './render-stills.mjs'
 import { FPS, STORYBOARD, TRANSITION_S } from './storyboard.mjs'
 
@@ -29,58 +27,38 @@ function roundedMask(workDir, name, width, height, radius) {
   return file
 }
 
-function readSidecar(clipsDir, id, kind) {
+function readSidecar(clipsDir, id, kind, formatName) {
   const file = join(clipsDir, `${id}.${kind}.json`)
   if (!existsSync(file))
-    throw new Error(`missing ${file}; re-record: node scripts/make-promo-video.mjs record ${id}`)
+    throw new Error(
+      `missing ${file}; re-record: node scripts/make-promo-video.mjs record ${formatName} ${id}`,
+    )
   return JSON.parse(readFileSync(file, 'utf8'))
 }
 
 // Eased zoom onto the saved focus box: smoothstep from 1× to `zoom` over
 // ZOOM_EASE_S. The take is upscaled 2× first so the pan doesn't stair-step.
-function zoomFilter(focus, box) {
-  const progress = `clip((on/${FPS}-${focus.from})/${ZOOM_EASE_S},0,1)`
+function zoomFilter(take, { zoom, from }, box) {
+  const progress = `clip((on/${FPS}-${from})/${ZOOM_EASE_S},0,1)`
   const eased = `(${progress})*(${progress})*(3-2*(${progress}))`
   const cx = (box.x + box.width / 2) * 2
   const cy = (box.y + box.height / 2) * 2
   return (
-    `scale=${TAKE.width * 2}:${TAKE.height * 2},` +
-    `zoompan=z='1+${focus.zoom - 1}*${eased}':x='clip(${cx}-iw/zoom/2,0,iw-iw/zoom)'` +
-    `:y='clip(${cy}-ih/zoom/2,0,ih-ih/zoom)':d=1:s=${TAKE.width}x${TAKE.height}:fps=${FPS}`
+    `scale=${take.width * 2}:${take.height * 2},` +
+    `zoompan=z='1+${zoom - 1}*${eased}':x='clip(${cx}-iw/zoom/2,0,iw-iw/zoom)'` +
+    `:y='clip(${cy}-ih/zoom/2,0,ih-ih/zoom)':d=1:s=${take.width}x${take.height}:fps=${FPS}`
   )
 }
 
-// Vertical slice of the take: pinned (`vertical.x`), parked on the zoom's
-// focus, or panning with the pointer via a per-frame sendcmd script.
-function cropFilter(scene, format, ctx) {
-  const crop = `w=${format.cropWidth}:h=${TAKE.height}:y=0`
-  const size = { takeWidth: TAKE.width, cropWidth: format.cropWidth }
-  if (scene.vertical?.x !== undefined) return `crop=${crop}:x=${scene.vertical.x}`
-  if (scene.focus) {
-    const x = focusCropX(readSidecar(ctx.clipsDir, scene.id, 'focus'), focusFor(scene, format).zoom, size)
-    return `crop=${crop}:x=${x}`
-  }
-  const trail = readSidecar(ctx.clipsDir, scene.id, 'pointer')
-  const frames = Math.ceil(ctx.seconds * FPS) + 1
-  const xs = followCropXs(trail, { frames, fps: FPS, speed: scene.speed ?? 1, ...size })
-  const script = join(ctx.workDir, `follow-${scene.id}.cmd`)
-  writeFileSync(script, sendcmdScript(xs, FPS))
-  return `sendcmd=f='${script}',crop@follow=${crop}:x=${xs[0]}`
-}
-
-// The vertical slice is narrower than the frame, so a scene may ask for a
-// gentler zoom there (`focus.verticalZoom`).
-function focusFor(scene, format) {
-  if (!scene.focus) return null
-  const zoom = format.cropWidth ? (scene.focus.verticalZoom ?? scene.focus.zoom) : scene.focus.zoom
-  return { ...scene.focus, zoom }
-}
-
-function takeFilter(scene, format, ctx) {
+// `focus.zoom` is per format: a portrait take is narrower, so the same
+// element needs less magnification to fill it.
+function takeFilter(scene, format, clipsDir) {
   const steps = [`setpts=PTS/${scene.speed ?? 1}`, `fps=${FPS}`]
-  const focus = focusFor(scene, format)
-  if (focus) steps.push(zoomFilter(focus, readSidecar(ctx.clipsDir, scene.id, 'focus')))
-  if (format.cropWidth && scene.layout === 'window') steps.push(cropFilter(scene, format, ctx))
+  const zoom = scene.focus?.zoom[format.name] ?? 1
+  if (zoom > 1) {
+    const focus = { from: scene.focus.from, zoom }
+    steps.push(zoomFilter(format.take, focus, readSidecar(clipsDir, scene.id, 'focus', format.name)))
+  }
   return steps.join(',')
 }
 
@@ -95,13 +73,13 @@ function captionFilter(format, seconds) {
 
 // Window layout: the take fills the window's content box; popup layout: the
 // popup take floats at its toolbar anchor over the pre-drawn home still.
-function placementFilter(scene, format, ctx) {
+function placementFilter(scene, format, clipsDir) {
   const { window: w, popup } = format
   const isPopup = scene.layout === 'popup'
   const size = isPopup ? popup : { width: w.width, height: w.contentHeight }
   const at = isPopup ? popup : { x: w.x, y: w.contentY }
   return (
-    `[1:v]${takeFilter(scene, format, ctx)},scale=${size.width}:${size.height}:flags=lanczos,format=rgba[take];` +
+    `[1:v]${takeFilter(scene, format, clipsDir)},scale=${size.width}:${size.height}:flags=lanczos,format=rgba[take];` +
     `[3:v]format=gray[mask];[take][mask]alphamerge[shaped];` +
     `[0:v][shaped]overlay=${at.x}:${at.y}:shortest=1[framed];`
   )
@@ -110,7 +88,9 @@ function placementFilter(scene, format, ctx) {
 async function renderSceneSegment(scene, format, stills, dirs) {
   const take = join(dirs.clipsDir, `${scene.id}.mp4`)
   if (!existsSync(take))
-    throw new Error(`missing take ${take}; run: node scripts/make-promo-video.mjs record ${scene.id}`)
+    throw new Error(
+      `missing take ${take}; run: node scripts/make-promo-video.mjs record ${format.name} ${scene.id}`,
+    )
   const seconds = (await probeSeconds(take)) / (scene.speed ?? 1)
   const isPopup = scene.layout === 'popup'
   const backdropSrc = isPopup ? pathToFileURL(join(dirs.clipsDir, POPUP_BACKDROP)).href : null
@@ -121,7 +101,7 @@ async function renderSceneSegment(scene, format, stills, dirs) {
   const caption = await stills.caption(`caption-${scene.id}`, captionMarkup(dirs.root, format, scene.caption))
   const out = join(dirs.workDir, `segment-${scene.id}.mp4`)
   const still = (file) => ['-loop', '1', '-t', seconds.toFixed(3), '-i', file]
-  const graph = placementFilter(scene, format, { ...dirs, seconds }) + captionFilter(format, seconds)
+  const graph = placementFilter(scene, format, dirs.clipsDir) + captionFilter(format, seconds)
   // prettier-ignore
   await ffmpeg([
     ...still(stage), '-i', take, ...still(caption), ...still(isPopup ? dirs.popupMask : dirs.windowMask),
@@ -184,9 +164,9 @@ async function renderSegments(format, dirs) {
 }
 
 /**
- * Renders all segments of `format` and the final cross-faded cut; returns a
- * summary line.
- * @example await composeVideo({ root, outDir: 'build/promo-video', clipsDir: 'build/promo-video/clips', format: VERTICAL })
+ * Renders all segments of `format` from its takes in `clipsDir` and the final
+ * cross-faded cut; returns a summary line.
+ * @example await composeVideo({ root, outDir: 'build/promo-video', clipsDir: 'build/promo-video/clips/vertical', format: VERTICAL })
  */
 export async function composeVideo({ root, outDir, clipsDir, format }) {
   const workDir = join(outDir, 'work', format.name)
@@ -204,7 +184,8 @@ export async function composeVideo({ root, outDir, clipsDir, format }) {
   const inputs = segments.flatMap((segment) => ['-i', segment.file])
   const encode = [...H264, '-crf', '17', '-movflags', '+faststart']
   await ffmpeg([...inputs, '-filter_complex', graph, '-map', `[${label}]`, ...encode, output])
-  // Both formats share one timeline (same takes, same order), so either writes it.
-  writeFileSync(join(outDir, 'timeline.txt'), timelineText(segments, starts, length))
+  // Each format has its own takes, so scene starts drift by a second or so
+  // between cuts — one timeline per format.
+  writeFileSync(join(outDir, `timeline-${format.name}.txt`), timelineText(segments, starts, length))
   return `${output} (${length.toFixed(1)}s)`
 }

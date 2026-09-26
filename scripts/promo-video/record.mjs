@@ -1,4 +1,5 @@
-// Records every browser scene of the storyboard into `<clipsDir>/<id>.mp4`.
+// Records every browser scene of the storyboard into `<clipsDir>/<id>.mp4`,
+// with pages laid out at one format's take size (formats.mjs).
 // Order is dictated by state, not by the storyboard: seed the library, save
 // from YouTube, then film the home that now holds those saves.
 
@@ -9,13 +10,14 @@ import { launchRecordingBrowser } from './session.mjs'
 import { recordHomeReminder, recordPlaylistImport, recordSaveCard } from './youtube-scenes.mjs'
 
 /**
- * Films all browser scenes; `only` limits the run to some scene ids for retakes.
+ * Films all browser scenes at `viewport`; `only` limits the run to some scene
+ * ids for retakes.
  * @example
- *   await recordAllScenes('dist', 'build/promo-video/clips', new Set(['home-search']))
+ *   await recordAllScenes('dist', 'build/promo-video/clips/vertical', VERTICAL.take, new Set(['home-search']))
  */
-export async function recordAllScenes(extensionPath, clipsDir, only = null) {
+export async function recordAllScenes(extensionPath, clipsDir, viewport, only = null) {
   const wants = (id) => !only || only.has(id)
-  const context = await launchRecordingBrowser(extensionPath)
+  const context = await launchRecordingBrowser(extensionPath, viewport)
   try {
     const id = await extensionId(context)
     const home = await prepareHome(context, id)

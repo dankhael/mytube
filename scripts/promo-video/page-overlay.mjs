@@ -55,12 +55,17 @@ function showRipple(event) {
 }
 
 // Scrollbars read as clutter on camera. YouTube's hover preview is hidden
-// too: headless Chromium has no H.264, so it paints a black rectangle.
+// too: headless Chromium has no H.264, so it paints a black rectangle. And
+// YouTube's ad slots go: a portrait take of the home showed a third-party car
+// ad above the feed, which has no place in MyTube's own promo.
 function mountCameraStyle() {
   const style = document.createElement('style')
   style.textContent =
     '::-webkit-scrollbar{display:none!important} *{scrollbar-width:none!important}' +
-    'ytd-video-preview,#video-preview{display:none!important}'
+    'ytd-video-preview,#video-preview{display:none!important}' +
+    'ytd-ad-slot-renderer,ytd-in-feed-ad-layout-renderer,ytd-banner-promo-renderer,#masthead-ad,' +
+    'ytd-rich-item-renderer:has(ytd-ad-slot-renderer),ytd-rich-section-renderer:has(ytd-ad-slot-renderer)' +
+    '{display:none!important}'
   document.documentElement.appendChild(style)
 }
 

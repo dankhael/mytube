@@ -27,7 +27,7 @@ async function recordLibrary(page, clipsDir) {
   await page.waitForTimeout(800)
   await scrollHomeToTop(page)
   await recordScene(page, 'home-library', clipsDir, async (pointer) => {
-    await pointer.moveTo(760, 430, 900)
+    await pointer.moveToShare(0.53, 0.48, 900)
     await smoothWheel(page, 900)
     await page.waitForTimeout(700)
     await smoothWheel(page, -900)
@@ -95,13 +95,15 @@ async function recordThemeFlip(context, id, clipsDir) {
   const page = await openHome(context, id)
   await waitForImages(page)
   await recordScene(page, 'home-theme', clipsDir, async (pointer) => {
-    await pointer.moveTo(1150, 330, 700)
+    await pointer.moveToShare(0.8, 0.37, 700)
     for (const accent of ACCENT_TOUR) {
       await updateSettings(page, { accent })
       await page.waitForTimeout(900)
     }
+    // No waitForImages here: the skin swap loads no image, and in a portrait
+    // take the off-screen lazy thumbnails never finish, so it idled on camera
+    // for its full 10 s timeout.
     await updateSettings(page, { theme: 'smpte' })
-    await waitForImages(page)
     await page.waitForTimeout(1800)
   })
   await updateSettings(page, { theme: 'aurora', accent: 'violet' })

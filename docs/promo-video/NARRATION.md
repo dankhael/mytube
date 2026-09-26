@@ -1,13 +1,15 @@
 # MyTube promo — narration script
 
-Voice-over lines for the promo cuts (both ~64 s, silent, same timeline):
+Voice-over lines for the promo cuts (both ~64 s, silent, same scene order):
 `build/promo-video/mytube-promo-1080p.mp4` (1920×1080, YouTube / store listing)
 and `build/promo-video/mytube-promo-vertical.mp4` (1080×1920, Shorts / Reels /
-TikTok). One narration and music mix fits both.
+TikTok, filmed with the pages in portrait). One script fits both.
 
-Generate the cut with `npm run promo:video`; `build/promo-video/timeline.txt`
-lists where each scene starts. If a retake shifts the timings, re-read it and
-nudge the lines to match.
+Generate the cuts with `npm run promo:video`. Each format films its own takes,
+so scene starts drift by a second or so between them:
+`build/promo-video/timeline-1080p.txt` and `timeline-vertical.txt` list where
+each scene starts. The times below are approximate — nudge each line to the
+timeline of the cut you are mixing.
 
 Each line fits its scene at a relaxed pace (~2.3 words/s in EN, a little less
 in PT-BR). Start each line ~0.3 s after the scene begins so it lands with the

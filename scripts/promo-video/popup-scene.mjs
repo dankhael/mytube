@@ -5,7 +5,8 @@
 import { join } from 'node:path'
 import { waitForImages } from '../store-assets/seed.mjs'
 import { scrollHomeToTop } from './home-scenes.mjs'
-import { POPUP_VIEWPORT, recordScene } from './session.mjs'
+import { POPUP_VIEWPORT } from './formats.mjs'
+import { recordScene } from './session.mjs'
 
 export const POPUP_BACKDROP = 'popup-backdrop.png'
 
@@ -24,20 +25,14 @@ export async function recordPopup(context, id, homePage, clipsDir) {
   await homePage.mouse.move(2, 2)
   await homePage.screenshot({ path: join(clipsDir, POPUP_BACKDROP) })
   const page = await openPopup(context, id)
-  await recordScene(
-    page,
-    'popup',
-    clipsDir,
-    async (pointer) => {
-      for (const name of ['Design', 'Music']) {
-        await pointer.click(page.locator('.cat-row', { hasText: name }), 700)
-        await waitForImages(page)
-        await page.waitForTimeout(900)
-      }
-      await pointer.glide(page.locator('#open'), 700)
+  await recordScene(page, 'popup', clipsDir, async (pointer) => {
+    for (const name of ['Design', 'Music']) {
+      await pointer.click(page.locator('.cat-row', { hasText: name }), 700)
+      await waitForImages(page)
       await page.waitForTimeout(900)
-    },
-    { viewport: POPUP_VIEWPORT },
-  )
+    }
+    await pointer.glide(page.locator('#open'), 700)
+    await page.waitForTimeout(900)
+  })
   await page.close()
 }

@@ -88,8 +88,8 @@ function stageCss({ window: w, popup, brandBar }) {
   .popup-shadow { position: absolute; left: ${popup.x}px; top: ${popup.y}px; width: ${popup.width}px;
     height: ${popup.height}px; border-radius: 12px; box-shadow: 0 30px 70px #000c, 0 0 0 1px #ffffff1c }
   .brand { position: absolute; left: 0; right: 0; top: ${brandBar?.y ?? 0}px; display: flex; justify-content: center;
-    align-items: center; gap: 22px; font: 800 76px/1 var(--font-display); letter-spacing: -3px }
-  .brand svg { width: 84px; height: 84px } .brand span { color: var(--accent) }`
+    align-items: center; gap: 18px; font: 800 60px/1 var(--font-display); letter-spacing: -2px }
+  .brand svg { width: 66px; height: 66px } .brand span { color: var(--accent) }`
 }
 
 // Vertical feeds show no browser chrome around the video, so the brand rides

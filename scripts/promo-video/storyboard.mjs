@@ -10,10 +10,9 @@
 // `url` is the text painted in the fake address bar (cosmetic only).
 // `speed` plays a take faster than it was filmed (cursor glides are paced for
 // clarity, not for a 60s cut).
-// `vertical.x` pins the vertical cut's 720px slice instead of letting it
-// follow the pointer — for scenes whose payoff happens away from the cursor.
 // `focus` eases a zoom in on the box the scene saved to `<id>.focus.json`
-// (for UI too small to read at full frame), `from` seconds into the take.
+// (for UI too small to read at full frame), `from` seconds into the take;
+// `zoom` is per format name, since a portrait take is narrower.
 
 export const FPS = 30
 export const TRANSITION_S = 0.5
@@ -27,9 +26,8 @@ export const STORYBOARD = [
     caption: 'Save any YouTube video in one click',
     speed: 1.15,
   },
-  // yt-playlist (playlist import) is filmed but left out of the cut until the
-  // importer reads YouTube's current playlist rows: today the scrape finds no
-  // `ytd-playlist-video-renderer` and the take ends on "No videos found".
+  // yt-playlist (playlist import) is filmed on request (`record yt-playlist`)
+  // but not in the cut yet; the importer works again since 743e1d9.
   {
     id: 'home-library',
     layout: 'window',
@@ -67,8 +65,9 @@ export const STORYBOARD = [
     layout: 'window',
     url: 'youtube.com',
     caption: 'Gentle reminders for what you saved',
-    // 1.5× in the vertical cut: at 2.2× the pill outgrows the 720px slice.
-    focus: { zoom: 2.2, verticalZoom: 1.5, from: 0.9 },
+    // No zoom in portrait: at 760px the pill already reads, and any zoom crops
+    // YouTube's empty-feed card mid-word.
+    focus: { from: 0.9, zoom: { '1080p': 2.2, vertical: 1 } },
   },
   {
     id: 'home-theme',

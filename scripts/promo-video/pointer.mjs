@@ -1,6 +1,5 @@
 // Human-paced mouse for the recordings: moves along eased paths instead of
-// teleporting, and keeps a wall-clock trail of every step so the vertical cut
-// can pan with it (reframe.mjs). The visible arrow is page-overlay.mjs.
+// teleporting. The visible arrow is page-overlay.mjs.
 
 const STEP_MS = 16
 
@@ -19,19 +18,6 @@ export function easedPath(from, to, ms) {
   })
 }
 
-/**
- * Trail re-based to seconds since `startMs`, rounded to whole pixels; points
- * from before the take started collapse onto t = 0.
- * @example trailSince([{ ms: 1500, x: 10.4, y: 2 }], 1000) // [{ t: 0.5, x: 10, y: 2 }]
- */
-export function trailSince(trail, startMs) {
-  return trail.map(({ ms, x, y }) => ({
-    t: Math.max(0, (ms - startMs) / 1000),
-    x: Math.round(x),
-    y: Math.round(y),
-  }))
-}
-
 async function centerOf(locator) {
   const box = await locator.boundingBox()
   if (!box) throw new Error(`pointer target has no box (not visible?): ${locator}`)
@@ -47,18 +33,20 @@ async function centerOf(locator) {
  */
 export function createPointer(page, start) {
   let at = { ...start }
-  const trail = [{ ms: Date.now(), ...at }]
   const moveTo = async (x, y, ms = 650) => {
     for (const point of easedPath(at, { x, y }, ms)) {
       await page.mouse.move(point.x, point.y)
-      trail.push({ ms: Date.now(), ...point })
       await page.waitForTimeout(STEP_MS / 2)
     }
     at = { x, y }
   }
+  // Re-aims once on arrival: YouTube lazy-loads content above a card, so the
+  // target can shift during the glide and the click would land on a neighbor.
   const glide = async (locator, ms) => {
     const target = await centerOf(locator)
     await moveTo(target.x, target.y, ms)
+    const settled = await centerOf(locator)
+    if (Math.hypot(settled.x - target.x, settled.y - target.y) > 4) await moveTo(settled.x, settled.y, 180)
   }
   const click = async (locator, ms) => {
     await glide(locator, ms)
@@ -68,5 +56,10 @@ export function createPointer(page, start) {
     await page.mouse.up()
   }
   const park = () => page.mouse.move(at.x, at.y)
-  return { moveTo, glide, click, park, trailSince: (startMs) => trailSince(trail, startMs) }
+  // Viewport-relative move, for spots with no element to aim at.
+  const moveToShare = (xShare, yShare, ms) => {
+    const { width, height } = page.viewportSize()
+    return moveTo(width * xShare, height * yShare, ms)
+  }
+  return { moveTo, moveToShare, glide, click, park }
 }
