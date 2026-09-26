@@ -19,7 +19,7 @@ caption rather than on the cross-fade.
 |---|---|---|---|---|
 | 0:00 | intro | MyTube — Your YouTube home, curated by you. | "Meet MyTube: your YouTube home, curated by you." | "Conheça o MyTube: a sua home do YouTube, do seu jeito." |
 | 0:03 | yt-save | Save any YouTube video in one click | "Found something worth watching? Hit Save and pick a category — done." | "Achou um vídeo bom? Clique em Salvar, escolha a categoria, pronto." |
-| 0:09 | home-library | Your new tab becomes your own YouTube home | "Every new tab opens your library — no algorithm, just what you chose to keep." | "Cada nova aba abre a sua biblioteca — sem algoritmo, só o que você escolheu guardar." |
+| 0:09 | home-library | Your own YouTube home, one click away | "One click on the toolbar opens your library — no algorithm, just what you chose to keep." | "Um clique na barra abre a sua biblioteca — sem algoritmo, só o que você escolheu guardar." |
 | 0:16 | home-search | Find anything instantly | "Looking for something? Just type." | "Procurando algo? É só digitar." |
 | 0:21 | home-category | Organize with your own categories | "Create categories that fit the way you watch, with an icon for each." | "Crie categorias do seu jeito, cada uma com o seu ícone." |
 | 0:29 | home-move | Move videos where they belong | "Changed your mind? Move any video in two clicks." | "Mudou de ideia? Mova qualquer vídeo em dois cliques." |
