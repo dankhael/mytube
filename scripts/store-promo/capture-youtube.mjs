@@ -3,12 +3,12 @@
 // the home reminder nudge. Rides the live site like the video scenes, with the
 // same helpers (promo-video/youtube-scenes.mjs).
 
-import { HOME_URL, SEARCH_URL, dropdownItem, frameCard, openYoutube } from '../promo-video/youtube-scenes.mjs'
+import { dropdownItem, frameCard, openYoutube } from '../promo-video/youtube-scenes.mjs'
 import { updateSettings } from '../store-assets/seed.mjs'
 import { hideCursor } from './stills.mjs'
 
-async function shootSaveFlow(context, shoot) {
-  const page = await openYoutube(context, SEARCH_URL, 'ytd-video-renderer .mytube-btn')
+async function shootSaveFlow(context, shoot, loc) {
+  const page = await openYoutube(context, loc.searchUrl, 'ytd-video-renderer .mytube-btn')
   await hideCursor(page)
   const card = page.locator('ytd-video-renderer:has(.mytube-btn)').first()
   await frameCard(page, card)
@@ -17,7 +17,7 @@ async function shootSaveFlow(context, shoot) {
   await shoot(card, 'yt-card')
   await card.locator('.mytube-btn').first().click()
   await shoot(page.locator('.mytube-dropdown'), 'yt-menu')
-  await dropdownItem(page, 'Design').click()
+  await dropdownItem(page, loc.saveInto).click()
   const toast = page.locator('#mytube-toast.mytube-toast--show')
   await toast.waitFor()
   await page.waitForTimeout(400) // slide-in transition
@@ -27,9 +27,9 @@ async function shootSaveFlow(context, shoot) {
 }
 
 // Opt-in (REMIND-8..10): switched on for the shot, off again after.
-async function shootNudge(context, settingsPage, shoot) {
+async function shootNudge(context, settingsPage, shoot, loc) {
   await updateSettings(settingsPage, { remindOnYoutubeHome: true })
-  const page = await openYoutube(context, HOME_URL, '#mytube-nudge')
+  const page = await openYoutube(context, loc.homeUrl, '#mytube-nudge')
   await hideCursor(page)
   await shoot(page.locator('#mytube-nudge'), 'yt-nudge')
   await page.close()
@@ -39,9 +39,9 @@ async function shootNudge(context, settingsPage, shoot) {
 /**
  * Captures every youtube.com still; `settingsPage` is any extension page (it
  * sends the settings messages).
- * @example await captureYoutubeStills(context, homePage, shoot)
+ * @example await captureYoutubeStills(context, homePage, shoot, CAPTURE_LOCALES.en)
  */
-export async function captureYoutubeStills(context, settingsPage, shoot) {
-  await shootSaveFlow(context, shoot)
-  await shootNudge(context, settingsPage, shoot)
+export async function captureYoutubeStills(context, settingsPage, shoot, loc) {
+  await shootSaveFlow(context, shoot, loc)
+  await shootNudge(context, settingsPage, shoot, loc)
 }

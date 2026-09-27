@@ -17,10 +17,10 @@ const TILE_CSS = `
   .tile small { display: block; margin-top: 12px; font: 500 10px var(--font-mono); letter-spacing: .26em;
     text-transform: uppercase; color: rgba(255,255,255,.7) }`
 
-function smallTile(root) {
+function smallTile(root, still, t) {
   const body = `<div class="board grad tile">${logoSvg(root)}<div>
-    <h1>My<span>Tube</span></h1><p>Your YouTube home,<br>curated by you.</p>
-    <small>save · organize · watch</small></div></div>`
+    <h1>My<span>Tube</span></h1><p>${t.tile.line}</p>
+    <small>${t.tile.small}</small></div></div>`
   return boardPage(root, TILE, TILE_CSS, body)
 }
 
@@ -31,15 +31,15 @@ const MARQUEE_CSS = `
   .marquee .lede { margin-top: 16px; font-size: 18px; max-width: 30ch }
   .marquee .visual { position: relative; height: 100% }`
 
-function marquee(root, still) {
+function marquee(root, still, t) {
   const frame = browserFrame(root, {
-    url: 'MyTube — Home',
+    url: t.homeUrl,
     src: still('home'),
     style: 'position:absolute;left:60px;top:70px;width:760px',
   })
   const body = `<div class="board grad marquee"><div class="copy"><div class="mark">${logoSvg(root)}</div>
-    <h1 class="headline">Your YouTube, <span class="am">curated by you.</span></h1>
-    <p class="lede">Save videos into <b>your own categories</b>. Come back to a home page with nothing recommended.</p></div>
+    <h1 class="headline">${t.marquee.headline}</h1>
+    <p class="lede">${t.marquee.lede}</p></div>
     <div class="visual">${frame}</div></div>`
   return boardPage(root, MARQUEE, MARQUEE_CSS, body)
 }

@@ -16,32 +16,34 @@ import { startScreencast } from './screencast.mjs'
 
 // Signed-out YouTube ignores prefers-color-scheme in headless; PREF f6=400 is
 // its own "dark theme" flag, which the injected MyTube chrome is styled for.
-const YOUTUBE_DARK_COOKIE = {
-  name: 'PREF',
-  value: 'f6=400&hl=en',
-  domain: '.youtube.com',
-  path: '/',
-  secure: true,
+// `hl` pins YouTube's UI language to match the take.
+function youtubeDarkCookie(hl) {
+  return { name: 'PREF', value: `f6=400&hl=${hl}`, domain: '.youtube.com', path: '/', secure: true }
 }
 
 /**
  * Headless Chromium with the extension loaded, laying pages out at `viewport`.
  * `deviceScaleFactor` only affects screenshots (stills): the screencast used
- * for video takes stays at 1× regardless.
+ * for video takes stays at 1× regardless. `locale` / `youtubeHl` set the
+ * browser and YouTube languages (the store-promo pt-BR stills).
  * @example const context = await launchRecordingBrowser('dist', VERTICAL.take)
  */
-export async function launchRecordingBrowser(extensionPath, viewport, { deviceScaleFactor = 1 } = {}) {
+export async function launchRecordingBrowser(
+  extensionPath,
+  viewport,
+  { deviceScaleFactor = 1, locale = 'en-US', youtubeHl = 'en' } = {},
+) {
   const context = await chromium.launchPersistentContext('', {
     headless: true,
     channel: 'chromium',
-    locale: 'en-US',
+    locale,
     colorScheme: 'dark',
     viewport,
     deviceScaleFactor,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   })
   await enablePageOverlay(context)
-  await context.addCookies([YOUTUBE_DARK_COOKIE])
+  await context.addCookies([youtubeDarkCookie(youtubeHl)])
   return context
 }
 

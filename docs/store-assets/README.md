@@ -17,8 +17,9 @@ Marketing boards built from clean stills of the real extension (dark YouTube,
 ad slots hidden), laid out after the Dopamine Toll store set in MyTube's brand:
 
 ```bash
-npm run store:promo                          # build + capture stills + render
+npm run store:promo                          # build + capture stills + render (en + pt-BR)
 node scripts/make-store-promo.mjs render     # re-render after a copy/layout edit
+node scripts/make-store-promo.mjs all pt-BR  # one language only
 ```
 
 | File | Upload as | Says |
@@ -31,8 +32,13 @@ node scripts/make-store-promo.mjs render     # re-render after a copy/layout edi
 | `listing/small-promo-440x280.png` | Small promo tile | Mark, name, tagline |
 | `listing/marquee-1400x560.png` | Marquee promo tile | Headline + the home in a window |
 
-Copy lives in `scripts/store-promo/boards-*.mjs`; every claim must match the
-listing text in `docs/chrome-web-store-submission.md`.
+The same seven files exist in Portuguese (Brazil) under `listing/pt-BR/`, for the
+pt-BR listing locale — captured with the extension, YouTube and the category
+names in Portuguese.
+
+Copy lives in `scripts/store-promo/copy.mjs` (one block per language); every
+claim must match that language's listing text in
+`docs/chrome-web-store-submission.md`.
 
 ## Raw UI captures (1280×800 / 440×280)
 

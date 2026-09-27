@@ -16,11 +16,13 @@ export function hideCursor(page) {
 }
 
 /**
- * Headless 2× session with the extension loaded, for stills.
- * @example const context = await launchStillBrowser('dist')
+ * Headless 2× session with the extension loaded, for stills, with the
+ * browser and YouTube in `loc`'s language.
+ * @example const context = await launchStillBrowser('dist', CAPTURE_LOCALES.en)
  */
-export function launchStillBrowser(extensionPath) {
-  return launchRecordingBrowser(extensionPath, STILL_VIEWPORT, { deviceScaleFactor: 2 })
+export function launchStillBrowser(extensionPath, loc) {
+  const { browserLocale: locale, youtubeHl } = loc
+  return launchRecordingBrowser(extensionPath, STILL_VIEWPORT, { deviceScaleFactor: 2, locale, youtubeHl })
 }
 
 /**

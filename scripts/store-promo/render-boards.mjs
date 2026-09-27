@@ -4,7 +4,7 @@
 
 import { chromium } from '@playwright/test'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { PROMO_BOARDS } from './boards-promo.mjs'
 import { SHOT_BOARDS } from './boards-shots.mjs'
@@ -33,11 +33,13 @@ async function renderBoard(page, board, html, workDir, outDir) {
 }
 
 /**
- * Renders all boards from the stills into `outDir`; returns the written paths.
- * @example await renderBoards({ root, stillsDir: 'build/store-promo/stills', outDir: 'docs/store-assets/listing' })
+ * Renders `boards` (default: the store listing set) in one language (`copy`,
+ * from copy.mjs) from the stills into `outDir`; returns the written paths.
+ * @example await renderBoards({ root, stillsDir: 'build/store-promo/stills/en', outDir: 'docs/store-assets/listing', copy: COPY.en })
  */
-export async function renderBoards({ root, stillsDir, outDir }) {
-  const workDir = join(root, 'build', 'store-promo', 'boards')
+export async function renderBoards({ root, stillsDir, outDir, copy, boards = BOARDS }) {
+  // One HTML work folder per output folder, so languages never overwrite each other.
+  const workDir = join(root, 'build', 'store-promo', 'boards', relative(root, outDir))
   mkdirSync(workDir, { recursive: true })
   mkdirSync(outDir, { recursive: true })
   const still = stillResolver(stillsDir)
@@ -45,8 +47,8 @@ export async function renderBoards({ root, stillsDir, outDir }) {
   try {
     const page = await browser.newPage()
     const written = []
-    for (const board of BOARDS)
-      written.push(await renderBoard(page, board, board.html(root, still), workDir, outDir))
+    for (const board of boards)
+      written.push(await renderBoard(page, board, board.html(root, still, copy), workDir, outDir))
     return written
   } finally {
     await browser.close()
