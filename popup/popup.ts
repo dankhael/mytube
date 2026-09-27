@@ -10,6 +10,7 @@ import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
 import { openHomeTab, openShortcutSettings, openDonatePage, homeShortcut } from '../src/home-page'
+import { localizePopupChrome } from './chrome-labels'
 
 function send(message: Message): Promise<MessageResponse> {
   return new Promise((resolve) => {
@@ -58,6 +59,7 @@ async function init(): Promise<void> {
     data = { ...data, settings }
     // "13 unwatched" with the count styled distinctly (accent <b> via popup.css).
     renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data, settings.language))
+    localizePopupChrome(document, settings.language)
     renderPopup(document.getElementById('list')!, data, {
       openVideo: (id) => chrome.tabs.create({ url: watchUrl(id) }),
       openHome,

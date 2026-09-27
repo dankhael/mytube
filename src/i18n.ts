@@ -49,6 +49,7 @@ const EN = {
   'popup.categoryEmpty': 'No videos here.',
   'popup.seeAllInHome': 'See all in home ({count})',
   'popup.unwatchedWord': 'unwatched',
+  'popup.openHome': 'Open my home',
 
   'config.title': 'Settings',
   'config.sound.label': 'Sound effects',
@@ -161,6 +162,7 @@ const PT_BR: Record<MessageKey, string> = {
   'popup.categoryEmpty': 'Nenhum vídeo aqui.',
   'popup.seeAllInHome': 'Ver todos na home ({count})',
   'popup.unwatchedWord': 'não assistidos',
+  'popup.openHome': 'Abrir minha home',
 
   'config.title': 'Configurações',
   'config.sound.label': 'Efeitos sonoros',

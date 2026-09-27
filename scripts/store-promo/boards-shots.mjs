@@ -1,10 +1,13 @@
 // The five 1280×800 listing screenshots. Each mirrors a Dopamine Toll
 // composition — gradient hero, dark split, gradient panel board, mirrored dark
 // split, cream centered close — with MyTube's copy and real UI stills.
-// Every claim here must match docs/chrome-web-store-submission.md (e.g. the
-// home opens from the toolbar / Ctrl+Shift+Y; it is NOT a new-tab override).
+// Layout only: every word comes from copy.mjs (`t`, one listing language).
 
 import { boardPage, brandMast, browserFrame, floatPanel, logoSvg } from './board-kit.mjs'
+
+const kicker = (text) => `<p class="kicker"><span class="pip"></span>${text}</p>`
+const pointList = (items) =>
+  `<ul class="points">${items.map((item) => `<li><span>${item}</span></li>`).join('')}</ul>`
 
 const SHOT = { width: 1280, height: 800 }
 
@@ -16,15 +19,15 @@ const HERO_CSS = `
     display: grid; place-items: center; background: #15101f; box-shadow: 0 30px 60px -20px rgba(0,0,0,.7) }
   .hero .badge svg { width: 78px; height: 78px }`
 
-function heroShot(root, still) {
+function heroShot(root, still, t) {
   const frame = browserFrame(root, {
-    url: 'MyTube — Home',
+    url: t.homeUrl,
     src: still('home'),
     style: 'position:absolute;left:170px;right:170px;top:268px',
   })
   const body = `<div class="board shot grad hero">
-    <h1 class="headline">Your YouTube, <span class="am">curated by you.</span></h1>
-    <p class="lede">Save videos from anywhere on YouTube into <b>your own categories</b> — and come back to a home page that's all yours.</p>
+    <h1 class="headline">${t.hero.headline}</h1>
+    <p class="lede">${t.hero.lede}</p>
     ${frame}<div class="badge">${logoSvg(root)}</div>
     ${floatPanel(still('popup'), 'right:92px;top:330px;width:250px')}</div>`
   return boardPage(root, SHOT, HERO_CSS, body)
@@ -36,15 +39,11 @@ const SPLIT_CSS = `
   .copy .kicker { margin-bottom: 20px } .copy .lede { margin-top: 18px } .copy .points { margin-top: 28px }
   .stage { position: relative; height: 560px }`
 
-function saveShot(root, still) {
+function saveShot(root, still, t) {
   const body = `<div class="board shot"><div class="bloom" style="width:720px;height:720px;right:-160px;top:40px"></div>
-    <div class="wrap">${brandMast(root)}<div class="main" style="grid-template-columns:.9fr 1.1fr">
-    <div class="copy"><p class="kicker"><span class="pip"></span>save from anywhere</p>
-      <h1 class="headline">One click. <span class="am">It's saved.</span></h1>
-      <p class="lede">Every video card on YouTube gets a <b>Save</b> button. Pick a category and it's in your library — no playlist juggling, no Watch Later pile.</p>
-      <ul class="points"><li><span><b>Search, home feed, sidebar</b> and the watch page</span></li>
-      <li><span><b>Whole playlists</b> in one click</span></li>
-      <li><span>Make a <b>new category</b> right from the menu</span></li></ul></div>
+    <div class="wrap">${brandMast(root, t.tagline)}<div class="main" style="grid-template-columns:.9fr 1.1fr">
+    <div class="copy">${kicker(t.save.kicker)}<h1 class="headline">${t.save.headline}</h1>
+      <p class="lede">${t.save.lede}</p>${pointList(t.save.points)}</div>
     <div class="stage">
       ${floatPanel(still('yt-card'), 'left:0;top:30px;width:1300px;clip-path:inset(0 55.2% 0 0 round 14px)', 14)}
       ${floatPanel(still('yt-menu'), 'left:300px;top:210px;width:270px', 12)}
@@ -56,29 +55,24 @@ const ORGANIZE_CSS = `
   .top { position: relative; z-index: 6; margin-top: 30px; max-width: 560px }
   .top .kicker { margin-bottom: 16px } .top .lede { margin-top: 14px }`
 
-function organizeShot(root, still) {
-  const body = `<div class="board shot grad-deep">${brandMast(root)}
-    <div class="top"><p class="kicker"><span class="pip"></span>your categories</p>
-      <h1 class="headline">Organize it <span class="am">your way.</span></h1>
-      <p class="lede">Your own categories with your own icons. Create one in seconds, and <b>move any video</b> between them in two clicks.</p></div>
+function organizeShot(root, still, t) {
+  const body = `<div class="board shot grad-deep">${brandMast(root, t.tagline)}
+    <div class="top">${kicker(t.organize.kicker)}<h1 class="headline">${t.organize.headline}</h1>
+      <p class="lede">${t.organize.lede}</p></div>
     ${floatPanel(still('modal-new-category'), 'left:64px;top:340px;width:500px', 16)}
     ${floatPanel(still('modal-move'), 'left:640px;top:250px;width:470px', 16)}</div>`
   return boardPage(root, SHOT, SPLIT_CSS + ORGANIZE_CSS, body)
 }
 
-function homeShot(root, still) {
-  const frame = browserFrame(root, { url: 'MyTube — Home', src: still('home-search'), style: 'width:640px' })
+function homeShot(root, still, t) {
+  const frame = browserFrame(root, { url: t.homeUrl, src: still('home-search'), style: 'width:640px' })
   const body = `<div class="board shot"><div class="bloom" style="width:760px;height:760px;left:-200px;top:40px"></div>
-    <div class="wrap">${brandMast(root)}<div class="main" style="grid-template-columns:1.12fr .88fr">
+    <div class="wrap">${brandMast(root, t.tagline)}<div class="main" style="grid-template-columns:1.12fr .88fr">
     <div class="stage">${frame}
       ${floatPanel(still('popup'), 'right:-24px;top:120px;width:220px')}
       ${floatPanel(still('yt-nudge'), 'left:30px;top:430px;width:420px', 30)}</div>
-    <div class="copy"><p class="kicker"><span class="pip"></span>no algorithm</p>
-      <h1 class="headline">A home page with <span class="am">nothing recommended.</span></h1>
-      <p class="lede">Open it from the toolbar or with <code>Ctrl+Shift+Y</code>. Just what you saved — search it, filter it, watch it.</p>
-      <ul class="points"><li><span><b>Watched tracking</b> and an unwatched badge</span></li>
-      <li><span>Opt-in <b>reminders</b> — off until you turn them on</span></li>
-      <li><span><b>Syncs</b> across your signed-in Chrome browsers</span></li></ul></div></div></div></div>`
+    <div class="copy">${kicker(t.home.kicker)}<h1 class="headline">${t.home.headline}</h1>
+      <p class="lede">${t.home.lede}</p>${pointList(t.home.points)}</div></div></div></div>`
   return boardPage(root, SHOT, SPLIT_CSS, body)
 }
 
@@ -95,14 +89,15 @@ const YOURS_CSS = `
   .trust { position: absolute; left: 0; right: 0; bottom: 44px; display: flex; justify-content: center; gap: 14px }
   .cream .tag { color: #3d364a; border-color: rgba(23,19,31,.16) } .cream .tag i { background: #6b4fe0 }`
 
-function yoursShot(root, still) {
+function yoursShot(root, still, t) {
   const look = (name, label) => `<div class="look"><img src="${still(name)}"><span>${label}</span></div>`
-  const body = `<div class="board shot cream yours">${brandMast(root)}
-    <p class="kicker"><span class="pip"></span>make it yours</p>
-    <h1 class="headline">Your colors. <span class="am">Your library.</span></h1>
-    <p class="lede">Pick an accent, go retro with the <b>CRT skin</b>, switch between English and Portuguese. Your library lives in <b>your own browser storage</b>.</p>
-    <div class="looks">${look('home-accent-mint', 'mint')}${look('home-accent-amber', 'amber')}${look('home-accent-pink', 'pink')}${look('home-smpte', 'crt skin')}</div>
-    <div class="trust"><span class="tag"><i></i>no account</span><span class="tag"><i></i>no server</span><span class="tag"><i></i>no ads</span><span class="tag"><i></i>open source</span></div></div>`
+  const shots = ['home-accent-mint', 'home-accent-amber', 'home-accent-pink', 'home-smpte']
+  const looks = shots.map((name, i) => look(name, t.yours.looks[i])).join('')
+  const trust = t.yours.trust.map((item) => `<span class="tag"><i></i>${item}</span>`).join('')
+  const body = `<div class="board shot cream yours">${brandMast(root, t.tagline)}
+    ${kicker(t.yours.kicker)}<h1 class="headline">${t.yours.headline}</h1>
+    <p class="lede">${t.yours.lede}</p>
+    <div class="looks">${looks}</div><div class="trust">${trust}</div></div>`
   return boardPage(root, SHOT, YOURS_CSS, body)
 }
 

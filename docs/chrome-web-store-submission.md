@@ -202,11 +202,14 @@ Chrome Web Store disclosure rules.
    clean stills of the real packaged extension with `npm run store:promo`. The
    raw captures in `store-assets/` are a fallback; several youtube.com ones show
    live third-party ads/thumbnails, so check them before using any.
+   For the **Portuguese (Brazil)** listing locale, upload the same five from
+   [`store-assets/listing/pt-BR/`](./store-assets/listing/pt-BR/) instead.
 3. **Promo tiles:** upload
    [`store-assets/listing/small-promo-440x280.png`](./store-assets/listing/small-promo-440x280.png)
    as the small promo tile and
    [`store-assets/listing/marquee-1400x560.png`](./store-assets/listing/marquee-1400x560.png)
-   as the marquee (optional; used for featured placements). Re-run
+   as the marquee (optional; used for featured placements); pt-BR versions are in
+   `store-assets/listing/pt-BR/`. Re-run
    `npm run store:promo` after store-facing UI or copy changes.
 4. **Build and package:**
    ```bash
