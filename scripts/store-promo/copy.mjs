@@ -46,6 +46,11 @@ export const COPY = {
       trust: ['no account', 'no server', 'no ads', 'open source'],
     },
     tile: { line: 'Your YouTube home,<br>curated by you.', small: 'save · organize · watch' },
+    cover: {
+      chip: 'chrome extension',
+      headline: 'Watch Later became a <span>graveyard.</span>',
+      foot: 'Free on the Chrome Web Store',
+    },
     marquee: {
       headline: 'Your YouTube, <span class="am">curated by you.</span>',
       lede: 'Save videos into <b>your own categories</b>. Come back to a home page with nothing recommended.',
@@ -91,6 +96,11 @@ export const COPY = {
       trust: ['sem conta', 'sem servidor', 'sem anúncios', 'código aberto'],
     },
     tile: { line: 'Sua home do YouTube,<br>curada por você.', small: 'salve · organize · assista' },
+    cover: {
+      chip: 'extensão do chrome',
+      headline: 'O Assistir mais tarde virou um <span>cemitério.</span>',
+      foot: 'Grátis na Chrome Web Store',
+    },
     marquee: {
       headline: 'Seu YouTube, <span class="am">curado por você.</span>',
       lede: 'Salve vídeos em <b>categorias suas</b>. Volte para uma home sem nenhuma recomendação.',

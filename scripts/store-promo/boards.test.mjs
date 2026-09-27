@@ -28,8 +28,11 @@ describe('store promo boards', () => {
   })
 
   // YouTube's recommended thumbnail size (16:9, ≥ 640 wide, under 2 MB).
-  it('renders the video thumbnail at 1280×720', () => {
-    expect(VIDEO_BOARDS.map((board) => board.size)).toEqual([{ width: 1280, height: 720 }])
+  it('renders the video thumbnail at 1280×720 and the vertical cover at 1080×1920', () => {
+    expect(VIDEO_BOARDS.map((board) => board.size)).toEqual([
+      { width: 1280, height: 720 },
+      { width: 1080, height: 1920 },
+    ])
   })
 
   // Google Forms' recommended header: 1600×400 (4:1).

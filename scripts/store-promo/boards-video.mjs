@@ -32,4 +32,43 @@ function youtubeThumbnail(root, still, t) {
   return boardPage(root, THUMB, THUMB_CSS, body)
 }
 
-export const VIDEO_BOARDS = [{ file: 'youtube-thumbnail-1280x720.png', size: THUMB, html: youtubeThumbnail }]
+// Cover for the vertical cut (Shorts / TikTok / Reels), 1080×1920. Feeds paint
+// their own UI over the bottom ~350px and the right edge, and the Reels
+// profile grid crops the cover to the middle 3:4 (1080×1440, y 240–1680) —
+// so every word and the mark live inside that band.
+const COVER = { width: 1080, height: 1920 }
+
+const COVER_CSS = `
+  .cover { text-align: center }
+  .cover .glow { position: absolute; left: 50%; top: 380px; width: 1100px; height: 1100px; margin-left: -550px;
+    border-radius: 50%; background: radial-gradient(rgba(255,255,255,.2), rgba(255,255,255,0) 62%) }
+  .cover .chip { position: absolute; z-index: 10; left: 0; right: 0; top: 300px; display: flex; justify-content: center }
+  .cover .chip span { padding: 10px 22px; border-radius: 999px; background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.26); font: 600 22px var(--font-mono); letter-spacing: .2em;
+    text-transform: uppercase; color: #fff }
+  .cover h1 { position: absolute; z-index: 10; left: 70px; right: 70px; top: 380px; margin: 0;
+    font: 800 108px/.98 var(--font-display); letter-spacing: -.045em; text-shadow: 0 12px 40px rgba(20,8,60,.45) }
+  .cover h1 span { color: #e9e1ff; font-style: italic }
+  .cover .popup { left: 170px; top: 640px; width: 400px; transform: rotate(-5deg) }
+  .cover .toast { left: 430px; top: 1090px; width: 500px; transform: rotate(-5deg) }
+  .cover .brand { position: absolute; z-index: 10; left: 0; right: 0; top: 1450px; display: flex;
+    justify-content: center; align-items: center; gap: 26px }
+  .cover .brand svg { width: 132px; height: 132px; filter: drop-shadow(0 20px 30px rgba(20,8,60,.55)) }
+  .cover .brand b { display: block; font: 800 96px/1 var(--font-display); letter-spacing: -.04em; text-align: left }
+  .cover .brand b span { color: #e9e1ff }
+  .cover .brand small { display: block; margin-top: 10px; font-size: 28px; color: rgba(255,255,255,.88); text-align: left }`
+
+function shortsCover(root, still, t) {
+  const body = `<div class="board grad cover"><div class="glow"></div>
+    <div class="chip"><span>${t.cover.chip}</span></div>
+    <h1>${t.cover.headline}</h1>
+    <div class="panel popup"><img src="${still('popup')}"></div>
+    <div class="panel toast" style="border-radius:80px"><img src="${still('yt-toast')}"></div>
+    <div class="brand">${logoSvg(root)}<div><b>My<span>Tube</span></b><small>${t.cover.foot}</small></div></div></div>`
+  return boardPage(root, COVER, COVER_CSS, body)
+}
+
+export const VIDEO_BOARDS = [
+  { file: 'youtube-thumbnail-1280x720.png', size: THUMB, html: youtubeThumbnail },
+  { file: 'shorts-cover-1080x1920.png', size: COVER, html: shortsCover },
+]
