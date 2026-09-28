@@ -8,6 +8,7 @@
 //      node scripts/make-promo-video.mjs compose          (re-cut, no re-record)
 //      node scripts/make-promo-video.mjs all vertical     (one format only)
 //      node scripts/make-promo-video.mjs record vertical home-search   (one retake)
+//      node scripts/make-promo-video.mjs gif              (README demo GIF from the 1080p cut)
 
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -15,6 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { composeVideo } from './promo-video/compose.mjs'
 import { FORMATS, pickFormats } from './promo-video/formats.mjs'
 import { recordAllScenes } from './promo-video/record.mjs'
+import { exportReadmeGif } from './promo-video/readme-gif.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = join(root, 'build', 'promo-video')
@@ -22,9 +24,17 @@ const clipsDir = join(outDir, 'clips')
 mkdirSync(clipsDir, { recursive: true })
 
 const [stage = 'all', ...names] = process.argv.slice(2)
+if (stage === 'gif') {
+  const video = join(outDir, 'mytube-promo-1080p.mp4')
+  const timelineFile = join(outDir, 'timeline-1080p.txt')
+  console.log(
+    await exportReadmeGif({ video, timelineFile, outFile: join(root, 'docs', 'readme', 'demo.gif') }),
+  )
+  process.exit(0)
+}
 if (!['all', 'record', 'compose'].includes(stage)) {
   throw new Error(
-    `unknown stage "${stage}"; expected all | record | compose, then [format names] [scene ids]`,
+    `unknown stage "${stage}"; expected all | record | compose | gif, then [format names] [scene ids]`,
   )
 }
 const formatNames = new Set(FORMATS.map((format) => format.name))

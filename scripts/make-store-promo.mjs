@@ -20,12 +20,14 @@ import { captureYoutubeStills } from './store-promo/capture-youtube.mjs'
 import { renderBoards } from './store-promo/render-boards.mjs'
 import { VIDEO_BOARDS } from './store-promo/boards-video.mjs'
 import { FORMS_BOARDS } from './store-promo/boards-forms.mjs'
+import { README_BOARDS } from './store-promo/boards-readme.mjs'
 import { createStillShooter, launchStillBrowser } from './store-promo/stills.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const listingDir = join(root, 'docs', 'store-assets', 'listing')
 const videoDir = join(root, 'docs', 'promo-video')
 const supportDir = join(root, 'docs', 'support')
+const readmeDir = join(root, 'docs', 'readme')
 
 // English is the listing's default and stays at listing/; other languages get
 // a subfolder (the dashboard takes screenshots per listing locale).
@@ -54,11 +56,12 @@ async function captureStills(lang) {
 async function renderLanguage(lang) {
   const stillsDir = stillsDirFor(lang)
   const written = await renderBoards({ root, stillsDir, outDir: outDirFor(lang), copy: COPY[lang] })
-  // The video thumbnail and the support form header are English-only.
+  // The video thumbnail, the support form header and the README banner are English-only.
   if (lang === 'en') {
     const extras = [
       { outDir: videoDir, boards: VIDEO_BOARDS },
       { outDir: supportDir, boards: FORMS_BOARDS },
+      { outDir: readmeDir, boards: README_BOARDS },
     ]
     for (const { outDir, boards } of extras) {
       written.push(...(await renderBoards({ root, stillsDir, outDir, copy: COPY.en, boards })))
