@@ -13,7 +13,7 @@ here in the same PR that lands the spec.
 |---|---|---|
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar`, `video-duration` (DUR) |
 | [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
-| [Curated home](#curated-home) | New-tab home: category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
+| [Curated home](#curated-home) | Home page (opened from the toolbar / Ctrl+Shift+Y, not a new-tab override): category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
@@ -113,7 +113,9 @@ Reducer [src/storage.ts](../src/storage.ts); badge [background/service-worker.ts
 - **Sound effects** toggle — opt-in, defaults false on fresh install (CFG).
 - **Interface language** — English default, Portuguese-BR option; unknown values
   fall back to `'en'` on read; all UI copy comes from the `t(key, lang)` catalog (I18N).
-- **Open-home keyboard shortcut** — integrated with settings.
+- **Open-home keyboard shortcut** — `Ctrl+Shift+Y` / `Cmd+Shift+Y` opens the home;
+  the Settings row shows the binding and links to Chrome's shortcuts page
+  (`home-shortcut`, SHORTCUT-1…6 — spec in Draft).
 - **Buy me a coffee** — actionable footer card that opens the developer's Ko-fi page
   (`https://ko-fi.com/dankhael`) in a new tab (CFG-6, PUI-7).
 - **Watch reminders** — two opt-in toggles (both OFF by default): open the home on browser
