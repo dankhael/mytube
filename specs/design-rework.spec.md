@@ -8,7 +8,10 @@
 - **Contract:** CSS only — a token layer in `newtab/index.css` that all colors derive
   from, plus Tailwind `theme.colors` mapped to those tokens. No storage/message change.
 - **Tests:** a pure `matchesQuery` search helper (Node) + an `App` jsdom test for the
-  new greeting. Visual fidelity is **manual acceptance** (CSS can't be unit-tested).
+  new greeting. Visual fidelity is **manual acceptance** (CSS can't be unit-tested):
+  HOME-1, HOME-3, HOME-5, HOME-6, HOME-7, HOME-8 and DR-THEME-1 are checked by the
+  Manual acceptance list below, not by named tests. DR-THEME-2/3 are source checks
+  in [newtab/design-tokens.test.ts](../newtab/design-tokens.test.ts).
 
 ## Why
 
@@ -32,17 +35,17 @@ the entire UI. Neutrals derive from `--hue` (warm 70).
 
 | ID | Given | When | Then |
 |---|---|---|---|
-| **THEME-1** | the token layer in `:root` | a developer changes **`--accent-h`** | the whole UI (home, cards, chips, buttons, modals, badges) re-themes — no other edits needed |
-| **THEME-2** | the tokens | read in code | the four accent presets (Mint/Red/Violet/Amber) are documented as hue values next to `--accent-h` |
-| **THEME-3** | Tailwind classes already used by modals/buttons | rendered | they resolve to the new token palette (no hard-coded `#ff0000` / YouTube red remains) |
+| **DR-THEME-1** | the token layer in `:root` | a developer changes **`--accent-h`** | the whole UI (home, cards, chips, buttons, modals, badges) re-themes — no other edits needed |
+| **DR-THEME-2** | the tokens | read in code | the four accent presets (Mint/Red/Violet/Amber) are documented as hue values next to `--accent-h` |
+| **DR-THEME-3** | Tailwind classes already used by modals/buttons | rendered | they resolve to the new token palette (no hard-coded `#ff0000` / YouTube red remains) |
 | **HOME-1** | the new-tab home | loaded | warm-dark gradient background, centered max-width container, display-font headings (Bricolage Grotesque) |
 | **HOME-2** | the home header | loaded | brand wordmark + **"Welcome back."** greeting + an unwatched-count line |
-| **HOME-3** | the header controls | loaded | a search field, the hide-watched toggle and **+ Categoria** restyled as searchbar / ghost / accent buttons |
+| **HOME-3** | the header controls | loaded | a search field, the hide-watched toggle and **+ Category** restyled as searchbar / ghost / accent buttons |
 | **HOME-4** | text in the search field | typed | the categories and smart sections filter to videos whose **title or channel** match (live) |
 | **HOME-5** | each category section | rendered | an accent icon tile + display-font title + count, hover drag affordance, and the dashed empty state when it has no videos |
-| **HOME-6** | each video card | rendered | rounded thumbnail with hover-lift + play overlay + scrim, a mint **unwatched dot**, channel-initial avatar + 2-line title + channel, and hover action buttons (mark watched / move / more-menu) |
-| **HOME-7** | the smart sections (Recentes / Poeira) | rendered | reuse the same card + section styling |
-| **HOME-8** | primary buttons (e.g. + Categoria, modal Create/Save, Salvar pill) | rendered | use accent background with **`--accent-ink`** (dark) text for legibility on mint |
+| **HOME-6** | each video card | rendered | rounded thumbnail with hover-lift + play overlay + scrim, an accent-colored **unwatched dot**, channel-initial avatar + 2-line title + channel, and hover action buttons (mark watched / move / more-menu) |
+| **HOME-7** | the smart sections (Recently added / Gathering dust) | rendered | reuse the same card + section styling |
+| **HOME-8** | primary buttons (e.g. + Category, modal Create/Save, the Save pill) | rendered | use accent background with **`--accent-ink`** (dark) text for legibility on the accent |
 
 ## Out of scope / non-goals
 
@@ -60,5 +63,5 @@ the entire UI. Neutrals derive from `--hue` (warm 70).
 - [ ] Home reads as the mockup: gradient, greeting, cards with hover lift + play.
 - [ ] Changing `--accent-h` to 25 / 290 / 64 cleanly swaps the whole accent.
 - [ ] Fonts load (Bricolage Grotesque headings, Plus Jakarta body).
-- [ ] Mint accent text on buttons uses dark ink and stays legible.
+- [ ] Text on accent-colored buttons uses dark ink and stays legible.
 - [ ] Modals/welcome no longer show YouTube red.

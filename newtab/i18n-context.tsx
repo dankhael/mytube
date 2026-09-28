@@ -4,6 +4,7 @@
 // `useT()` returns a translator already bound to the active language.
 
 import { createContext, useContext, type ReactNode } from 'react'
+import { categoryLabel } from '../src/category-label'
 import { DEFAULT_LANGUAGE, Language, MessageKey, t } from '../src/i18n'
 
 const LanguageContext = createContext<Language>(DEFAULT_LANGUAGE)
@@ -20,4 +21,11 @@ export type Translate = (key: MessageKey, vars?: Record<string, string | number>
 export function useT(): Translate {
   const lang = useContext(LanguageContext)
   return (key, vars) => t(key, lang, vars)
+}
+
+// Display name of a stored category in the active language — only the
+// Uncategorized bucket is translated (DEFCAT-4); user names show as stored.
+export function useCategoryLabel(): (name: string) => string {
+  const lang = useContext(LanguageContext)
+  return (name) => categoryLabel(name, lang)
 }

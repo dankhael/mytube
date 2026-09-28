@@ -77,7 +77,7 @@ the Playwright e2e smoke (`npm run test:e2e`). Checked by the owner 2026-06-12.
       surface recovers with sanitized defaults.
 - [x] **S3**: popup "N unwatched" label renders identical markup with the bold
       count built via DOM APIs (also locked by `popup/render.test.ts` /
-      `popup-shell.test.ts`); SVG tiles render only for keys passing `isIconKey`.
+      `popup/popup-shell.test.ts`); SVG tiles render only for keys passing `isIconKey`.
 - [x] **S4**: new tab and popup issue zero requests to `fonts.googleapis.com` /
       `fonts.gstatic.com`; Bricolage Grotesque, Plus Jakarta Sans and JetBrains
       Mono render from bundled woff2, including offline.

@@ -38,14 +38,14 @@ describe('home-page — handleOpenHome (OPEN_HOME message)', () => {
 })
 
 describe('home-page — open-home shortcut', () => {
-  it('openShortcutSettings opens Chrome’s shortcut page', () => {
+  it('SHORTCUT-6: openShortcutSettings opens Chrome’s shortcut page', () => {
     const create = vi.fn()
     openShortcutSettings({ create })
     expect(create).toHaveBeenCalledWith({ url: SHORTCUTS_PAGE })
     expect(SHORTCUTS_PAGE).toBe('chrome://extensions/shortcuts')
   })
 
-  it('homeShortcut returns the binding for the open-home command', async () => {
+  it('SHORTCUT-5: homeShortcut returns the binding for the open-home command', async () => {
     const getAll = vi.fn().mockResolvedValue([
       { name: 'open_home', shortcut: 'Ctrl+Shift+Y' },
       { name: 'other', shortcut: 'Ctrl+K' },
@@ -54,7 +54,7 @@ describe('home-page — open-home shortcut', () => {
     expect(getAll).toHaveBeenCalledOnce()
   })
 
-  it('homeShortcut returns "" when the command is unbound or absent', async () => {
+  it('SHORTCUT-5: homeShortcut returns "" when the command is unbound or absent', async () => {
     const unbound = vi.fn().mockResolvedValue([{ name: OPEN_HOME_COMMAND, shortcut: '' }])
     await expect(homeShortcut({ getAll: unbound })).resolves.toBe('')
 

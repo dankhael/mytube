@@ -12,7 +12,7 @@
   - **Icon resolution order:** explicit `category.icon` → else auto-map
     `categoryIcon(category.name)` → else default (`bookmark`). Used by both surfaces.
 - **Tests:** reducer specs in `src/storage.test.ts` (persist/update `icon`, legacy
-  data without `icon` still loads); `popup/category-icon.test.ts` against the shared
+  data without `icon` still loads); [src/category-icon.test.ts](../src/category-icon.test.ts) against the shared
   module + a `resolveCategoryIcon` unit; a `newtab` jsdom test that the tile renders
   the resolved icon and that the modal shows an icon picker (not the emoji grid).
 

@@ -15,7 +15,7 @@ is proven once with Playwright.
 |---|---|---|---|
 | **UI-1** | an empty store (no videos) | the new-tab page mounts | the welcome screen ("…curada por você") is shown |
 | **UI-2** | a category with one video | the page mounts | the category heading and the video title are rendered |
-| **UI-3** | one watched + one unwatched video | the user clicks the **Assistidos** toggle | watched videos are hidden; unwatched stay visible |
+| **UI-3** | one watched + one unwatched video | the user clicks the **Watched** toggle (from the catalog; pt-BR: "Assistidos") | watched videos are hidden; unwatched stay visible |
 
 ## Acceptance criteria — end-to-end (Playwright)
 

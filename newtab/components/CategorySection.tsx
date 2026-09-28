@@ -20,7 +20,7 @@ import { resolveCategoryIcon } from '../../src/category-icon'
 import { sectionDomId } from '../category-anchor'
 import CategoryIcon from './CategoryIcon'
 import VideoCard from './VideoCard'
-import { useT } from '../i18n-context'
+import { useCategoryLabel, useT } from '../i18n-context'
 
 interface Props {
   category: Category
@@ -39,6 +39,7 @@ const PREVIEW_COUNT = 4
 export default function CategorySection(props: Props) {
   const { category, videos } = props
   const tr = useT()
+  const label = useCategoryLabel()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `cat:${category.name}`,
   })
@@ -85,7 +86,7 @@ export default function CategorySection(props: Props) {
         <div className="cat-ico">
           <CategoryIcon icon={resolveCategoryIcon(category)} />
         </div>
-        <h2 className="cat-title">{category.name}</h2>
+        <h2 className="cat-title">{label(category.name)}</h2>
         <span className="cat-count">
           {videos.length} {tr(videos.length === 1 ? 'common.video' : 'common.videos')}
         </span>
@@ -126,7 +127,7 @@ export default function CategorySection(props: Props) {
           </div>
           <div>
             <b>{tr('cat.emptyTitle')}</b>
-            <span>{tr('cat.emptyHint', { name: category.name })}</span>
+            <span>{tr('cat.emptyHint', { name: label(category.name) })}</span>
           </div>
         </div>
       ) : (

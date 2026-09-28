@@ -2,7 +2,7 @@ import { Category, Video } from '../../src/types'
 import { resolveCategoryIcon } from '../../src/category-icon'
 import { ModalShell } from './AddCategoryModal'
 import CategoryIcon from './CategoryIcon'
-import { useT } from '../i18n-context'
+import { useCategoryLabel, useT } from '../i18n-context'
 
 interface Props {
   video: Video
@@ -14,6 +14,7 @@ interface Props {
 // Picks a destination category for an existing saved video.
 export default function SaveToModal({ video, categories, onClose, onMove }: Props) {
   const tr = useT()
+  const label = useCategoryLabel()
   return (
     <ModalShell title={tr('modal.moveVideoTo')} onClose={onClose}>
       <p className="mb-4 line-clamp-2 text-sm text-yt-muted">{video.title}</p>
@@ -32,7 +33,7 @@ export default function SaveToModal({ video, categories, onClose, onMove }: Prop
               {/* Resolved icon, not the legacy emoji — keeps this list consistent
                   with the home tiles and the content-script picker (HICON-4). */}
               <CategoryIcon icon={resolveCategoryIcon(cat)} size={16} />
-              <span>{cat.name}</span>
+              <span>{label(cat.name)}</span>
               {current && <span className="ml-auto text-xs">{tr('modal.current')}</span>}
             </button>
           )

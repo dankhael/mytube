@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'lucide-react'
 import Logo from './components/Logo'
+import { categoryLabel } from '../src/category-label'
 import { Category, StorageData, UNCATEGORIZED, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
 import { MutationOutcome, getBytesInUse, mutate, send } from './api'
@@ -139,7 +140,7 @@ export default function App() {
         t('cat.confirmDeleteWithVideos', lang, {
           name: cat.name,
           count,
-          uncategorized: UNCATEGORIZED,
+          uncategorized: categoryLabel(UNCATEGORIZED, lang),
         }),
       )
       deleteVideos = alsoDelete

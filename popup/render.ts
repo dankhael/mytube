@@ -5,6 +5,7 @@
 import { StorageData, Video } from '../src/types'
 import { CategoryGroup, VIDEO_CAP, groupVideosByCategory } from './groups'
 import { categoryIconElement } from '../src/category-icon-svg'
+import { categoryLabel } from '../src/category-label'
 import { Language, t } from '../src/i18n'
 
 export interface PopupCallbacks {
@@ -47,7 +48,7 @@ function categorySection(group: CategoryGroup, lang: Language, cb: PopupCallback
   const ico = el('span', 'cat-ico')
   ico.appendChild(categoryIconElement(category))
   row.appendChild(ico)
-  row.appendChild(textSpan('cat-name', category.name))
+  row.appendChild(textSpan('cat-name', categoryLabel(category.name, lang)))
   row.appendChild(textSpan('cat-count', String(videos.length)))
   row.appendChild(textSpan('chev', '▸'))
 

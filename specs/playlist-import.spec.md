@@ -14,8 +14,11 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
   `MyTubeStore.importVideos` reducer method — see [src/types.ts](../src/types.ts),
   [src/storage.ts](../src/storage.ts), [src/validate-message.ts](../src/validate-message.ts).
 - **Tests:** reducer in [src/storage.test.ts](../src/storage.test.ts); message
-  gating in [src/validate-message.test.ts](../src/validate-message.test.ts). The
-  content-script scrape/inject behavior is **Manual acceptance** (YouTube DOM).
+  gating in [src/validate-message.test.ts](../src/validate-message.test.ts). Row
+  discovery and scraping for both playlist layouts (`ytd-playlist-video-renderer`
+  and YouTube's newer `yt-lockup-view-model`) is pinned against DOM fragments in
+  [content/playlist-rows.test.ts](../content/playlist-rows.test.ts) (regression for
+  743e1d9). The live content-script inject/scrape stays **Manual acceptance**.
 
 ## Why
 

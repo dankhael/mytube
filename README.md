@@ -117,11 +117,8 @@ npm run test:watch
 npm run test:e2e     # Playwright: loads the built extension in headed Chromium
 ```
 
-`npm run test:e2e` needs `npx playwright install chromium` once. The smoke test
-expects the English UI, which the extension picks from the system language on
-first run; on a non-English system, run it as
-`LANG=en_US.UTF-8 npm run test:e2e`. CI runs `npm test` and the build on every
-pull request.
+`npm run test:e2e` needs `npx playwright install chromium` once. CI runs
+`npm test` and the build on every pull request.
 
 ### How the service worker is organized
 
@@ -177,7 +174,6 @@ the packaging checklist for the Chrome Web Store.
 ## Roadmap
 
 - Export and back up your library
-- Default category names in the interface language (today they start in English)
 
 ## License
 

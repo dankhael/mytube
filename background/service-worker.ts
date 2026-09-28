@@ -6,6 +6,8 @@ import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
+import { createActionIconPainter } from '../src/action-icon'
+import { localizeDefaultCategories } from '../src/default-categories'
 import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
 import { openHomeTab, handleOpenHome, OPEN_HOME_COMMAND } from '../src/home-page'
 import { openHomeOnStartup } from '../src/watch-reminders'
@@ -39,10 +41,6 @@ async function updateBadge(data?: StorageData): Promise<void> {
   await chrome.action.setBadgeBackgroundColor({ color: '#FF0000' })
 }
 
-// Last accent painted onto the toolbar icon, so a storage change that didn't
-// touch the accent (e.g. saving a video) skips the rasterize.
-let paintedAccent: string | null = null
-
 // Rasterize the accent mark to ImageData. OffscreenCanvas + createImageBitmap are
 // the only canvas primitives available in an MV3 worker (no DOM). The SVG carries
 // an intrinsic 256² size so the bitmap has dimensions to scale from.
@@ -60,24 +58,14 @@ async function rasterizeIcon(svg: string, size: number): Promise<ImageData> {
   return ctx.getImageData(0, 0, size, size)
 }
 
-// Recolor the toolbar icon to match the chosen accent (THEME-11). Best-effort:
-// if rasterization isn't available the manifest PNG stays in place, so the icon
-// is never left blank.
-async function repaintIcon(accent: string): Promise<void> {
-  if (accent === paintedAccent) return
-  try {
-    const svg = accentLogoSvg(accent)
-    const imageData = {
-      16: await rasterizeIcon(svg, 16),
-      32: await rasterizeIcon(svg, 32),
-      48: await rasterizeIcon(svg, 48),
-    }
-    await chrome.action.setIcon({ imageData })
-    paintedAccent = accent
-  } catch {
-    // Leave the manifest default icon if the canvas/bitmap path is unavailable.
-  }
-}
+// Recolor the toolbar icon to match the chosen accent (THEME-11); skips when the
+// accent is unchanged, and leaves the manifest PNG if rasterizing fails
+// (src/action-icon.ts).
+const repaintIcon = createActionIconPainter({
+  renderSvg: accentLogoSvg,
+  rasterize: rasterizeIcon,
+  setIcon: (details) => chrome.action.setIcon(details),
+})
 
 // Single read drives both the badge count and the icon accent.
 async function refreshAction(): Promise<void> {
@@ -96,6 +84,8 @@ async function seedLanguageOnInstall(): Promise<void> {
   const data = await store.getData()
   if (data.settings.language === DEFAULT_LANGUAGE) {
     await store.updateSettings({ language: detected })
+    // …and name the untouched default categories in that language (DEFCAT-1).
+    await localizeDefaultCategories(store, detected)
   }
 }
 
@@ -171,7 +161,10 @@ async function handle(incoming: Message): Promise<MessageResponse> {
       case 'MARK_WATCHED':
         return { ok: true, data: await store.markWatched(message.id, message.watched) }
       case 'ADD_CATEGORY':
-        return { ok: true, data: await store.addCategory(message.name, message.emoji, message.icon) }
+        return {
+          ok: true,
+          data: await store.addCategory(message.name, message.emoji, message.icon),
+        }
       case 'UPDATE_CATEGORY':
         return {
           ok: true,
