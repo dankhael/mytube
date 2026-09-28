@@ -2,6 +2,7 @@
   "name": "mytube-extension",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Sua home do YouTube curada por você",
   "type": "module",
   "scripts": {

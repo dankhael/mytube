@@ -3,6 +3,7 @@ import { PROMO_BOARDS } from './boards-promo.mjs'
 import { SHOT_BOARDS } from './boards-shots.mjs'
 import { VIDEO_BOARDS } from './boards-video.mjs'
 import { FORMS_BOARDS } from './boards-forms.mjs'
+import { README_BOARDS } from './boards-readme.mjs'
 import { COPY } from './copy.mjs'
 import { CAPTURE_LOCALES } from './locales.mjs'
 
@@ -33,6 +34,11 @@ describe('store promo boards', () => {
       { width: 1280, height: 720 },
       { width: 1080, height: 1920 },
     ])
+  })
+
+  // GitHub's social-preview size, reused as the README banner.
+  it('renders the README banner at 1280×640', () => {
+    expect(README_BOARDS.map((board) => board.size)).toEqual([{ width: 1280, height: 640 }])
   })
 
   // Google Forms' recommended header: 1600×400 (4:1).
