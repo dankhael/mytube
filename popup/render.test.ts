@@ -137,7 +137,7 @@ describe('popup-categories.spec (render)', () => {
     expect(root.querySelector('.chev')?.textContent).toBe('▸')
   })
 
-  it('POPUP-7: more than 10 videos caps at 10 with a "ver todos" link', () => {
+  it('POPUP-7: more than 10 videos caps at 10 with a "See all in home" link', () => {
     const openHome = vi.fn()
     const videos = Array.from({ length: 12 }, (_, i) => vid(`id${i}`.padEnd(11, '0'), `T${i}`, 'C'))
     const { root } = mount(

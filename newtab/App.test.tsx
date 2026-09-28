@@ -73,7 +73,7 @@ describe('newtab-ui.spec', () => {
     expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)
   })
 
-  it('UI-3: toggling "Assistidos" hides watched videos', async () => {
+  it('UI-3: toggling "Watched" hides watched videos', async () => {
     scriptStore({
       categories: [{ name: 'Tutoriais', emoji: '🎓' }],
       videos: [
@@ -93,7 +93,7 @@ describe('newtab-ui.spec', () => {
 })
 
 describe('home-smart-sections.spec (home)', () => {
-  it('SMART-1/2/5: home shows Recentes and Poeira, with watched excluded', async () => {
+  it('SMART-1/2/5: home shows Recently added and Gathering dust, with watched excluded', async () => {
     const now = Date.now()
     scriptStore({
       categories: [{ name: 'Tutoriais', emoji: '🎓' }],
@@ -111,7 +111,7 @@ describe('home-smart-sections.spec (home)', () => {
     expect(screen.getAllByText('Ja Visto')).toHaveLength(1)
   })
 
-  it('SMART-6: "Pegando poeira" is hidden when nothing is old enough', async () => {
+  it('SMART-6: "Gathering dust" is hidden when nothing is old enough', async () => {
     scriptStore({
       categories: [{ name: 'Tutoriais', emoji: '🎓' }],
       videos: [videoAt('fresh111111', 'Tutoriais', 'Recentinho', Date.now() - 2 * DAY, false)],

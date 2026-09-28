@@ -26,10 +26,10 @@ still unwatched).
 | ID | Given | When | Then |
 |---|---|---|---|
 | **SMART-1** | saved videos | the home loads | a **"🆕 Recentemente adicionados"** section renders showing videos by `addedAt` **descending** |
-| **SMART-2** | unwatched videos that are "old" (see Decisions §2) | the home loads | a **"🕸️ Pegando poeira"** section renders showing the **oldest unwatched** videos by `addedAt` **ascending** |
+| **SMART-2** | unwatched videos that are "old" (see Decisions §2) | the home loads | a **"Gathering dust"** section (from the catalog; pt-BR: "Pegando poeira") renders showing the **oldest unwatched** videos by `addedAt` **ascending** |
 | **SMART-3** | a smart section | rendered | each video uses the same card UI as categories (thumbnail / title / channel, hover-play, open-on-click, context menu) but **without** the category drag handle / category menu |
-| **SMART-4** | a section with more than the cap (see §3) | rendered | it caps and shows a **"+X"** expander, like category sections |
-| **SMART-5** | watched videos | always | are **excluded from both** smart sections, independent of the "ocultar assistidos" toggle — no point recommending something already watched |
+| **SMART-4** | a section with more than the cap (see §3) | rendered | it caps and shows a **"See all (N)"** expander, like category sections |
+| **SMART-5** | watched videos | always | are **excluded from both** smart sections, independent of the "Hide watched" toggle — no point recommending something already watched |
 | **SMART-6** | no videos qualify (all recent / all watched / empty) | the home loads | the section is **hidden entirely** (no empty placeholder) |
 | **SMART-7** | a video is marked watched / removed / moved | the action completes | the smart sections **re-derive** (e.g. marking watched drops it from "Pegando poeira") |
 | **SMART-8** | a video qualifies for a smart section **and** belongs to a category | the home loads | it appears in **both** — smart sections are cross-cutting views, not moves/duplicates in storage |

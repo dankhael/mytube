@@ -13,7 +13,7 @@ here in the same PR that lands the spec.
 |---|---|---|
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar`, `video-duration` (DUR) |
 | [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
-| [Curated home](#curated-home) | Home page (opened from the toolbar / Ctrl+Shift+Y, not a new-tab override): category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
+| [Curated home](#curated-home) | Home page (opened from the toolbar / Ctrl+Shift+Y, not a new-tab override): category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/DR-THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
 | [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |

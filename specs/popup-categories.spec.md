@@ -20,13 +20,13 @@ the toolbar.
 
 | ID | Given | When | Then |
 |---|---|---|---|
-| **POPUP-1** | saved videos across categories | the popup opens | each category renders as a clickable row showing its emoji, name and video count; **all rows start collapsed** |
+| **POPUP-1** | saved videos across categories | the popup opens | each category renders as a clickable row showing its **icon** (see PUI-2 — replaced the emoji), name and video count; **all rows start collapsed** |
 | **POPUP-2** | a collapsed category row | the user clicks it | the row expands and lists that category's videos, each with a **thumbnail (16:9)**, **title** (max 2 lines) and **channel name**; clicking the row again collapses it. **Multiple categories may be open at once** (not an accordion) |
 | **POPUP-3** | an expanded video item | the user clicks it | a new tab opens at `https://www.youtube.com/watch?v={id}` (via `chrome.tabs.create`) |
 | **POPUP-4** | an empty store (no videos) | the popup opens | the existing empty hint is shown and no category rows render |
-| **POPUP-5** | an expanded category with zero videos | it is expanded | a subtle "nenhum vídeo aqui" placeholder is shown instead of an empty gap |
+| **POPUP-5** | an expanded category with zero videos | it is expanded | a subtle "No videos here." placeholder (from the catalog; pt-BR: "Nenhum vídeo aqui.") is shown instead of an empty gap |
 | **POPUP-6** | many categories/videos | the popup opens | the list scrolls vertically within the popup's fixed width (~320px); thumbnails and text never overflow the popup |
-| **POPUP-7** | an expanded category with **more than 10** videos | it is expanded | only the **first 10** videos render, followed by a **"ver todos na home (N)"** link that opens the new-tab page |
+| **POPUP-7** | an expanded category with **more than 10** videos | it is expanded | only the **first 10** videos render, followed by a **"See all in home (N)"** link (from the catalog; pt-BR: "Ver todos na home (N)") that opens the home |
 
 ## Out of scope / non-goals
 
