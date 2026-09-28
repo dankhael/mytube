@@ -8,7 +8,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Open-home keyboard shortcut
 
-- **Status:** Draft  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved  <!-- Draft → Approved (only a human sets Approved) — approved by the owner in the spec-audit review, 2026-09-28 -->
 - **Owner:** dankhael
 - **Contract:** no `Message`/`StorageData` change. The `open_home` command in
   [manifest.config.ts](../manifest.config.ts) (`commands`), `OPEN_HOME_COMMAND`,
@@ -16,8 +16,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
   and the worker's `chrome.commands.onCommand` listener.
 - **Tests:** [popup/config.test.ts](../popup/config.test.ts) (the Settings row,
   SHORTCUT-1…4 — these tests already exist) and
-  [src/home-page.test.ts](../src/home-page.test.ts) (the helpers; today unnamed,
-  renamed to SHORTCUT-5/6 once this spec is approved).
+  [src/home-page.test.ts](../src/home-page.test.ts) (the helpers, SHORTCUT-5/6).
 
 > **Retro-spec.** This documents behavior that shipped without a spec — the tests
 > `SHORTCUT-1…4` existed with no spec defining those IDs (found in the spec
