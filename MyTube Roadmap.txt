@@ -1,0 +1,5 @@
+MyTube Roadmap:
+- shared account to save vídeos across devices
+- Make Web Application Based On Extension
+- separate the vídeos from playlists on categories using AI automatically
+- live update from youtube playlist to mytube category and vice versa
