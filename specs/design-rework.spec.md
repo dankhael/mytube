@@ -9,8 +9,9 @@
   from, plus Tailwind `theme.colors` mapped to those tokens. No storage/message change.
 - **Tests:** a pure `matchesQuery` search helper (Node) + an `App` jsdom test for the
   new greeting. Visual fidelity is **manual acceptance** (CSS can't be unit-tested):
-  HOME-1, HOME-3, HOME-5, HOME-6, HOME-7 and HOME-8 are checked by the Manual
-  acceptance list below, not by named tests.
+  HOME-1, HOME-3, HOME-5, HOME-6, HOME-7, HOME-8 and DR-THEME-1 are checked by the
+  Manual acceptance list below, not by named tests. DR-THEME-2/3 are source checks
+  in [newtab/design-tokens.test.ts](../newtab/design-tokens.test.ts).
 
 ## Why
 
