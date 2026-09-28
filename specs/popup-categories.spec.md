@@ -4,9 +4,10 @@
 - **Owner:** dankhael
 - **Contract:** existing `GET_ALL` message (`src/types.ts`) + `chrome.tabs.create`.
   No new message or schema change.
-- **Tests:** `popup/popup.test.ts` (to add) — a pure grouping helper (Node) plus a
-  jsdom render/click test. Needs `popup/**` added to the Vitest `include` and the
-  tsconfig `include`.
+- **Tests:** [popup/groups.test.ts](../popup/groups.test.ts) — the pure grouping
+  helper (Node; its `GROUP-N` cases are unit tests of that helper, not spec rows) —
+  and [popup/render.test.ts](../popup/render.test.ts), the jsdom render/click test.
+  POPUP-6 (scrolling within the fixed width) is layout, verified by Manual acceptance.
 
 ## Why
 

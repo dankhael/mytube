@@ -17,10 +17,14 @@ let context: BrowserContext
 test.beforeAll(async () => {
   context = await chromium.launchPersistentContext('', {
     headless: false,
-    args: [
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`,
-    ],
+    // The extension picks its UI language from the service worker's
+    // navigator.language on first run, and SMOKE-1 asserts the English copy.
+    // `locale` only reaches pages, not the worker; on Linux Chromium reads the
+    // language from the environment, so pin that too — otherwise a pt_BR
+    // machine renders the Portuguese home and fails the smoke.
+    locale: 'en-US',
+    env: { ...process.env, LANG: 'en_US.UTF-8', LANGUAGE: 'en_US' },
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   })
 })
 

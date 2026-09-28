@@ -8,7 +8,9 @@
 - **Contract:** CSS only — a token layer in `newtab/index.css` that all colors derive
   from, plus Tailwind `theme.colors` mapped to those tokens. No storage/message change.
 - **Tests:** a pure `matchesQuery` search helper (Node) + an `App` jsdom test for the
-  new greeting. Visual fidelity is **manual acceptance** (CSS can't be unit-tested).
+  new greeting. Visual fidelity is **manual acceptance** (CSS can't be unit-tested):
+  HOME-1, HOME-3, HOME-5, HOME-6, HOME-7 and HOME-8 are checked by the Manual
+  acceptance list below, not by named tests.
 
 ## Why
 
