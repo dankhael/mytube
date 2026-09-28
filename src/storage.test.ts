@@ -44,14 +44,24 @@ describe('save-video.spec', () => {
   })
 
   it('DELETE-1: deleting a video removes only that id', async () => {
-    backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A'), vid('y', 'A')]))
+    backend = new FakeStorageBackend(
+      seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A'), vid('y', 'A')]),
+    )
     store = new MyTubeStore(backend)
     const data = await store.deleteVideo('x')
     expect(data.videos.map((v) => v.id)).toEqual(['y'])
   })
 
   it('MOVE-1: moving a video only changes its category', async () => {
-    backend = new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [vid('x', 'A')]))
+    backend = new FakeStorageBackend(
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [vid('x', 'A')],
+      ),
+    )
     store = new MyTubeStore(backend)
     const data = await store.moveVideo('x', 'B')
     expect(data.videos[0].category).toBe('B')
@@ -62,7 +72,9 @@ describe('save-video.spec', () => {
       seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A'), vid('y', 'A')]),
     )
     store = new MyTubeStore(backend)
-    const data = await store.applyMetadata([{ id: 'x', title: 'Título real', channelName: 'Canal real' }])
+    const data = await store.applyMetadata([
+      { id: 'x', title: 'Título real', channelName: 'Canal real' },
+    ])
     const x = data.videos.find((v) => v.id === 'x')!
     const y = data.videos.find((v) => v.id === 'y')!
     expect(x).toMatchObject({ title: 'Título real', channelName: 'Canal real' })
@@ -87,7 +99,10 @@ describe('save-video.spec', () => {
       store.saveVideo({ ...VIDEO, id: 'bbbbbbbbbbb' }, 'A'),
     ])
 
-    const ids = backend.snapshot()!.videos.map((v) => v.id).sort()
+    const ids = backend
+      .snapshot()!
+      .videos.map((v) => v.id)
+      .sort()
     expect(ids).toEqual(['aaaaaaaaaaa', 'bbbbbbbbbbb'])
   })
 
@@ -105,12 +120,13 @@ describe('save-video.spec', () => {
 
   it('REORDER-VID-1: reordering a category keeps other categories intact', async () => {
     backend = new FakeStorageBackend(
-      seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [
-        vid('a', 'A'),
-        vid('b', 'A'),
-        vid('c', 'A'),
-        vid('z', 'B'),
-      ]),
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [vid('a', 'A'), vid('b', 'A'), vid('c', 'A'), vid('z', 'B')],
+      ),
     )
     store = new MyTubeStore(backend)
     const data = await store.reorderVideos('A', ['c', 'a', 'b'])
@@ -148,7 +164,13 @@ describe('playlist-import.spec', () => {
   it('IMPORT-3: re-importing a saved video moves it, preserving addedAt/watched', async () => {
     const existing: Video = { ...v1, category: 'A', addedAt: 42, watched: true, watchedAt: 7 }
     const backend = new FakeStorageBackend(
-      seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [existing]),
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [existing],
+      ),
     )
     const store = new MyTubeStore(backend)
     const data = await store.importVideos([v1], 'B')
@@ -191,7 +213,9 @@ describe('categories.spec', () => {
 
   it('CAT-2: renaming a category repoints its videos', async () => {
     const store = new MyTubeStore(
-      new FakeStorageBackend(seed([{ name: 'Tutoriais', emoji: '🎓' }], [vid('x', 'Tutoriais'), vid('y', 'Tutoriais')])),
+      new FakeStorageBackend(
+        seed([{ name: 'Tutoriais', emoji: '🎓' }], [vid('x', 'Tutoriais'), vid('y', 'Tutoriais')]),
+      ),
     )
     const data = await store.updateCategory('Tutoriais', 'Estudos', '🎓')
     expect(data.categories.some((c) => c.name === 'Estudos')).toBe(true)
@@ -214,7 +238,9 @@ describe('categories.spec', () => {
 
   it('HICON-7: legacy categories without an icon load and update without error', async () => {
     // No `icon` key (pre-feature data) must still load and stay usable.
-    const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'Velha', emoji: '🎓' }], [])))
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'Velha', emoji: '🎓' }], [])),
+    )
     const loaded = await store.getData()
     expect(loaded.categories[0].icon).toBeUndefined()
     const data = await store.updateCategory('Velha', 'Velha', '🎓', 'book')
@@ -222,7 +248,9 @@ describe('categories.spec', () => {
   })
 
   it('CAT-3: deleting a category (keep videos) moves them to "Sem categoria"', async () => {
-    const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'X', emoji: '📁' }], [vid('x', 'X')])))
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'X', emoji: '📁' }], [vid('x', 'X')])),
+    )
     const data = await store.deleteCategory('X', false)
     expect(data.categories.some((c) => c.name === 'X')).toBe(false)
     expect(data.categories.some((c) => c.name === UNCATEGORIZED)).toBe(true)
@@ -240,7 +268,16 @@ describe('categories.spec', () => {
 
   it('REORDER-CAT-1: omitted categories are kept at the end', async () => {
     const store = new MyTubeStore(
-      new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }, { name: 'C', emoji: '📁' }], [])),
+      new FakeStorageBackend(
+        seed(
+          [
+            { name: 'A', emoji: '📁' },
+            { name: 'B', emoji: '📁' },
+            { name: 'C', emoji: '📁' },
+          ],
+          [],
+        ),
+      ),
     )
     const data = await store.reorderCategories(['C', 'A'])
     expect(data.categories.map((c) => c.name)).toEqual(['C', 'A', 'B'])
@@ -249,14 +286,18 @@ describe('categories.spec', () => {
 
 describe('watched-quota.spec', () => {
   it('WATCH-1: marking watched sets watched + a numeric watchedAt', async () => {
-    const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A')])))
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A')])),
+    )
     const data = await store.markWatched('x', true)
     expect(data.videos[0].watched).toBe(true)
     expect(typeof data.videos[0].watchedAt).toBe('number')
   })
 
   it('WATCH-2: un-marking clears watchedAt', async () => {
-    const store = new MyTubeStore(new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A', true)])))
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }], [vid('x', 'A', true)])),
+    )
     const data = await store.markWatched('x', false)
     expect(data.videos[0].watched).toBe(false)
     expect(data.videos[0].watchedAt).toBeUndefined()
@@ -291,6 +332,23 @@ describe('popup-config.spec (settings)', () => {
     // re-read through a fresh store to prove it persisted, not just in memory
     const persisted = await new MyTubeStore(backend).getData()
     expect(persisted.settings.soundEffects).toBe(true)
+  })
+
+  // The "stored" half of THEME-8 / I18N-10: the pick survives a fresh read of
+  // the same backend (a reopened popup, the other surface, another device via
+  // chrome.storage.sync). Each surface applying it at boot is THEME-7 / I18N-8.
+  it('THEME-8: a changed accent persists and is read back by a fresh store', async () => {
+    const backend = new FakeStorageBackend()
+    await new MyTubeStore(backend).updateSettings({ accent: 'pink' })
+    const persisted = await new MyTubeStore(backend).getData()
+    expect(persisted.settings.accent).toBe('pink')
+  })
+
+  it('I18N-10: a changed language persists and is read back by a fresh store', async () => {
+    const backend = new FakeStorageBackend()
+    await new MyTubeStore(backend).updateSettings({ language: 'pt-BR' })
+    const persisted = await new MyTubeStore(backend).getData()
+    expect(persisted.settings.language).toBe('pt-BR')
   })
 
   it('REMIND-4: updating one reminder toggle leaves the other settings untouched', async () => {
