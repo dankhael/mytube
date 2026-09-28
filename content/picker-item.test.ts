@@ -10,19 +10,23 @@ import { pickerCategoryItem } from './picker-item'
 
 describe('content picker-item', () => {
   it('renders the auto-mapped icon for the name, never the stored emoji', () => {
-    const item = pickerCategoryItem({ name: 'Esportes', emoji: '📁' }, vi.fn())
+    const item = pickerCategoryItem({ name: 'Esportes', emoji: '📁' }, vi.fn(), 'en')
     expect(item.textContent).toBe('Esportes')
     expect(item.textContent).not.toContain('📁')
     expect(item.querySelector('svg')!.isEqualNode(iconSvgElement('trophy'))).toBe(true)
   })
 
   it('honours an explicit category icon over the name guess', () => {
-    const item = pickerCategoryItem({ name: 'Esportes', emoji: '🏆', icon: 'gamepad' }, vi.fn())
+    const item = pickerCategoryItem(
+      { name: 'Esportes', emoji: '🏆', icon: 'gamepad' },
+      vi.fn(),
+      'en',
+    )
     expect(item.querySelector('svg')!.isEqualNode(iconSvgElement('gamepad'))).toBe(true)
   })
 
   it('falls back to the default icon for an unmapped name', () => {
-    const item = pickerCategoryItem({ name: 'Zzz', emoji: '📁' }, vi.fn())
+    const item = pickerCategoryItem({ name: 'Zzz', emoji: '📁' }, vi.fn(), 'en')
     expect(item.querySelector('svg')!.isEqualNode(iconSvgElement('bookmark'))).toBe(true)
   })
 
@@ -31,12 +35,20 @@ describe('content picker-item', () => {
     const outer = vi.fn()
     const host = document.createElement('div')
     host.addEventListener('click', outer)
-    const item = pickerCategoryItem({ name: 'Esportes', emoji: '📁' }, onChoose)
+    const item = pickerCategoryItem({ name: 'Esportes', emoji: '📁' }, onChoose, 'en')
     host.appendChild(item)
 
     item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     expect(onChoose).toHaveBeenCalledWith('Esportes')
     expect(outer).not.toHaveBeenCalled()
+  })
+
+  it('DEFCAT-4: shows "Sem categoria" for the Uncategorized bucket in pt-BR but saves into the stored name', () => {
+    const onChoose = vi.fn()
+    const item = pickerCategoryItem({ name: 'Uncategorized', emoji: '📁' }, onChoose, 'pt-BR')
+    expect(item.querySelector('.mytube-dropdown-name')?.textContent).toBe('Sem categoria')
+    item.click()
+    expect(onChoose).toHaveBeenCalledWith('Uncategorized')
   })
 })

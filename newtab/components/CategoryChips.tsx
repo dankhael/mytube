@@ -2,7 +2,7 @@ import { Category } from '../../src/types'
 import { resolveCategoryIcon } from '../../src/category-icon'
 import { scrollToCategory } from '../category-anchor'
 import CategoryIcon from './CategoryIcon'
-import { useT } from '../i18n-context'
+import { useCategoryLabel, useT } from '../i18n-context'
 
 interface Props {
   categories: Category[]
@@ -16,13 +16,14 @@ interface Props {
 // renders whatever visible category set the caller passes, in that order.
 export default function CategoryChips({ categories, onJump = scrollToCategory }: Props) {
   const tr = useT()
+  const label = useCategoryLabel()
   if (categories.length === 0) return null
   return (
     <nav className="cat-chips" aria-label={tr('home.jumpToCategory')}>
       {categories.map((cat) => (
         <button key={cat.name} className="cat-chip" onClick={() => onJump(cat.name)}>
           <CategoryIcon icon={resolveCategoryIcon(cat)} size={15} />
-          <span>{cat.name}</span>
+          <span>{label(cat.name)}</span>
         </button>
       ))}
     </nav>

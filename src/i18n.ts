@@ -50,6 +50,9 @@ const EN = {
   'popup.seeAllInHome': 'See all in home ({count})',
   'popup.unwatchedWord': 'unwatched',
   'popup.openHome': 'Open my home',
+  'category.default.tutorials': 'Tutorials',
+  'category.default.entertainment': 'Entertainment',
+  'category.uncategorized': 'Uncategorized',
 
   'config.title': 'Settings',
   'config.sound.label': 'Sound effects',
@@ -163,6 +166,9 @@ const PT_BR: Record<MessageKey, string> = {
   'popup.seeAllInHome': 'Ver todos na home ({count})',
   'popup.unwatchedWord': 'não assistidos',
   'popup.openHome': 'Abrir minha home',
+  'category.default.tutorials': 'Tutoriais',
+  'category.default.entertainment': 'Entretenimento',
+  'category.uncategorized': 'Sem categoria',
 
   'config.title': 'Configurações',
   'config.sound.label': 'Efeitos sonoros',

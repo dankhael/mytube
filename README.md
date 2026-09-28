@@ -174,7 +174,6 @@ the packaging checklist for the Chrome Web Store.
 ## Roadmap
 
 - Export and back up your library
-- Default category names in the interface language (today they start in English)
 
 ## License
 

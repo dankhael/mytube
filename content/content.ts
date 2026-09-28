@@ -9,6 +9,7 @@ import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
 import { CardData, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
 import { pickerCategoryItem } from './picker-item'
+import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 
 // Active interface language, refreshed from the store on init and on change.
@@ -128,7 +129,7 @@ function setSavedState(btn: HTMLElement, category: string | null) {
     btn.classList.add('mytube-saved')
     plus.textContent = '✓'
     label.textContent = t('content.saved', lang)
-    btn.title = t('content.savedIn', lang, { category })
+    btn.title = t('content.savedIn', lang, { category: categoryLabel(category, lang) })
   } else {
     btn.classList.remove('mytube-saved')
     plus.textContent = '+'
@@ -230,7 +231,7 @@ async function openCategoryPicker(
   }
 
   categories.forEach((cat) => {
-    dropdown.appendChild(pickerCategoryItem(cat, choose))
+    dropdown.appendChild(pickerCategoryItem(cat, choose, lang))
   })
 
   // "Nova categoria" — expands into an inline input.
@@ -283,7 +284,7 @@ async function saveCardToCategory(btn: HTMLElement, card: CardData, category: st
     setSavedState(btn, category)
     btn.classList.add('mytube-flash')
     setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
-    showToast(t('content.savedToast', lang, { category }))
+    showToast(t('content.savedToast', lang, { category: categoryLabel(category, lang) }))
   }
 }
 

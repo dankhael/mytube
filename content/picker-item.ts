@@ -7,16 +7,21 @@
 
 import { Category } from '../src/types'
 import { categoryIconElement } from '../src/category-icon-svg'
+import { categoryLabel } from '../src/category-label'
+import { Language } from '../src/i18n'
 
+// Shows the category's display label (the Uncategorized bucket is translated,
+// DEFCAT-4) but always hands back the STORED name, which is what gets saved.
 export function pickerCategoryItem(
   cat: Category,
   onChoose: (name: string) => void,
+  lang: Language,
 ): HTMLButtonElement {
   const item = document.createElement('button')
   item.className = 'mytube-dropdown-item'
   const name = document.createElement('span')
   name.className = 'mytube-dropdown-name'
-  name.textContent = cat.name
+  name.textContent = categoryLabel(cat.name, lang)
   item.append(categoryIconElement(cat), name)
   item.addEventListener('click', (e) => {
     e.stopPropagation()

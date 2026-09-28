@@ -17,11 +17,15 @@ function vid(id: string, title: string, channel: string): Video {
   }
 }
 
-function mount(data: Omit<StorageData, 'settings'>, cb?: Partial<PopupCallbacks>) {
+function mount(
+  data: Omit<StorageData, 'settings'>,
+  cb?: Partial<PopupCallbacks>,
+  settings: Partial<StorageData['settings']> = {},
+) {
   const root = document.createElement('ul')
   document.body.appendChild(root)
   const callbacks: PopupCallbacks = { openVideo: vi.fn(), openHome: vi.fn(), ...cb }
-  renderPopup(root, { ...data, settings: { ...DEFAULT_SETTINGS } }, callbacks)
+  renderPopup(root, { ...data, settings: { ...DEFAULT_SETTINGS, ...settings } }, callbacks)
   return { root, callbacks }
 }
 
@@ -151,5 +155,17 @@ describe('popup-categories.spec (render)', () => {
     expect(more.textContent).toContain('(12)')
     more.click()
     expect(openHome).toHaveBeenCalled()
+  })
+
+  it('DEFCAT-4: in pt-BR the Uncategorized bucket row reads "Sem categoria"', () => {
+    const { root } = mount(
+      {
+        categories: [{ name: 'Uncategorized', emoji: '📁', icon: 'inbox' }],
+        videos: [{ ...vid('a', 'A', 'CanalA'), category: 'Uncategorized' }],
+      },
+      {},
+      { language: 'pt-BR' },
+    )
+    expect(root.querySelector('.cat-name')?.textContent).toBe('Sem categoria')
   })
 })

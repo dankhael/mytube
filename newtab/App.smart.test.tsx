@@ -127,3 +127,26 @@ describe('i18n-language.spec (home copy)', () => {
     expect(screen.queryByText('Recently added')).toBeNull()
   })
 })
+
+describe('localized-default-categories.spec (home)', () => {
+  it('DEFCAT-4: in pt-BR the Uncategorized bucket shows as "Sem categoria" in its section, chip and Move dialog', async () => {
+    const worker = new FakeServiceWorker(
+      [{ ...videoAt('unc11111111', 'Loose video', 1), category: 'Uncategorized' }],
+      {
+        language: 'pt-BR',
+      },
+    )
+    worker.data.categories = [{ name: 'Uncategorized', emoji: '📁', icon: 'inbox' }]
+    worker.install()
+    render(<App />)
+
+    await screen.findByRole('heading', { name: 'Sem categoria' })
+    const section = sectionTitled('Sem categoria')
+    expect(document.querySelector('.cat-chips')?.textContent).toContain('Sem categoria')
+
+    await userEvent.click(within(section).getAllByTitle('Mover…')[0])
+    const heading = await screen.findByRole('heading', { name: /mover vídeo para/i })
+    expect(heading.closest('.fixed')?.textContent).toContain('Sem categoria')
+    expect(screen.queryByText('Uncategorized')).toBeNull()
+  })
+})

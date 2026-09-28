@@ -8,15 +8,16 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Default categories in the interface language
 
-- **Status:** Draft  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved  <!-- Draft → Approved (only a human sets Approved) — approved by the owner in the spec-audit review, 2026-09-28, with the recommended options §1(a) and §2 -->
 - **Owner:** dankhael
 - **Contract:** `DEFAULT_DATA.categories` and `UNCATEGORIZED` in
   [src/types.ts](../src/types.ts); the reducer in [src/storage.ts](../src/storage.ts)
   (which moves orphaned videos into `UNCATEGORIZED` when a category is deleted);
   the first-install language seeding in
   [background/service-worker.ts](../background/service-worker.ts) (`seedLanguageOnInstall`).
-- **Tests:** reducer specs in `src/storage.test.ts`; display mapping in
-  `src/i18n.test.ts`; seeding via an injectable helper (like `src/home-page.ts`).
+- **Tests:** the seeding helper in `src/default-categories.test.ts` (against
+  `FakeStorageBackend`); the display label in `src/i18n.test.ts`; the surfaces in
+  `popup/render.test.ts`, `newtab/App.smart.test.tsx` and `content/picker-item.test.ts`.
 
 ## Why
 
@@ -27,15 +28,14 @@ while capturing the pt-BR store screenshots, which had to rename them by hand.
 
 ## Acceptance criteria
 
-> **Needs a decision first** — see Decisions §1/§2. The rows below assume the
-> recommended options (seed on install; display-map `Uncategorized`).
+> Decided: §1(a) seed on first install, §2 display-map `Uncategorized`.
 
 | ID | Given | When | Then |
 |---|---|---|---|
 | **DEFCAT-1** | a fresh install whose detected language is `pt-BR` | the worker seeds the language | the untouched default categories are renamed to "Tutoriais" and "Entretenimento" (icons and order unchanged) |
 | **DEFCAT-2** | a fresh install whose detected language is `en` | install completes | the defaults stay "Tutorials" / "Entertainment" (no rename, no write) |
-| **DEFCAT-3** | an existing library, or defaults the user already renamed/reordered | the extension updates or the language changes later | no category is renamed — seeding only touches untouched defaults on first install |
-| **DEFCAT-4** | the stored `UNCATEGORIZED` bucket | any surface renders its name while the language is `pt-BR` | it shows "Sem categoria" (display-only; the stored key stays `Uncategorized`) |
+| **DEFCAT-3** | a library that already has videos (e.g. synced from another device or kept across a reinstall), or defaults the user renamed/reordered/extended | install completes, the extension updates, or the language changes later | no category is renamed — seeding only touches untouched defaults (exactly the shipped list, no videos) on first install |
+| **DEFCAT-4** | the stored `UNCATEGORIZED` bucket | its name renders while the language is `pt-BR` — popup row, home section title / chips / Move dialog, the YouTube Save menu and save toast | it shows "Sem categoria" (display-only; the stored key stays `Uncategorized`, and English shows "Uncategorized") |
 | **DEFCAT-5** | a category is deleted with "keep videos" | the reducer moves the orphans | they land in the stored `UNCATEGORIZED` bucket exactly as today, whatever the display language |
 
 ## Decisions

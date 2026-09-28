@@ -7,6 +7,7 @@ import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
 import { createActionIconPainter } from '../src/action-icon'
+import { localizeDefaultCategories } from '../src/default-categories'
 import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
 import { openHomeTab, handleOpenHome, OPEN_HOME_COMMAND } from '../src/home-page'
 import { openHomeOnStartup } from '../src/watch-reminders'
@@ -83,6 +84,8 @@ async function seedLanguageOnInstall(): Promise<void> {
   const data = await store.getData()
   if (data.settings.language === DEFAULT_LANGUAGE) {
     await store.updateSettings({ language: detected })
+    // …and name the untouched default categories in that language (DEFCAT-1).
+    await localizeDefaultCategories(store, detected)
   }
 }
 

@@ -14,7 +14,7 @@ here in the same PR that lands the spec.
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar`, `video-duration` (DUR) |
 | [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
 | [Curated home](#curated-home) | Home page (opened from the toolbar / Ctrl+Shift+Y, not a new-tab override): category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/DR-THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
-| [Category management](#category-management) | Create / rename / delete / reorder categories and their icons | `categories` (CAT), `home-icon-tiles` (HICON-8) |
+| [Category management](#category-management) | Create / rename / delete / reorder categories and their icons; defaults in the interface language | `categories` (CAT), `home-icon-tiles` (HICON-8), `localized-default-categories` (DEFCAT) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
 | [Preferences](#preferences) | Settings: sound effects, theme skin, interface language, open-home shortcut, watch reminders | `popup-config` (CFG), `crt-theme` (CRT), `i18n-language` (I18N), `watch-reminders` (REMIND) |
@@ -83,9 +83,15 @@ Content script [content/playlist-import.ts](../content/playlist-import.ts) (+ sh
 
 Reducer [src/storage.ts](../src/storage.ts); icon rules [src/category-icon.ts](../src/category-icon.ts).
 
-- Seeds `Tutoriais`, `Entretenimento`, `Sem categoria` on first use.
+- Ships `Tutorials`, `Entertainment` and the `Uncategorized` bucket. On a first
+  install in Portuguese the two defaults are renamed to `Tutoriais` /
+  `Entretenimento` — only while untouched and the library is empty, so a synced or
+  reinstalled library is never renamed ([src/default-categories.ts](../src/default-categories.ts),
+  DEFCAT-1…3).
+- `Uncategorized` stays the stored fallback key; it is display-mapped to
+  "Sem categoria" in pt-BR on every surface ([src/category-label.ts](../src/category-label.ts), DEFCAT-4/5).
 - Add (duplicate name = no-op), rename (cascades to its videos), delete (keep →
-  move to `Sem categoria`, or delete videos too), reorder (unnamed kept at end).
+  move to `Uncategorized`, or delete videos too), reorder (unnamed kept at end).
 - Icon auto-derived from the name (substring rules, `bookmark` fallback); an
   explicit pick wins.
 
