@@ -11,6 +11,7 @@ import { placeDropdown } from './dropdown-position'
 import { pickerCategoryItem } from './picker-item'
 import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
+import { isCollectionCard } from './collection-card'
 
 // Active interface language, refreshed from the store on init and on change.
 // The content script is plain DOM (no React context), so it threads `lang`
@@ -299,6 +300,8 @@ function injectButton(card: HTMLElement) {
   // Skip cards nested inside another card so one renderer wrapping another
   // (e.g. a lockup inside a grid item) can't double-inject.
   if (card.parentElement?.closest(CARD_SELECTORS.join(','))) return
+  // Playlist/Mix tiles would save their first video under the list's title.
+  if (isCollectionCard(card)) return
 
   let data: CardData | null = null
   try {
@@ -741,7 +744,8 @@ function injectStyles() {
     }
 
     /* Playlist-import button (spec IMPORT-DOM-1). Themed accent pill; in the
-       header it sits inline, the floating fallback pins to the bottom-right. */
+       header it sits inline. The floating fallback (header not rendered yet)
+       pins bottom-LEFT: bottom-right is YouTube's miniplayer and our toast. */
     .mytube-import-btn {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: Roboto, system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1;
@@ -752,12 +756,13 @@ function injectStyles() {
     .mytube-import-btn:hover { background: var(--mytube-accent-2); }
     .mytube-import-btn:disabled { opacity: .6; cursor: default; }
     .mytube-import-btn--floating {
-      position: fixed; bottom: 24px; right: 24px; z-index: 2147483000; margin: 0;
+      position: fixed; bottom: 24px; left: 24px; z-index: 2147483000; margin: 0;
       box-shadow: 0 10px 30px rgba(0,0,0,.5);
     }
 
     /* YouTube-home reminder banner (spec watch-reminders). Fixed bottom-left so
-       it doesn't collide with the bottom-right import/toast; themed accent pill. */
+       it doesn't collide with the bottom-right toast; the import fallback shares the
+       corner but only on /playlist, where this home-only banner never shows. */
     .mytube-nudge {
       position: fixed; bottom: 24px; left: 24px; z-index: 2147483000;
       display: inline-flex; align-items: center; gap: 12px;
