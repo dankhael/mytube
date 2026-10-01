@@ -7,3 +7,4 @@ playwright-report
 playwright/.cache
 release/*.zip
 build
+.sandbox-profile
