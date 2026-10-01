@@ -38,6 +38,8 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   — a Save pill rides the preview's own controls instead, re-targeted to the
   currently-previewed video; while the preview is up the card's own overlay pill
   is hidden so only one Save button shows (SALVAR-PREVIEW-1..4).
+- Playlist/Mix tiles get no Save pill — neither on the tile nor on its hover
+  preview, which plays the list's first video (salvar-home-and-suggestions D4).
 - Picking a category sends `SAVE_VIDEO` (id, title, channel, canonical thumbnail,
   best-effort `channelThumbnail` and `duration` clock label scraped from the
   card's overlay); "+ Nova categoria" creates-and-saves inline.

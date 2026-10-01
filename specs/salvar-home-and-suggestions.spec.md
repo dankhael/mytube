@@ -35,6 +35,14 @@ control should look consistent and be present on every video surface.
 > **D3 — Mini detection:** by **sidebar location** (`#secondary` /
 > `ytd-watch-next-secondary-results-renderer`), not renderer tag, so home-feed
 > lockups are not shrunk.
+> **D4 — No preview pill over playlist/Mix tiles** (added in 1.0.1, e162fa6):
+> hovering a collection tile makes the preview play the list's **first video**,
+> so the SALVAR-PREVIEW-1 pill would save that one video in the playlist's
+> place. When the preview's `list=` belongs to a collection card on the page
+> (`isPreviewOfCollection`, content/collection-card.ts), no pill is shown — the
+> tile itself gets no overlay pill either (6bde23c). Whole-playlist import stays
+> on the playlist page (spec playlist-import). Playlist-page row previews keep
+> their pill: their list has no tile on the page.
 
 ## Acceptance criteria
 
