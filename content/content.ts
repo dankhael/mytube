@@ -11,7 +11,7 @@ import { placeDropdown } from './dropdown-position'
 import { pickerCategoryItem } from './picker-item'
 import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
-import { isCollectionCard } from './collection-card'
+import { isCollectionCard, isPreviewOfCollection } from './collection-card'
 
 // Active interface language, refreshed from the store on init and on change.
 // The content script is plain DOM (no React context), so it threads `lang`
@@ -474,7 +474,9 @@ function injectPreviewButton() {
     setPreviewActive(false)
     return
   }
-  const data = extractPreviewCard(preview)
+  // Hovering a playlist/Mix tile previews its first video; a pill here would
+  // save that one video in the playlist's place.
+  const data = isPreviewOfCollection(preview, document) ? null : extractPreviewCard(preview)
   if (!data) {
     existing?.remove()
     setPreviewActive(false)

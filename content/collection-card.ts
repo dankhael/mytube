@@ -23,3 +23,31 @@ const COLLECTION_MARKERS = [
 export function isCollectionCard(card: Element): boolean {
   return card.querySelector(COLLECTION_MARKERS) !== null
 }
+
+// Card renderers that can hold a collection tile (channel/feed grids, home).
+const CARD_HOSTS = 'yt-lockup-view-model, ytd-rich-item-renderer, ytd-grid-playlist-renderer'
+
+function listIdOf(href: string): string | null {
+  return new URLSearchParams(href.split('?')[1] ?? '').get('list')
+}
+
+/**
+ * True when YouTube's hover preview is playing a playlist/Mix tile's first
+ * video: the preview's `list=` belongs to a collection card on the page. The
+ * preview pill would otherwise save that one video in the list's place.
+ * @example isPreviewOfCollection(document.querySelector('ytd-video-preview')!, document)
+ */
+export function isPreviewOfCollection(preview: Element, root: ParentNode): boolean {
+  const href = preview.querySelector('a[href*="watch?v="]')?.getAttribute('href') ?? ''
+  const listId = listIdOf(href)
+  if (!listId) return false
+  return [...root.querySelectorAll(CARD_HOSTS)].some(
+    (card) => !preview.contains(card) && isCollectionCard(card) && linksToList(card, listId),
+  )
+}
+
+function linksToList(card: Element, listId: string): boolean {
+  return [...card.querySelectorAll('a[href*="list="]')].some(
+    (link) => listIdOf(link.getAttribute('href') ?? '') === listId,
+  )
+}
