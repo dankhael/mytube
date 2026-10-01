@@ -35,6 +35,17 @@ control should look consistent and be present on every video surface.
 > **D3 — Mini detection:** by **sidebar location** (`#secondary` /
 > `ytd-watch-next-secondary-results-renderer`), not renderer tag, so home-feed
 > lockups are not shrunk.
+> **D4 — No preview pill over playlist/Mix tiles** (added in 1.0.1): hovering a
+> collection tile makes the preview play the list's **first video**, so the
+> SALVAR-PREVIEW-1 pill would save that one video in the playlist's place. A tile
+> is a collection **only** by its stacked collection thumbnail
+> (`isCollectionCard`, content/collection-card.ts) — never by link shape: plain
+> music-video results link `watch?v=…&list=RD…&start_radio=1`, and a link-based
+> rule hid the pill on all of them. The preview is skipped only when it sits
+> **over** such a tile (`isPreviewOfCollection`, by geometry), because a Mix and
+> the video it was seeded from share the same `list=RD…`. The tile itself gets
+> no overlay pill either. Whole-playlist import stays on the playlist page
+> (spec playlist-import); playlist-page rows keep their pill.
 
 ## Acceptance criteria
 

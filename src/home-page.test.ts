@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   HOME_PAGE_PATH,
+  FEEDBACK_FORM_URL,
   KOFI_URL,
   OPEN_HOME_COMMAND,
   SHORTCUTS_PAGE,
   handleOpenHome,
   homeShortcut,
   openDonatePage,
+  openFeedbackForm,
   openHomeTab,
   openShortcutSettings,
 } from './home-page'
@@ -69,5 +71,14 @@ describe('home-page — openDonatePage (CFG-6)', () => {
     openDonatePage({ create })
     expect(create).toHaveBeenCalledWith({ url: KOFI_URL })
     expect(KOFI_URL).toBe('https://ko-fi.com/dankhael')
+  })
+})
+
+describe('home-page — openFeedbackForm (CFG-10)', () => {
+  it('CFG-10: opens the feedback form in a new tab', () => {
+    const create = vi.fn()
+    openFeedbackForm({ create })
+    expect(create).toHaveBeenCalledWith({ url: FEEDBACK_FORM_URL })
+    expect(FEEDBACK_FORM_URL).toBe('https://forms.gle/BnUB86fy5YAvXysa6')
   })
 })

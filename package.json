@@ -1,7 +1,7 @@
 {
   "name": "mytube-extension",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "description": "Sua home do YouTube curada por você",
   "type": "module",
@@ -14,7 +14,8 @@
     "store:promo": "npm run build && node scripts/make-store-promo.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "sandbox": "npm run build && node scripts/sandbox.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

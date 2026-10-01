@@ -11,18 +11,13 @@ import { placeDropdown } from './dropdown-position'
 import { pickerCategoryItem } from './picker-item'
 import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
+import { isCollectionCard, isPreviewOfCollection } from './collection-card'
+import { CARD_SELECTORS, findSaveTargets } from './card-selectors'
 
 // Active interface language, refreshed from the store on init and on change.
 // The content script is plain DOM (no React context), so it threads `lang`
 // through a module-level variable rather than the new-tab i18n context.
 let lang: Language = DEFAULT_LANGUAGE
-
-const CARD_SELECTORS = [
-  'ytd-rich-item-renderer', // home
-  'ytd-video-renderer', // search results
-  'ytd-compact-video-renderer', // suggested sidebar (legacy)
-  'yt-lockup-view-model', // watch suggestions (current lockup renderer)
-]
 
 const PROCESSED = 'data-mytube'
 
@@ -299,6 +294,8 @@ function injectButton(card: HTMLElement) {
   // Skip cards nested inside another card so one renderer wrapping another
   // (e.g. a lockup inside a grid item) can't double-inject.
   if (card.parentElement?.closest(CARD_SELECTORS.join(','))) return
+  // Playlist/Mix tiles would save their first video under the list's title.
+  if (isCollectionCard(card)) return
 
   let data: CardData | null = null
   try {
@@ -471,7 +468,9 @@ function injectPreviewButton() {
     setPreviewActive(false)
     return
   }
-  const data = extractPreviewCard(preview)
+  // Hovering a playlist/Mix tile previews its first video; a pill here would
+  // save that one video in the playlist's place.
+  const data = isPreviewOfCollection(preview, document) ? null : extractPreviewCard(preview)
   if (!data) {
     existing?.remove()
     setPreviewActive(false)
@@ -530,14 +529,12 @@ const playlistImportDeps: PlaylistImportDeps = {
 }
 
 function scan() {
-  for (const selector of CARD_SELECTORS) {
-    document.querySelectorAll<HTMLElement>(selector).forEach((card) => {
-      try {
-        injectButton(card)
-      } catch {
-        // ignore a single broken card
-      }
-    })
+  for (const card of findSaveTargets(document)) {
+    try {
+      injectButton(card)
+    } catch {
+      // ignore a single broken card
+    }
   }
   try {
     injectWatchButton()
@@ -622,6 +619,7 @@ function injectStyles() {
     ytd-video-renderer:hover .mytube-btn,
     ytd-compact-video-renderer:hover .mytube-btn,
     yt-lockup-view-model:hover .mytube-btn,
+    ytd-playlist-video-renderer:hover .mytube-btn,
     .mytube-btn.mytube-saved, .mytube-dropdown ~ * .mytube-btn,
     .mytube-wrapper:hover .mytube-btn { opacity: 1; }
     /* Overlay buttons sit on thumbnails — add a shadow for legibility (spec
@@ -741,7 +739,8 @@ function injectStyles() {
     }
 
     /* Playlist-import button (spec IMPORT-DOM-1). Themed accent pill; in the
-       header it sits inline, the floating fallback pins to the bottom-right. */
+       header it sits inline. The floating fallback (header not rendered yet)
+       pins bottom-LEFT: bottom-right is YouTube's miniplayer and our toast. */
     .mytube-import-btn {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: Roboto, system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1;
@@ -752,12 +751,13 @@ function injectStyles() {
     .mytube-import-btn:hover { background: var(--mytube-accent-2); }
     .mytube-import-btn:disabled { opacity: .6; cursor: default; }
     .mytube-import-btn--floating {
-      position: fixed; bottom: 24px; right: 24px; z-index: 2147483000; margin: 0;
+      position: fixed; bottom: 24px; left: 24px; z-index: 2147483000; margin: 0;
       box-shadow: 0 10px 30px rgba(0,0,0,.5);
     }
 
     /* YouTube-home reminder banner (spec watch-reminders). Fixed bottom-left so
-       it doesn't collide with the bottom-right import/toast; themed accent pill. */
+       it doesn't collide with the bottom-right toast; the import fallback shares the
+       corner but only on /playlist, where this home-only banner never shows. */
     .mytube-nudge {
       position: fixed; bottom: 24px; left: 24px; z-index: 2147483000;
       display: inline-flex; align-items: center; gap: 12px;

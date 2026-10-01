@@ -20,6 +20,8 @@ export interface ConfigModalCallbacks {
   onToggleHomeReminder: (enabled: boolean) => void
   // Opens the developer's Ko-fi page in a new tab (CFG-6).
   onDonate: () => void
+  // Opens the feedback Google Form in a new tab (CFG-10).
+  onFeedback: () => void
 }
 
 // `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
@@ -54,7 +56,7 @@ export function createConfigModal(
 
   function render(): void {
     const lang = shown.language
-    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang, cb.onDonate))
+    modal.replaceChildren(header(lang, destroy), body(lang), footer(lang, cb))
   }
 
   function body(lang: Language): HTMLElement {
@@ -111,9 +113,12 @@ function header(lang: Language, onClose: () => void): HTMLElement {
   return node
 }
 
-function footer(lang: Language, onDonate: () => void): HTMLElement {
+function footer(lang: Language, cb: ConfigModalCallbacks): HTMLElement {
   const node = el('div', 'cfg-footer')
-  node.appendChild(donateCard(lang, onDonate))
+  node.append(
+    footerCard('cfg-feedback', FEEDBACK_SVG, ['config.feedback.title', 'config.feedback.sub'], lang, cb.onFeedback),
+    footerCard('cfg-donate', COFFEE_SVG, ['config.donate.title', 'config.donate.sub'], lang, cb.onDonate),
+  )
   return node
 }
 
@@ -124,23 +129,33 @@ const COFFEE_SVG =
   '<path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>' +
   '</svg>'
 
-// Actionable "Buy me a coffee" card: opens the developer's Ko-fi page in a new
-// tab via the injected onDonate callback (CFG-6, PUI-7).
-function donateCard(lang: Language, onDonate: () => void): HTMLElement {
-  const card = el('button', 'cfg-donate') as HTMLButtonElement
+// Lucide "message-square" — the feedback card's icon.
+const FEEDBACK_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+  '</svg>'
+
+// Actionable footer card (icon + title + subtitle) that hands its click to an
+// injected callback: "Send feedback" (CFG-10) and "Buy me a coffee" (CFG-6, PUI-7).
+function footerCard(
+  variant: string,
+  svg: string,
+  [titleKey, subKey]: [MessageKey, MessageKey],
+  lang: Language,
+  onClick: () => void,
+): HTMLElement {
+  const card = el('button', `cfg-card ${variant}`) as HTMLButtonElement
   card.type = 'button'
 
-  const ico = el('span', 'cfg-donate-ico')
-  ico.innerHTML = COFFEE_SVG
+  const ico = el('span', 'cfg-card-ico')
+  ico.innerHTML = svg
 
-  const text = el('div', 'cfg-donate-text')
-  text.append(
-    textEl('span', 'cfg-donate-title', t('config.donate.title', lang)),
-    textEl('span', 'cfg-donate-sub', t('config.donate.sub', lang)),
-  )
+  const text = el('div', 'cfg-card-text')
+  text.append(textEl('span', 'cfg-card-title', t(titleKey, lang)), textEl('span', 'cfg-card-sub', t(subKey, lang)))
 
   card.append(ico, text)
-  card.addEventListener('click', onDonate)
+  card.addEventListener('click', onClick)
   return card
 }
 

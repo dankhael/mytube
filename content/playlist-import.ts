@@ -125,20 +125,37 @@ function buildImportButton(deps: PlaylistImportDeps): HTMLButtonElement {
   return btn
 }
 
-// Idempotent per scan: add the button on a playlist page, drop it elsewhere.
+/**
+ * Puts the import button in `host` when the header is rendered, else floats it.
+ * Runs every scan, not just at creation: on SPA navigation the header renders
+ * AFTER the first scan, so the old create-once logic froze the button in the
+ * floating fallback (where it collided with the miniplayer) until a hard reload.
+ * @example placeImportButton(btn, findHeaderHost()) // header if ready, else float
+ */
+export function placeImportButton(btn: HTMLElement, host: HTMLElement | null): void {
+  if (host) {
+    btn.classList.remove('mytube-import-btn--floating')
+    if (btn.parentElement !== host) host.appendChild(btn)
+    return
+  }
+  if (btn.classList.contains('mytube-import-btn--floating')) return
+  btn.classList.add('mytube-import-btn--floating')
+  document.documentElement.appendChild(btn)
+}
+
+// Already inline in a visible header: skip the host lookup (forces layout).
+function isSettledInHeader(btn: HTMLElement): boolean {
+  if (btn.classList.contains('mytube-import-btn--floating')) return false
+  return btn.parentElement !== null && isRendered(btn.parentElement)
+}
+
+// Idempotent per scan: keep the button on a playlist page, drop it elsewhere.
 export function scanPlaylistPage(deps: PlaylistImportDeps): void {
   const existing = document.getElementById(IMPORT_BTN_ID)
   if (!isPlaylistPage()) {
     existing?.remove()
     return
   }
-  if (existing) return
-  const btn = buildImportButton(deps)
-  const host = findHeaderHost()
-  if (host) {
-    host.appendChild(btn)
-  } else {
-    btn.classList.add('mytube-import-btn--floating')
-    document.documentElement.appendChild(btn)
-  }
+  if (existing && isSettledInHeader(existing)) return
+  placeImportButton(existing ?? buildImportButton(deps), findHeaderHost())
 }

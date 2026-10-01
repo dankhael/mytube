@@ -73,6 +73,8 @@ const EN = {
   'config.remind.sub': 'A nudge on the YouTube home to watch your saved videos',
   'config.donate.title': 'Buy me a coffee',
   'config.donate.sub': 'Support the developer',
+  'config.feedback.title': 'Send feedback',
+  'config.feedback.sub': 'Report a bug or suggest an idea',
 
   'home.loading': 'Loading…',
   'home.quotaWarning':
@@ -189,6 +191,8 @@ const PT_BR: Record<MessageKey, string> = {
   'config.remind.sub': 'Um lembrete na home do YouTube para assistir seus vídeos salvos',
   'config.donate.title': 'Pague um café',
   'config.donate.sub': 'Apoie o dev',
+  'config.feedback.title': 'Enviar feedback',
+  'config.feedback.sub': 'Relate um bug ou sugira uma ideia',
 
   'home.loading': 'Carregando…',
   'home.quotaWarning':

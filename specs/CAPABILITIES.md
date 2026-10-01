@@ -38,6 +38,10 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   — a Save pill rides the preview's own controls instead, re-targeted to the
   currently-previewed video; while the preview is up the card's own overlay pill
   is hidden so only one Save button shows (SALVAR-PREVIEW-1..4).
+- Playlist/Mix tiles (recognized by the stacked collection thumbnail) get no Save
+  pill — neither on the tile nor on its hover preview, which plays the list's
+  first video; music videos with radio-shaped links keep theirs
+  (salvar-home-and-suggestions D4).
 - Picking a category sends `SAVE_VIDEO` (id, title, channel, canonical thumbnail,
   best-effort `channelThumbnail` and `duration` clock label scraped from the
   card's overlay); "+ Nova categoria" creates-and-saves inline.
@@ -124,6 +128,8 @@ Reducer [src/storage.ts](../src/storage.ts); badge [background/service-worker.ts
   (`home-shortcut`, SHORTCUT-1…6).
 - **Buy me a coffee** — actionable footer card that opens the developer's Ko-fi page
   (`https://ko-fi.com/dankhael`) in a new tab (CFG-6, PUI-7).
+- **Send feedback** — footer card that opens the feedback Google Form
+  (`https://forms.gle/BnUB86fy5YAvXysa6`) in a new tab (CFG-10).
 - **Watch reminders** — two opt-in toggles (both OFF by default): open the home on browser
   startup, and a dismissible nudge on the YouTube home (shown when there's an unwatched
   backlog). Delivers the old new-tab reminder value without claiming the new tab

@@ -15,6 +15,7 @@ function open(
   onToggleStartup = vi.fn(),
   onToggleHomeReminder = vi.fn(),
   onDonate = vi.fn(),
+  onFeedback = vi.fn(),
   onPickTheme = vi.fn(),
 ) {
   const settings: Settings = {
@@ -28,11 +29,11 @@ function open(
   }
   const modal = createConfigModal(
     settings,
-    { onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate },
+    { onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate, onFeedback },
     homeShortcut,
   )
   document.body.appendChild(modal)
-  return { modal, onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate }
+  return { modal, onToggleSound, onPickAccent, onPickTheme, onPickLanguage, onEditShortcut, onToggleStartup, onToggleHomeReminder, onDonate, onFeedback }
 }
 
 // The sound row is the .cfg-row that owns the toggle (the language row is first now).
@@ -111,12 +112,23 @@ describe('popup-config.spec (modal)', () => {
     expect(document.querySelectorAll('.cfg-lang.selected').length).toBe(1)
   })
 
+  it('CFG-10: the footer shows a feedback card with icon, title and subtitle that reports clicks', () => {
+    const { onFeedback, onDonate } = open({ soundEffects: false })
+    const card = document.querySelector<HTMLButtonElement>('.cfg-feedback')!
+    expect(card.querySelector('.cfg-card-title')?.textContent).toBe('Send feedback')
+    expect(card.querySelector('.cfg-card-sub')?.textContent).toBe('Report a bug or suggest an idea')
+    expect(card.querySelector('.cfg-card-ico svg')).not.toBeNull()
+    card.click()
+    expect(onFeedback).toHaveBeenCalledTimes(1)
+    expect(onDonate).not.toHaveBeenCalled()
+  })
+
   it('PUI-7: the donate card has a coffee icon, title and subtitle (no SOON badge)', () => {
     open({ soundEffects: false })
-    expect(document.querySelector('.cfg-donate-title')?.textContent).toBe('Buy me a coffee')
-    expect(document.querySelector('.cfg-donate-sub')?.textContent).toBe('Support the developer')
+    expect(document.querySelector('.cfg-donate .cfg-card-title')?.textContent).toBe('Buy me a coffee')
+    expect(document.querySelector('.cfg-donate .cfg-card-sub')?.textContent).toBe('Support the developer')
     expect(document.querySelector('.cfg-soon')).toBeNull()
-    expect(document.querySelector('.cfg-donate-ico svg')).not.toBeNull()
+    expect(document.querySelector('.cfg-donate .cfg-card-ico svg')).not.toBeNull()
   })
 
   it('THEME-5: the theme-color row marks the persisted accent selected', () => {

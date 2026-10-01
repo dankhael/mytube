@@ -9,7 +9,7 @@ import { createConfigModal } from './config'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
-import { openHomeTab, openShortcutSettings, openDonatePage, homeShortcut } from '../src/home-page'
+import { openHomeTab, openShortcutSettings, openDonatePage, openFeedbackForm, homeShortcut } from '../src/home-page'
 import { localizePopupChrome } from './chrome-labels'
 
 function send(message: Message): Promise<MessageResponse> {
@@ -110,6 +110,8 @@ async function init(): Promise<void> {
         },
         // Opens Ko-fi in a new tab; closes the popup, so no live refresh needed.
         onDonate: () => openDonatePage(),
+        // Opens the feedback form in a new tab; closes the popup like Ko-fi.
+        onFeedback: () => openFeedbackForm(),
       },
       shortcut,
     )
