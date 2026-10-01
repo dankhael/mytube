@@ -12,18 +12,12 @@ import { pickerCategoryItem } from './picker-item'
 import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 import { isCollectionCard, isPreviewOfCollection } from './collection-card'
+import { CARD_SELECTORS, findSaveTargets } from './card-selectors'
 
 // Active interface language, refreshed from the store on init and on change.
 // The content script is plain DOM (no React context), so it threads `lang`
 // through a module-level variable rather than the new-tab i18n context.
 let lang: Language = DEFAULT_LANGUAGE
-
-const CARD_SELECTORS = [
-  'ytd-rich-item-renderer', // home
-  'ytd-video-renderer', // search results
-  'ytd-compact-video-renderer', // suggested sidebar (legacy)
-  'yt-lockup-view-model', // watch suggestions (current lockup renderer)
-]
 
 const PROCESSED = 'data-mytube'
 
@@ -535,14 +529,12 @@ const playlistImportDeps: PlaylistImportDeps = {
 }
 
 function scan() {
-  for (const selector of CARD_SELECTORS) {
-    document.querySelectorAll<HTMLElement>(selector).forEach((card) => {
-      try {
-        injectButton(card)
-      } catch {
-        // ignore a single broken card
-      }
-    })
+  for (const card of findSaveTargets(document)) {
+    try {
+      injectButton(card)
+    } catch {
+      // ignore a single broken card
+    }
   }
   try {
     injectWatchButton()
@@ -627,6 +619,7 @@ function injectStyles() {
     ytd-video-renderer:hover .mytube-btn,
     ytd-compact-video-renderer:hover .mytube-btn,
     yt-lockup-view-model:hover .mytube-btn,
+    ytd-playlist-video-renderer:hover .mytube-btn,
     .mytube-btn.mytube-saved, .mytube-dropdown ~ * .mytube-btn,
     .mytube-wrapper:hover .mytube-btn { opacity: 1; }
     /* Overlay buttons sit on thumbnails — add a shadow for legibility (spec
