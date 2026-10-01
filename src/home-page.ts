@@ -22,6 +22,9 @@ export const SHORTCUTS_PAGE = 'chrome://extensions/shortcuts'
 // (CFG-6). Single source of truth so the URL can't drift across callers.
 export const KOFI_URL = 'https://ko-fi.com/dankhael'
 
+// Google Form for bug reports and ideas, opened from the settings footer (CFG-10).
+export const FEEDBACK_FORM_URL = 'https://forms.gle/BnUB86fy5YAvXysa6'
+
 // Opens the MyTube home in a new tab. Shared by the popup button and the
 // `open_home` keyboard shortcut so both resolve the same packaged URL.
 // Injected `tabs`/`getUrl` default to the real chrome APIs but are overridable
@@ -56,6 +59,14 @@ export function openDonatePage(
   tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
 ): void {
   tabs.create({ url: KOFI_URL })
+}
+
+// Opens the feedback form from the "Send feedback" settings card (CFG-10).
+// Injectable for tests; no permission needed (chrome.tabs.create).
+export function openFeedbackForm(
+  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
+): void {
+  tabs.create({ url: FEEDBACK_FORM_URL })
 }
 
 // The shortcut currently bound to the open-home command, '' when the user hasn't

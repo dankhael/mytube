@@ -28,6 +28,7 @@ hold more options later, and reserves a spot to support the developer.
 | **CFG-7** | an open modal | the user clicks the close (✕), presses Esc, or clicks the backdrop | the modal closes and the category list is shown again |
 | **CFG-8** | a changed setting | the popup is closed and reopened | the setting persists (stored, synced) |
 | **CFG-9** | the settings model | a future option is added | it slots into a structured `settings` object with defaults — no migration churn, unknown/missing keys fall back to defaults |
+| **CFG-10** | the modal footer | the user clicks the **"Send feedback"** card | the feedback form (`https://forms.gle/BnUB86fy5YAvXysa6`) opens in a new tab |
 
 ## Out of scope / non-goals
 

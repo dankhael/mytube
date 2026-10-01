@@ -126,6 +126,8 @@ Reducer [src/storage.ts](../src/storage.ts); badge [background/service-worker.ts
   (`home-shortcut`, SHORTCUT-1…6).
 - **Buy me a coffee** — actionable footer card that opens the developer's Ko-fi page
   (`https://ko-fi.com/dankhael`) in a new tab (CFG-6, PUI-7).
+- **Send feedback** — footer card that opens the feedback Google Form
+  (`https://forms.gle/BnUB86fy5YAvXysa6`) in a new tab (CFG-10).
 - **Watch reminders** — two opt-in toggles (both OFF by default): open the home on browser
   startup, and a dismissible nudge on the YouTube home (shown when there's an unwatched
   backlog). Delivers the old new-tab reminder value without claiming the new tab
