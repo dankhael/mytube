@@ -1,18 +1,10 @@
 // Thin wrapper around chrome.runtime.sendMessage for the new tab page.
 
-import { Message, MessageResponse, StorageData } from '../src/types'
+import { StorageData, Message } from '../src/types'
 
-export function send(message: Message): Promise<MessageResponse> {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response: MessageResponse) => {
-      if (chrome.runtime.lastError) {
-        resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
-        return
-      }
-      resolve(response)
-    })
-  })
-}
+import { sendMessage as send } from '../src/messages'
+import { browserPlatform } from '../src/browser-platform'
+export { send }
 
 export type MutationOutcome = { ok: true; data: StorageData } | { ok: false; error: string }
 
@@ -28,5 +20,5 @@ export async function mutate(message: Message): Promise<MutationOutcome> {
 }
 
 export async function getBytesInUse(): Promise<number> {
-  return chrome.storage.sync.getBytesInUse('mytube')
+  return browserPlatform().sync.getBytesInUse(null)
 }

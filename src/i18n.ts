@@ -43,6 +43,9 @@ const EN = {
   'common.save': 'Save',
   'common.create': 'Create',
   'common.close': 'Close',
+  'common.retry': 'Try again',
+  'common.loadFailed': 'Could not load your library. Try again after synchronization finishes.',
+  'common.saveFailed': 'Could not confirm your changes. Reload and check your settings.',
 
   'popup.emptyTitle': 'No videos saved yet.',
   'popup.emptyHint': 'Click “+ Save” on YouTube videos.',
@@ -161,6 +164,9 @@ const PT_BR: Record<MessageKey, string> = {
   'common.save': 'Salvar',
   'common.create': 'Criar',
   'common.close': 'Fechar',
+  'common.retry': 'Tentar novamente',
+  'common.loadFailed': 'Não foi possível carregar sua biblioteca. Tente novamente após a sincronização.',
+  'common.saveFailed': 'Não foi possível confirmar as alterações. Recarregue e confira suas configurações.',
 
   'popup.emptyTitle': 'Nenhum vídeo salvo ainda.',
   'popup.emptyHint': 'Clique em “+ Salvar” nos vídeos do YouTube.',

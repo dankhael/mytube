@@ -22,6 +22,7 @@ here in the same PR that lands the spec.
 | [Persistence & sync](#persistence--sync) | Sharded `chrome.storage.sync` store via the reducer; live cross-surface updates | `watched-quota` (QUOTA-1), `storage-robustness` (ROB), `security-hardening` (SEC-14..17) |
 | [Extension security](#extension-security) | Least-privilege manifest, CSP, message validation, no HTML sinks / 3rd-party fetches | `security-hardening` (SEC) |
 | [Tab identity](#tab-identity) | Home tab shows the "MyTube" title and favicon | `newtab-tab-identity` (TAB) |
+| Browser foundation | Shared message transport, native API boundary, total quota reporting and incomplete/mixed sync rejection | [browser-foundation](browser-foundation.spec.md) (ARCH) |
 
 ---
 

@@ -24,6 +24,8 @@ export interface ConfigModalCallbacks {
   onFeedback: () => void
 }
 
+export type ConfigModal = HTMLElement & { dismiss(): void }
+
 // `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
 // unset. The caller reads it from chrome.commands and passes it in so this modal
 // stays a pure DOM unit (no chrome dependency, jsdom-testable).
@@ -32,7 +34,7 @@ export function createConfigModal(
   settings: Settings,
   cb: ConfigModalCallbacks,
   homeShortcut = '',
-): HTMLElement {
+): ConfigModal {
   const backdrop = el('div', 'cfg-backdrop')
   const modal = el('div', 'cfg-modal')
   modal.addEventListener('click', (e) => e.stopPropagation())
@@ -99,7 +101,7 @@ export function createConfigModal(
   backdrop.addEventListener('click', destroy)
 
   render()
-  return backdrop
+  return Object.assign(backdrop, { dismiss: destroy })
 }
 
 function header(lang: Language, onClose: () => void): HTMLElement {

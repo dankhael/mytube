@@ -1,22 +1,19 @@
 // Popup entry — fetches the store and renders the browsable category list,
 // the settings modal (gear button) and the optional click sound.
 
+import { sendMessage as send } from '../src/messages'
+import { browserPlatform } from '../src/browser-platform'
 import './popup.css'
-import { Message, MessageResponse, Settings } from '../src/types'
+import { Settings } from '../src/types'
 import { renderPopup } from './render'
 import { unwatchedLabel, watchUrl } from './groups'
-import { createConfigModal } from './config'
+import { createConfigModal, type ConfigModal } from './config'
+import { showPopupError } from './status'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
 import { openHomeTab, openShortcutSettings, openDonatePage, openFeedbackForm, homeShortcut } from '../src/home-page'
 import { localizePopupChrome } from './chrome-labels'
-
-function send(message: Message): Promise<MessageResponse> {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (res: MessageResponse) => resolve(res))
-  })
-}
 
 // The home is no longer a new-tab override, so open its packaged URL rather than
 // chrome://newtab (which would now land on the browser default). See home-page.ts.
@@ -40,11 +37,16 @@ function renderUnwatchedTotal(target: HTMLElement, label: string): void {
 
 async function init(): Promise<void> {
   const res = await send({ action: 'GET_ALL' })
-  if (!res.ok || !('data' in res) || !res.data) return
+  if (!res.ok || !('data' in res) || !res.data) {
+    showPopupError(() => location.reload())
+    return
+  }
   let data = res.data
 
   // Mutable so the config toggle updates what the sound check reads live.
   let settings: Settings = data.settings
+  let persistedSettings = settings
+  let modal: ConfigModal | undefined
   const player = createClickPlayer()
   const click = () => playClick(settings, player)
 
@@ -61,10 +63,29 @@ async function init(): Promise<void> {
     renderUnwatchedTotal(document.getElementById('total')!, unwatchedLabel(data, settings.language))
     localizePopupChrome(document, settings.language)
     renderPopup(document.getElementById('list')!, data, {
-      openVideo: (id) => chrome.tabs.create({ url: watchUrl(id) }),
+      openVideo: (id) => browserPlatform().tabs.create({ url: watchUrl(id) }),
       openHome,
       onInteract: click,
     })
+  }
+
+  async function persistSettings(patch: Partial<Settings>): Promise<void> {
+    // Prevent a second optimistic edit from racing a failed first one.
+    modal?.setAttribute('inert', '')
+    const result = await send({ action: 'UPDATE_SETTINGS', settings: patch })
+    if (result.ok && 'data' in result && result.data) {
+      persistedSettings = result.data.settings
+      modal?.removeAttribute('inert')
+      return
+    }
+    // Restore the last acknowledged values, never leave failed previews looking
+    // saved. Closing via the modal's lifecycle also removes its key listener.
+    settings = persistedSettings
+    applyAccent(document.documentElement, settings.accent)
+    applyThemePreset(document.documentElement, settings.theme)
+    paint()
+    modal?.dismiss()
+    showPopupError(() => location.reload(), settings.language, 'save')
   }
 
   document.getElementById('open')!.addEventListener('click', openHome)
@@ -74,39 +95,39 @@ async function init(): Promise<void> {
     // Read the live shortcut binding so the row shows the user's current key
     // (Chrome owns it; '' when unset). Fetched on open so it reflects changes
     // made on the shortcuts page since the popup last opened.
-    const shortcut = await homeShortcut()
-    const modal = createConfigModal(
+    const shortcut = await homeShortcut().catch(() => '')
+    modal = createConfigModal(
       settings,
       {
         onToggleSound: (enabled) => {
           settings = { ...settings, soundEffects: enabled }
-          void send({ action: 'UPDATE_SETTINGS', settings: { soundEffects: enabled } })
+          void persistSettings({ soundEffects: enabled })
         },
         onPickAccent: (accent) => {
           settings = { ...settings, accent }
           applyAccent(document.documentElement, accent) // live recolor, no reopen
-          void send({ action: 'UPDATE_SETTINGS', settings: { accent } })
+          void persistSettings({ accent })
         },
         onPickTheme: (theme) => {
           settings = { ...settings, theme }
           applyThemePreset(document.documentElement, theme) // live re-skin (CRT-6/8)
-          void send({ action: 'UPDATE_SETTINGS', settings: { theme } })
+          void persistSettings({ theme })
         },
         onPickLanguage: (language) => {
           settings = { ...settings, language }
           paint() // re-localize the list + total live (Decisions §2)
-          void send({ action: 'UPDATE_SETTINGS', settings: { language } })
+          void persistSettings({ language })
         },
         // Chrome forbids extensions from binding shortcuts; deep-link the user to
         // its shortcut page. Opening it closes the popup, so no live refresh.
         onEditShortcut: () => openShortcutSettings(),
         onToggleStartup: (enabled) => {
           settings = { ...settings, openHomeOnStartup: enabled }
-          void send({ action: 'UPDATE_SETTINGS', settings: { openHomeOnStartup: enabled } })
+          void persistSettings({ openHomeOnStartup: enabled })
         },
         onToggleHomeReminder: (enabled) => {
           settings = { ...settings, remindOnYoutubeHome: enabled }
-          void send({ action: 'UPDATE_SETTINGS', settings: { remindOnYoutubeHome: enabled } })
+          void persistSettings({ remindOnYoutubeHome: enabled })
         },
         // Opens Ko-fi in a new tab; closes the popup, so no live refresh needed.
         onDonate: () => openDonatePage(),

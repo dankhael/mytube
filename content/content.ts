@@ -2,6 +2,8 @@
 // YouTube is an SPA, so we use a MutationObserver and guard every card with
 // try/catch since the DOM structure shifts often.
 
+import { sendMessage as sendRuntimeMessage } from '../src/messages'
+import { browserPlatform } from '../src/browser-platform'
 import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
@@ -40,20 +42,7 @@ let torndown = false
 // and tear ourselves down (finding M4). A runtime.lastError in the callback is a
 // transient worker restart, not orphaning — map it without teardown.
 function sendMessage(message: Message): Promise<MessageResponse> {
-  return new Promise((resolve) => {
-    try {
-      chrome.runtime.sendMessage(message, (response: MessageResponse) => {
-        if (chrome.runtime.lastError) {
-          resolve({ ok: false, error: chrome.runtime.lastError.message || 'unknown' })
-          return
-        }
-        resolve(response)
-      })
-    } catch (e) {
-      teardown()
-      resolve({ ok: false, error: e instanceof Error ? e.message : 'context invalidated' })
-    }
-  })
+  return sendRuntimeMessage(message, { onUnavailable: teardown })
 }
 
 // Disconnect everything an orphaned script left attached so a dead extension
@@ -892,7 +881,7 @@ async function init() {
   // Keep saved state fresh if the user edits things from the new tab page. The
   // snapshot is sharded across many mytube:* keys (finding R1), so re-fetch the
   // ids through the worker (which assembles the shards) on any of them changing.
-  chrome.storage.onChanged.addListener((changes, area) => {
+  browserPlatform().storageChanges.addListener((changes, area) => {
     if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
     // Re-localize and re-evaluate the nudge: language, the reminder toggle, or
     // the unwatched count may have changed from the popup/new-tab.

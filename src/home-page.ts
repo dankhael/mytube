@@ -3,6 +3,7 @@
 // "keep this page?" consent prompt and hijacks every new tab). So callers open
 // it on demand via its runtime URL, never chrome://newtab.
 
+import { browserPlatform, CHROME_SHORTCUTS_URL } from './browser-platform'
 import { MessageResponse } from './types'
 
 // Path of the home page inside the extension bundle (relative to the root).
@@ -16,7 +17,7 @@ export const OPEN_HOME_COMMAND = 'open_home'
 // Chrome's user-controlled shortcut page. Extensions cannot assign their own
 // shortcuts (the same anti-hijack stance as the new-tab prompt), so the settings
 // row can only deep-link the user here to set/clear the open-home binding.
-export const SHORTCUTS_PAGE = 'chrome://extensions/shortcuts'
+export const SHORTCUTS_PAGE = CHROME_SHORTCUTS_URL
 
 // The developer's Ko-fi page, opened by the "Buy me a coffee" settings card
 // (CFG-6). Single source of truth so the URL can't drift across callers.
@@ -30,8 +31,8 @@ export const FEEDBACK_FORM_URL = 'https://forms.gle/BnUB86fy5YAvXysa6'
 // Injected `tabs`/`getUrl` default to the real chrome APIs but are overridable
 // in tests (no Chrome runtime needed).
 export function openHomeTab(
-  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
-  getUrl: (path: string) => string = chrome.runtime.getURL,
+  tabs: { create: (props: { url: string }) => unknown } = browserPlatform().tabs,
+  getUrl: (path: string) => string = (path) => browserPlatform().runtime.getURL(path),
 ): void {
   tabs.create({ url: getUrl(HOME_PAGE_PATH) })
 }
@@ -48,15 +49,15 @@ export function handleOpenHome(open: () => void = openHomeTab): MessageResponse 
 // Opens Chrome's shortcut settings so the user can bind/rebind the open-home
 // command. Injectable for tests.
 export function openShortcutSettings(
-  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
+  tabs: { create: (props: { url: string }) => unknown } = browserPlatform().tabs,
 ): void {
-  tabs.create({ url: SHORTCUTS_PAGE })
+  tabs.create({ url: browserPlatform().shortcutSettingsUrl })
 }
 
 // Opens the developer's Ko-fi page from the "Buy me a coffee" settings card
 // (CFG-6). Injectable for tests; no permission needed (chrome.tabs.create).
 export function openDonatePage(
-  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
+  tabs: { create: (props: { url: string }) => unknown } = browserPlatform().tabs,
 ): void {
   tabs.create({ url: KOFI_URL })
 }
@@ -64,7 +65,7 @@ export function openDonatePage(
 // Opens the feedback form from the "Send feedback" settings card (CFG-10).
 // Injectable for tests; no permission needed (chrome.tabs.create).
 export function openFeedbackForm(
-  tabs: { create: (props: { url: string }) => unknown } = chrome.tabs,
+  tabs: { create: (props: { url: string }) => unknown } = browserPlatform().tabs,
 ): void {
   tabs.create({ url: FEEDBACK_FORM_URL })
 }
@@ -73,7 +74,7 @@ export function openFeedbackForm(
 // set one. Chrome owns the binding, so this reads chrome.commands; injectable for
 // tests. The namespace (not the bare method) is passed so `this` stays bound.
 export async function homeShortcut(
-  commands: { getAll: () => Promise<{ name?: string; shortcut?: string }[]> } = chrome.commands,
+  commands: { getAll: () => Promise<{ name?: string; shortcut?: string }[]> } = browserPlatform().commands,
 ): Promise<string> {
   const all = await commands.getAll()
   return all.find((command) => command.name === OPEN_HOME_COMMAND)?.shortcut ?? ''

@@ -1,6 +1,8 @@
 // MyTube background service worker — owns storage mutations and the badge.
 
-import { ChromeSyncBackend, isMyTubeKey } from '../src/storage-backend'
+import { backgroundTask } from '../src/background-task'
+import { browserPlatform } from '../src/browser-platform'
+import { SyncStorageBackend, isMyTubeKey } from '../src/storage-backend'
 import { MyTubeStore, unwatchedCount } from '../src/storage'
 import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
@@ -13,7 +15,9 @@ import { openHomeTab, handleOpenHome, OPEN_HOME_COMMAND } from '../src/home-page
 import { openHomeOnStartup } from '../src/watch-reminders'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
-const store = new MyTubeStore(new ChromeSyncBackend())
+const platform = browserPlatform()
+
+const store = new MyTubeStore(new SyncStorageBackend())
 
 // Module scope == one runner per service-worker session: its failure cache
 // dies with the worker, so dead videos stop being re-fetched forever (M1)
@@ -37,8 +41,8 @@ async function enrichOnSave(video: SavePayload): Promise<SavePayload> {
 async function updateBadge(data?: StorageData): Promise<void> {
   const d = data ?? (await store.getData())
   const count = unwatchedCount(d)
-  await chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' })
-  await chrome.action.setBadgeBackgroundColor({ color: '#FF0000' })
+  await platform.action.setBadgeText({ text: count > 0 ? String(count) : '' })
+  await platform.action.setBadgeBackgroundColor({ color: '#FF0000' })
 }
 
 // Rasterize the accent mark to ImageData. OffscreenCanvas + createImageBitmap are
@@ -64,13 +68,13 @@ async function rasterizeIcon(svg: string, size: number): Promise<ImageData> {
 const repaintIcon = createActionIconPainter({
   renderSvg: accentLogoSvg,
   rasterize: rasterizeIcon,
-  setIcon: (details) => chrome.action.setIcon(details),
+  setIcon: (details) => platform.action.setIcon(details),
 })
 
 // Single read drives both the badge count and the icon accent.
 async function refreshAction(): Promise<void> {
   const data = await store.getData()
-  await updateBadge(data)
+  backgroundTask('update-badge', updateBadge(data))
   await repaintIcon(data.settings.accent)
 }
 
@@ -89,16 +93,16 @@ async function seedLanguageOnInstall(): Promise<void> {
   }
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') void seedLanguageOnInstall()
-  void refreshAction()
-  void backfill.run()
+platform.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') backgroundTask('seed-language', seedLanguageOnInstall())
+  backgroundTask('refresh-action', refreshAction())
+  backgroundTask('metadata-backfill', backfill.run())
 })
 
-chrome.runtime.onStartup.addListener(() => {
-  void refreshAction()
-  void backfill.run()
-  void maybeOpenHomeOnStartup()
+platform.runtime.onStartup.addListener(() => {
+  backgroundTask('refresh-action', refreshAction())
+  backgroundTask('metadata-backfill', backfill.run())
+  backgroundTask('startup-home', maybeOpenHomeOnStartup())
 })
 
 // Opt-in reminder: open the curated home once when the browser launches, so the
@@ -111,7 +115,7 @@ async function maybeOpenHomeOnStartup(): Promise<void> {
 
 // Keyboard shortcut to open the curated home (commands.open_home). The home is a
 // packaged page, not a new-tab override, so it has to be opened explicitly.
-chrome.commands.onCommand.addListener((command) => {
+platform.commands.onCommand.addListener((command) => {
   if (command === OPEN_HOME_COMMAND) openHomeTab()
 })
 
@@ -120,10 +124,10 @@ chrome.commands.onCommand.addListener((command) => {
 // keys (finding R1) and a multi-key set fires onChanged per key, so re-read the
 // whole snapshot through the store (which sanitizes, S6) rather than trusting any
 // single key's newValue.
-chrome.storage.onChanged.addListener((changes, area) => {
+platform.storageChanges.addListener((changes, area) => {
   if (area !== 'sync') return
   if (!Object.keys(changes).some(isMyTubeKey)) return
-  void refreshAction()
+  backgroundTask('refresh-action', refreshAction())
 })
 
 async function handle(incoming: Message): Promise<MessageResponse> {
@@ -137,7 +141,7 @@ async function handle(incoming: Message): Promise<MessageResponse> {
       case 'SAVE_VIDEO': {
         const enriched = await enrichOnSave(message.video)
         const data = await store.saveVideo(enriched, message.category)
-        await updateBadge(data)
+        backgroundTask('update-badge', updateBadge(data))
         return { ok: true, data }
       }
       case 'IMPORT_VIDEOS': {
@@ -145,13 +149,13 @@ async function handle(incoming: Message): Promise<MessageResponse> {
         // of fetches blocking the import. The guarded backfill pass fills any
         // missing title/channel later (see metadata / backfill).
         const data = await store.importVideos(message.videos, message.category)
-        await updateBadge(data)
+        backgroundTask('update-badge', updateBadge(data))
         return { ok: true, data }
       }
       case 'GET_ALL': {
         const data = await store.getData()
         // Fire-and-forget: the new tab updates live via storage.onChanged.
-        void backfill.run()
+        backgroundTask('metadata-backfill', backfill.run())
         return { ok: true, data }
       }
       case 'DELETE_VIDEO':
@@ -199,7 +203,7 @@ async function handle(incoming: Message): Promise<MessageResponse> {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+platform.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   handle(message).then(sendResponse)
   return true // keep the channel open for the async response
 })

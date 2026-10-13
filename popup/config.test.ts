@@ -44,6 +44,12 @@ function soundRowEl(): HTMLElement {
 afterEach(() => document.body.replaceChildren())
 
 describe('popup-config.spec (modal)', () => {
+  it('dismiss closes the modal and releases the body state after a failed save', () => {
+    const { modal } = open()
+    modal.dismiss()
+    expect(document.querySelector('.cfg-backdrop')).toBeNull()
+    expect(document.body.classList.contains('config-open')).toBe(false)
+  })
   it('CFG-2: the sound toggle reflects the persisted value', () => {
     open({ soundEffects: true })
     const toggle = document.querySelector('.cfg-toggle')!

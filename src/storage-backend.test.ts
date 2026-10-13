@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { FakeSyncArea, QUOTA_BYTES_PER_ITEM, SyncOp } from '../test/fake-sync-area'
 import { ChromeSyncBackend, LEGACY_KEY, META_KEY } from './storage-backend'
 import { DEFAULT_SETTINGS, StorageData, Video } from './types'
+import { MyTubeStore } from './storage'
 
 function video(id: string): Video {
   return {
@@ -33,6 +34,83 @@ function firstIndexOf(ops: SyncOp[], match: (op: SyncOp) => boolean): number {
 }
 
 describe('storage-robustness.spec — sharded backend', () => {
+  it('ARCH-3: missing declared chunks block reads and mutations without writes', async () => {
+    const area = new FakeSyncArea()
+    const backend = new ChromeSyncBackend(area)
+    await backend.write(library(40))
+    await area.remove(['mytube:videos:0'])
+    const before = area.ops.length
+    await expect(backend.read()).rejects.toThrow(/chunk/i)
+    await expect(new MyTubeStore(backend).deleteVideo('vid0000000')).rejects.toThrow(/chunk/i)
+    expect(area.ops.slice(before).every((op) => op.method === 'get')).toBe(true)
+  })
+
+  it('ARCH-3: malformed metadata and chunks never fall back to an empty library', async () => {
+    const data = library(2)
+    const meta = { generation: 1, chunkCount: 1, categories: data.categories, settings: data.settings }
+    for (const initial of [
+      { [META_KEY]: { ...meta, chunkCount: -1 } },
+      { [META_KEY]: { ...meta, chunkCount: 1.5 } },
+      { [META_KEY]: { ...meta, chunkHashes: [] }, 'mytube:videos:0': { videos: data.videos } },
+      { [META_KEY]: meta, 'mytube:videos:0': { videos: null } },
+      { 'mytube:videos:0': { videos: data.videos } },
+    ]) {
+      const area = new FakeSyncArea(initial)
+      const backend = new ChromeSyncBackend(area)
+      await expect(backend.read()).rejects.toThrow(/sync|chunk/i)
+      await expect(backend.write(data)).rejects.toThrow(/sync|chunk/i)
+      expect(area.ops.every((op) => op.method === 'get')).toBe(true)
+    }
+  })
+
+  it('ARCH-6: a failed legacy migration retains the original snapshot', async () => {
+    const legacy = library(2)
+    const area = new FakeSyncArea({ [LEGACY_KEY]: legacy, foreign: 'x'.repeat(9_000) })
+    await expect(new ChromeSyncBackend(area).read()).rejects.toThrow(/quota/i)
+    expect(area.peek(LEGACY_KEY)).toEqual(legacy)
+    expect(area.ops.every((op) => op.method === 'get')).toBe(true)
+  })
+
+  it('ARCH-4: detects mixed snapshots and recovers when matching chunks arrive', async () => {
+    const area = new FakeSyncArea()
+    const backend = new ChromeSyncBackend(area)
+    await backend.write(library(40))
+    const oldChunk = structuredClone(area.peek('mytube:videos:0'))
+    const next = library(40)
+    next.videos[0].watched = true
+    await backend.write(next)
+    const newChunk = structuredClone(area.peek('mytube:videos:0'))
+    await area.set({ 'mytube:videos:0': oldChunk })
+    await expect(backend.read()).rejects.toThrow(/chunk/i)
+    await area.set({ 'mytube:videos:0': newChunk })
+    expect(await backend.read()).toEqual(next)
+  })
+
+  it('ARCH-5: legacy shards gain fingerprints without changing videos', async () => {
+    const data = library(2)
+    const area = new FakeSyncArea({
+      [META_KEY]: { generation: 1, chunkCount: 1, categories: data.categories, settings: data.settings },
+      'mytube:videos:0': { videos: data.videos },
+    })
+    const backend = new ChromeSyncBackend(area)
+    expect(await backend.read()).toEqual(data)
+    await backend.write(data)
+    expect(area.peek(META_KEY)).toHaveProperty('chunkHashes')
+    expect(await backend.read()).toEqual(data)
+    expect(area.setKeysWithPrefix('mytube:videos:')).toEqual([])
+  })
+
+  it('ARCH-6: oversized metadata and total usage fail before any mutation', async () => {
+    for (const data of [library(500), { ...library(2), categories: [{ name: 'x'.repeat(9000), emoji: 'A' }] }]) {
+      const area = new FakeSyncArea()
+      const backend = new ChromeSyncBackend(area)
+      await backend.write(library(1))
+      const before = area.ops.length
+      await expect(backend.write(data)).rejects.toThrow(/quota/i)
+      expect(area.ops.slice(before).every((op) => op.method === 'get')).toBe(true)
+      expect(await backend.read()).toEqual(library(1))
+    }
+  })
   it('ROB-12: a library larger than 8 KB round-trips with no key over quota', async () => {
     const area = new FakeSyncArea()
     const backend = new ChromeSyncBackend(area)

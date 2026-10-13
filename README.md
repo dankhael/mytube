@@ -117,6 +117,13 @@ npm run test:watch
 npm run test:e2e     # Playwright: loads the built extension in headed Chromium
 ```
 
+For a headless Chromium smoke (including save/reload/edit/delete persistence),
+run `MYTUBE_HEADLESS=1 npm run test:e2e`. Browser integration is centralized in
+`src/browser-platform.ts`; all surfaces share the transport in `src/messages.ts`.
+The [Firefox port guide](docs/firefox-port.md) records remaining adaptations,
+storage conflict limitations, and the validation/release plan. Firefox support
+is not implemented yet.
+
 `npm run test:e2e` needs `npx playwright install chromium` once. CI runs
 `npm test` and the build on every pull request.
 

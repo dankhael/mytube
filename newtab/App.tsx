@@ -1,3 +1,4 @@
+import { browserPlatform, type StorageChange } from '../src/browser-platform'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
@@ -67,28 +68,35 @@ export default function App() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [moving, setMoving] = useState<Video | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const refreshBytes = useCallback(() => {
-    getBytesInUse().then(setBytes)
+    // Quota telemetry must not prevent the library from rendering.
+    void getBytesInUse().then(setBytes).catch(() => undefined)
   }, [])
 
   const load = useCallback(async () => {
     const res = await send({ action: 'GET_ALL' })
-    if (res.ok && 'data' in res && res.data) setData(res.data)
+    if (res.ok && 'data' in res && res.data) {
+      setData(res.data)
+      setLoadFailed(false)
+    } else {
+      setLoadFailed(true)
+    }
     refreshBytes()
   }, [refreshBytes])
 
   useEffect(() => {
     load()
-    const listener = (changes: { [k: string]: chrome.storage.StorageChange }, area: string) => {
+    const listener = (changes: { [k: string]: StorageChange }, area: string) => {
       // The snapshot spans many mytube:* keys now (finding R1); re-read the whole
       // thing through the worker (which sanitizes, S6) on any of them changing.
       if (area === 'sync' && Object.keys(changes).some(isMyTubeKey)) void load()
     }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
+    browserPlatform().storageChanges.addListener(listener)
+    return () => browserPlatform().storageChanges.removeListener(listener)
   }, [load, refreshBytes])
 
   const apply = useCallback(async (next: Promise<MutationOutcome>) => {
@@ -194,7 +202,12 @@ export default function App() {
   if (!data) {
     return (
       <div className="flex h-full items-center justify-center text-yt-muted">
-        {t('home.loading', DEFAULT_LANGUAGE)}
+        {loadFailed ? (
+          <div role="alert">
+            <p>{t('common.loadFailed', DEFAULT_LANGUAGE)}</p>
+            <button onClick={() => void load()}>{t('common.retry', DEFAULT_LANGUAGE)}</button>
+          </div>
+        ) : t('home.loading', DEFAULT_LANGUAGE)}
       </div>
     )
   }
@@ -213,6 +226,12 @@ export default function App() {
         <ErrorToast message={mutationError} onDismiss={() => setMutationError(null)} />
       )}
       <div className="home-inner">
+        {loadFailed && (
+          <div role="alert">
+            {tr('common.loadFailed')}{' '}
+            <button onClick={() => void load()}>{tr('common.retry')}</button>
+          </div>
+        )}
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
             <AlertTriangle className="h-4 w-4" />
