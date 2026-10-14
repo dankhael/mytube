@@ -15,7 +15,8 @@ const extensionPath = join(here, '..', 'dist')
 
 let context: BrowserContext
 
-test.beforeAll(async () => {
+// Each test owns a fresh temporary profile, even when the preceding test fails.
+test.beforeEach(async () => {
   context = await chromium.launchPersistentContext('', {
     // Opt-in new headless Chromium also loads extensions, useful on CI hosts.
     channel: 'chromium',
@@ -68,7 +69,7 @@ test('ARCH-7: saves survive reload and acknowledged edits/deletes persist', asyn
   await page.close()
 })
 
-test.afterAll(async () => {
+test.afterEach(async () => {
   await context?.close()
 })
 

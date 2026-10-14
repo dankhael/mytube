@@ -5,7 +5,7 @@
 
 import { SyncArea } from '../src/storage-backend'
 
-export const QUOTA_BYTES_PER_ITEM = 8_192
+import { SYNC_STORAGE_LIMITS } from '../src/storage-limits'
 
 export interface SyncOp {
   method: 'get' | 'set' | 'remove'
@@ -38,8 +38,8 @@ export class FakeSyncArea implements SyncArea {
     this.ops.push({ method: 'set', keys: Object.keys(items) })
     for (const [key, value] of Object.entries(items)) {
       const bytes = byteLength(key) + byteLength(JSON.stringify(value))
-      if (bytes > QUOTA_BYTES_PER_ITEM) {
-        throw new Error(`QUOTA_BYTES_PER_ITEM quota exceeded for "${key}": ${bytes} > ${QUOTA_BYTES_PER_ITEM}`)
+      if (bytes > SYNC_STORAGE_LIMITS.perItemBytes) {
+        throw new Error(`QUOTA_BYTES_PER_ITEM quota exceeded for "${key}": ${bytes} > ${SYNC_STORAGE_LIMITS.perItemBytes}`)
       }
       this.store.set(key, structuredClone(value))
     }

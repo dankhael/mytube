@@ -1,7 +1,8 @@
 # Spec: Browser integration and storage integrity
 
-- **Status:** Draft (implementation explicitly requested by the user in this session;
-  no human Approved status inferred or assigned).
+- **Status:** Draft — implemented, awaiting human review of these criteria.
+  The implementation request did not constitute formal approval of this spec;
+  only the owner may change this status to Approved.
 - **Owner:** dankhael
 - **Contract:** existing `Message`, `MessageResponse`, `StorageData`, `StorageBackend`.
 - **Tests:** `src/messages.test.ts`, `src/storage-backend.test.ts`,
@@ -11,8 +12,9 @@
 
 Before adding a second browser, correct quota reporting, share message error
 handling, isolate browser integration, and reject incomplete sync snapshots.
-The user explicitly authorized implementation after reviewing this scope;
-this document records that work without changing existing Approved criteria.
+Implementation was requested directly, but the separate Tier-1 spec approval
+checkpoint was not completed. This document records the implementation and its
+pending review without changing existing Approved criteria.
 
 ## Acceptance criteria
 
@@ -38,6 +40,15 @@ this document records that work without changing existing Approved criteria.
   Fingerprints are added on the next write without duplicating the whole library.
 - A valid concurrent snapshot can still overwrite another: browser sync has no
   compare-and-swap transaction. This is explicitly not lossless multi-device merge.
+- **Fail-closed tradeoff (pending owner approval):** if a declared chunk never
+  arrives or sync permanently converges to mismatching chunks, reads and writes
+  remain blocked indefinitely. Retry only re-reads storage; it does not repair it.
+  This implementation prioritizes preserving the remaining stored data over
+  availability. Do not automatically discard chunks or rebuild from a partial
+  library after N failures: failure counts cannot establish that data is lost.
+  A future recovery flow needs its own approved criteria, export/backup of the
+  original keys, a preview of recoverable/missing data, and explicit confirmation
+  before overwriting storage. No such recovery action ships in this change.
 - Preflight includes key bytes, metadata, stale keys and the legacy key still
   present during migration. Failure preserves those keys for a later retry.
 

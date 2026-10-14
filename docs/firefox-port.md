@@ -24,12 +24,15 @@ manifest, background, integração nativa, atalhos e testes de instalação.
 | `src/home-page.ts` | Navegação e links, com URL de atalhos obtida da integração nativa |
 | `newtab/api.ts` | Operações da home e uso de armazenamento medido em todas as chaves |
 
-Os nomes antigos `ChromeSyncBackend`/`ChromeSyncArea` continuam como aliases para
-compatibilidade com testes e integrações. O contrato `StorageData` e as mensagens
+Os nomes antigos `ChromeSyncBackend`/`ChromeSyncArea` foram removidos; código e
+testes usam `SyncStorageBackend`/`BrowserSyncArea`. Os limites nativos de quota
+ficam em `src/storage-limits.ts`, compartilhados pelo backend, validação e fake.
+O contrato `StorageData` e as mensagens
 de aplicação não mudaram. Os tipos nativos de Chromium ainda estão no adapter;
 o port deverá estreitá-los/normalizá-los onde a implementação Firefox divergir.
 
-O popup restaura preferências reconhecidas pelo background quando uma gravação
+O popup oferece “Recarregar” (reload da página, sem repetir a gravação) e
+restaura preferências reconhecidas pelo background quando uma gravação
 falha. A home preserva os últimos dados exibidos e permite tentar novamente uma
 leitura que falhou, sem representar dados incompletos como biblioteca vazia.
 Uma falha de atualização do badge não transforma um save já persistido em erro.
@@ -231,7 +234,7 @@ avaliação antes da submissão.
 
 ## Verificação da base Chrome nesta branch
 
-Executado em 13/10/2026 com Node 24.21.0:
+Baseline do commit `40282ac`, executado em 13/10/2026 com Node 24.21.0:
 
 - `npm test`: 321 testes em 54 arquivos passaram.
 - `npm run build`: TypeScript e build de produção passaram. CRXJS/Vite emite um
@@ -243,6 +246,12 @@ Executado em 13/10/2026 com Node 24.21.0:
 Não foram executados nesta tarefa: Firefox, sincronização entre contas/perfis
 reais, scraping no YouTube real, reinício completo do navegador e publicação.
 Os checklists abaixo permanecem requisitos do futuro port.
+
+Após a revisão de 14/10/2026: 323 testes em 55 arquivos, build de produção e
+os 2 E2E passaram novamente. Cada E2E agora usa um perfil temporário independente.
+A spec [browser-foundation](../specs/browser-foundation.spec.md) continua Draft,
+aguardando aprovação humana dos critérios e da decisão de bloquear snapshots
+inconsistentes; uma ação de recuperação de dados ainda não foi implementada.
 
 ## Critérios para considerar o port pronto
 

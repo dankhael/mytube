@@ -4,6 +4,7 @@
 
 import { StorageData } from './types'
 import { browserPlatform } from './browser-platform'
+import { SYNC_STORAGE_LIMITS } from './storage-limits'
 import { canonicalJson, chunkDigest, checkSyncQuota } from './sync-integrity'
 
 export interface StorageBackend {
@@ -21,7 +22,7 @@ export interface SyncQuotaLimits {
 }
 
 export const SYNC_QUOTA_LIMITS: SyncQuotaLimits = {
-  totalBytes: 102_400,
+  totalBytes: SYNC_STORAGE_LIMITS.totalBytes,
 }
 
 // The raw key-value seam under the Chrome backend (finding R1): exactly the
@@ -89,7 +90,9 @@ function isShardedMeta(value: unknown): value is ShardedMeta {
     Number.isSafeInteger((value as ShardedMeta).generation) &&
     (value as ShardedMeta).generation >= 0 &&
     Number.isSafeInteger((value as ShardedMeta).chunkCount) &&
-    (value as ShardedMeta).chunkCount >= 0 && (value as ShardedMeta).chunkCount < 512
+    (value as ShardedMeta).chunkCount >= 0 &&
+    // One item is reserved for metadata; remaining items may contain chunks.
+    (value as ShardedMeta).chunkCount < SYNC_STORAGE_LIMITS.maxItems
   )
 }
 
@@ -222,7 +225,3 @@ async function assembleSnapshot(meta: ShardedMeta, all: Record<string, unknown>)
   }
   return { categories: meta.categories, videos, settings: meta.settings }
 }
-
-// Keep existing test/integration imports compatible while native ownership
-// moves to browser-platform; the storage format itself is browser-independent.
-export { SyncStorageBackend as ChromeSyncBackend, BrowserSyncArea as ChromeSyncArea }

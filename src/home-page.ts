@@ -47,11 +47,15 @@ export function handleOpenHome(open: () => void = openHomeTab): MessageResponse 
 }
 
 // Opens Chrome's shortcut settings so the user can bind/rebind the open-home
-// command. Injectable for tests.
+// command. Inject the URL together with tabs so tests/other adapters never fall
+// back to global browser state when all dependencies were provided.
 export function openShortcutSettings(
-  tabs: { create: (props: { url: string }) => unknown } = browserPlatform().tabs,
+  target: {
+    tabs: { create: (props: { url: string }) => unknown }
+    shortcutSettingsUrl: string
+  } = browserPlatform(),
 ): void {
-  tabs.create({ url: browserPlatform().shortcutSettingsUrl })
+  target.tabs.create({ url: target.shortcutSettingsUrl })
 }
 
 // Opens the developer's Ko-fi page from the "Buy me a coffee" settings card

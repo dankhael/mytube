@@ -4,13 +4,13 @@ import { showPopupError } from './status'
 
 afterEach(() => document.body.replaceChildren())
 
-it('replaces old failures and exposes a localized retry action', () => {
-  const retry = vi.fn()
-  showPopupError(retry)
-  showPopupError(retry, 'pt-BR')
+it('replaces old failures and exposes a localized reload action', () => {
+  const reload = vi.fn()
+  showPopupError(reload)
+  showPopupError(reload, 'pt-BR')
   expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1)
   const button = document.querySelector('button')!
-  expect(button.textContent).toBe('Tentar novamente')
+  expect(button.textContent).toBe('Recarregar')
   button.click()
-  expect(retry).toHaveBeenCalledOnce()
+  expect(reload).toHaveBeenCalledOnce()
 })

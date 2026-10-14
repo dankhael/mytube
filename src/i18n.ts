@@ -44,6 +44,7 @@ const EN = {
   'common.create': 'Create',
   'common.close': 'Close',
   'common.retry': 'Try again',
+  'common.reload': 'Reload',
   'common.loadFailed': 'Could not load your library. Try again after synchronization finishes.',
   'common.saveFailed': 'Could not confirm your changes. Reload and check your settings.',
 
@@ -165,6 +166,7 @@ const PT_BR: Record<MessageKey, string> = {
   'common.create': 'Criar',
   'common.close': 'Fechar',
   'common.retry': 'Tentar novamente',
+  'common.reload': 'Recarregar',
   'common.loadFailed': 'Não foi possível carregar sua biblioteca. Tente novamente após a sincronização.',
   'common.saveFailed': 'Não foi possível confirmar as alterações. Recarregue e confira suas configurações.',
 

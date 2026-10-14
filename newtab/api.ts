@@ -1,9 +1,9 @@
-// Thin wrapper around chrome.runtime.sendMessage for the new tab page.
+// Home-facing mutation results and quota reads over the shared browser transport.
 
 import { StorageData, Message } from '../src/types'
-
 import { sendMessage as send } from '../src/messages'
 import { browserPlatform } from '../src/browser-platform'
+
 export { send }
 
 export type MutationOutcome = { ok: true; data: StorageData } | { ok: false; error: string }

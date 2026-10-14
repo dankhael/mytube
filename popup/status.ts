@@ -1,8 +1,8 @@
 import { DEFAULT_LANGUAGE, type Language, t } from '../src/i18n'
 
-/** Persistent, accessible error with an explicit retry; replaces an older error. */
+/** Persistent, accessible error with an explicit reload; replaces an older error. */
 export function showPopupError(
-  retry: () => void, language: Language = DEFAULT_LANGUAGE, kind: 'load' | 'save' = 'load',
+  reload: () => void, language: Language = DEFAULT_LANGUAGE, kind: 'load' | 'save' = 'load',
 ): void {
   document.getElementById('popup-error')?.remove()
   const alert = document.createElement('div')
@@ -12,8 +12,8 @@ export function showPopupError(
   const text = document.createElement('p')
   text.textContent = t(kind === 'load' ? 'common.loadFailed' : 'common.saveFailed', language)
   const button = document.createElement('button')
-  button.textContent = t('common.retry', language)
-  button.addEventListener('click', retry)
+  button.textContent = t('common.reload', language)
+  button.addEventListener('click', reload)
   alert.append(text, button)
   document.body.appendChild(alert)
 }

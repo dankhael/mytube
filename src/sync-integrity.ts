@@ -1,8 +1,6 @@
 // Integrity, not authentication: synced values remain untrusted and the reducer
 // still sanitizes them. Hashes detect chunks arriving out of order across devices.
-const ITEM_BYTES = 8_192
-const TOTAL_BYTES = 102_400
-const MAX_ITEMS = 512
+import { SYNC_STORAGE_LIMITS } from './storage-limits'
 
 // Chrome storage can reorder object properties when it serializes native
 // dictionaries. Sort keys recursively, but preserve video/category array order.
@@ -22,13 +20,14 @@ export async function chunkDigest(value: unknown): Promise<string> {
 
 /** Validate the actual intermediate key set before a write can change storage. */
 export function checkSyncQuota(items: Record<string, unknown>): void {
+  const { perItemBytes, totalBytes, maxItems } = SYNC_STORAGE_LIMITS
   const entries = Object.entries(items)
-  if (entries.length > MAX_ITEMS) throw new Error(`Sync quota: ${entries.length} items exceeds ${MAX_ITEMS}`)
+  if (entries.length > maxItems) throw new Error(`Sync quota: ${entries.length} items exceeds ${maxItems}`)
   let total = 0
   for (const [key, value] of entries) {
     const bytes = new TextEncoder().encode(key + JSON.stringify(value)).length
-    if (bytes > ITEM_BYTES) throw new Error(`Sync quota: ${key} uses ${bytes} bytes; limit ${ITEM_BYTES}`)
+    if (bytes > perItemBytes) throw new Error(`Sync quota: ${key} uses ${bytes} bytes; limit ${perItemBytes}`)
     total += bytes
   }
-  if (total > TOTAL_BYTES) throw new Error(`Sync quota: ${total} bytes exceeds ${TOTAL_BYTES}`)
+  if (total > totalBytes) throw new Error(`Sync quota: ${total} bytes exceeds ${totalBytes}`)
 }

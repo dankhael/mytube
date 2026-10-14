@@ -22,6 +22,7 @@ import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
 import CategoryChips from './components/CategoryChips'
 import ErrorToast from './components/ErrorToast'
+import LoadError from './components/LoadError'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
@@ -203,10 +204,7 @@ export default function App() {
     return (
       <div className="flex h-full items-center justify-center text-yt-muted">
         {loadFailed ? (
-          <div role="alert">
-            <p>{t('common.loadFailed', DEFAULT_LANGUAGE)}</p>
-            <button onClick={() => void load()}>{t('common.retry', DEFAULT_LANGUAGE)}</button>
-          </div>
+          <LoadError onRetry={() => void load()} />
         ) : t('home.loading', DEFAULT_LANGUAGE)}
       </div>
     )
@@ -227,10 +225,7 @@ export default function App() {
       )}
       <div className="home-inner">
         {loadFailed && (
-          <div role="alert">
-            {tr('common.loadFailed')}{' '}
-            <button onClick={() => void load()}>{tr('common.retry')}</button>
-          </div>
+          <LoadError language={lang} onRetry={() => void load()} />
         )}
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
