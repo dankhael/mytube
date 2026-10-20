@@ -1,8 +1,7 @@
 # Spec: Browser integration and storage integrity
 
-- **Status:** Draft — implemented, awaiting human review of these criteria.
-  The implementation request did not constitute formal approval of this spec;
-  only the owner may change this status to Approved.
+- **Status:** Approved by the owner 2026-10-20 (implemented in 40282ac + 36b8334;
+  ARCH-1..ARCH-8 green, including the fail-closed tradeoff below).
 - **Owner:** dankhael
 - **Contract:** existing `Message`, `MessageResponse`, `StorageData`, `StorageBackend`.
 - **Tests:** `src/messages.test.ts`, `src/storage-backend.test.ts`,
@@ -12,9 +11,8 @@
 
 Before adding a second browser, correct quota reporting, share message error
 handling, isolate browser integration, and reject incomplete sync snapshots.
-Implementation was requested directly, but the separate Tier-1 spec approval
-checkpoint was not completed. This document records the implementation and its
-pending review without changing existing Approved criteria.
+Implementation landed before the Tier-1 approval checkpoint; the owner reviewed
+and approved the criteria afterwards. Existing Approved criteria are unchanged.
 
 ## Acceptance criteria
 
@@ -40,7 +38,7 @@ pending review without changing existing Approved criteria.
   Fingerprints are added on the next write without duplicating the whole library.
 - A valid concurrent snapshot can still overwrite another: browser sync has no
   compare-and-swap transaction. This is explicitly not lossless multi-device merge.
-- **Fail-closed tradeoff (pending owner approval):** if a declared chunk never
+- **Fail-closed tradeoff (approved 2026-10-20):** if a declared chunk never
   arrives or sync permanently converges to mismatching chunks, reads and writes
   remain blocked indefinitely. Retry only re-reads storage; it does not repair it.
   This implementation prioritizes preserving the remaining stored data over

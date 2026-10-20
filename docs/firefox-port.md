@@ -249,9 +249,10 @@ Os checklists abaixo permanecem requisitos do futuro port.
 
 Após a revisão de 14/10/2026: 323 testes em 55 arquivos, build de produção e
 os 2 E2E passaram novamente. Cada E2E agora usa um perfil temporário independente.
-A spec [browser-foundation](../specs/browser-foundation.spec.md) continua Draft,
-aguardando aprovação humana dos critérios e da decisão de bloquear snapshots
-inconsistentes; uma ação de recuperação de dados ainda não foi implementada.
+A spec [browser-foundation](../specs/browser-foundation.spec.md) foi aprovada
+pelo proprietário em 20/10/2026, incluindo os critérios ARCH-1..8 e a decisão de
+bloquear snapshots inconsistentes para preservar os dados. Uma ação de recuperação
+ainda não foi implementada e exige uma spec própria.
 
 ## Critérios para considerar o port pronto
 
