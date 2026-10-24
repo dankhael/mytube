@@ -96,6 +96,8 @@ Reducer [src/storage.ts](../src/storage.ts); icon rules [src/category-icon.ts](.
   "Sem categoria" in pt-BR on every surface ([src/category-label.ts](../src/category-label.ts), DEFCAT-4/5).
 - Add (duplicate name = no-op), rename (cascades to its videos), delete (keep →
   move to `Uncategorized`, or delete videos too), reorder (unnamed kept at end).
+  _Pending (Draft, `category-delete` CATDEL): empty categories deletable while
+  the library has no videos; `Uncategorized` created only when videos move._
 - Icon auto-derived from the name (substring rules, `bookmark` fallback); an
   explicit pick wins.
 
