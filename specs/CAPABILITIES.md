@@ -14,7 +14,7 @@ here in the same PR that lands the spec.
 | [Save from YouTube](#save-from-youtube) | Inject "+ Salvar" on YouTube cards & watch pages; save into a category | `save-video` (SAVE), `salvar-button`, `salvar-home-and-suggestions`, `channel-avatar`, `video-duration` (DUR) |
 | [Playlist import](#playlist-import) | Button on a playlist page imports its rows into a chosen category in one batch | `playlist-import` (IMPORT) |
 | [Curated home](#curated-home) | Home page (opened from the toolbar / Ctrl+Shift+Y, not a new-tab override): category grids, smart sections, search, watched filter, drag-drop, card actions | `newtab-ui` (UI), `design-rework` (HOME/DR-THEME), `home-smart-sections` (SMART), `home-icon-tiles` (HICON), `home-category-chips` (CHIP), `theme-color`, `card-menu-clip`, `channel-avatar`, `video-duration` (DUR) |
-| [Category management](#category-management) | Create / rename / delete / reorder categories and their icons; defaults in the interface language | `categories` (CAT), `home-icon-tiles` (HICON-8), `localized-default-categories` (DEFCAT) |
+| [Category management](#category-management) | Create / rename / delete / reorder categories and their icons; defaults in the interface language | `categories` (CAT), `home-icon-tiles` (HICON-8), `localized-default-categories` (DEFCAT), `category-delete` (CATDEL) |
 | [Watched tracking](#watched-tracking) | Mark watched/unwatched; unwatched count on the toolbar badge | `watched-quota` (WATCH, BADGE) |
 | [Popup](#popup) | Toolbar popup: browse by category, unwatched summary, open video/home, settings | `popup-categories` (POPUP), `popup-config` (CFG), `popup-redesign` (PUI) |
 | [Preferences](#preferences) | Settings: sound effects, theme skin, interface language, open-home shortcut, watch reminders | `popup-config` (CFG), `crt-theme` (CRT), `i18n-language` (I18N), `watch-reminders` (REMIND) |
@@ -84,7 +84,8 @@ Content script [content/playlist-import.ts](../content/playlist-import.ts) (+ sh
 
 [newtab/App.tsx](../newtab/App.tsx) and components.
 
-- Saved videos grouped by category in stored order; welcome screen when empty.
+- Saved videos grouped by category in stored order; welcome screen above the
+  (empty) sections when the library has no videos (CATDEL-1).
 - A YouTube-style category chip row jumps to a category's section (smooth-scroll);
   chips track the visible-category set and drop under search (CHIP).
 - Smart sections from [newtab/smart-sections.ts](../newtab/smart-sections.ts):
@@ -110,6 +111,10 @@ Reducer [src/storage.ts](../src/storage.ts); icon rules [src/category-icon.ts](.
   "Sem categoria" in pt-BR on every surface ([src/category-label.ts](../src/category-label.ts), DEFCAT-4/5).
 - Add (duplicate name = no-op), rename (cascades to its videos), delete (keep →
   move to `Uncategorized`, or delete videos too), reorder (unnamed kept at end).
+- Sections stay reachable with no videos (they render under the welcome screen), so
+  an empty category can always be deleted. `Uncategorized` is created only when
+  videos move into it; deleting it with videos takes one confirm and deletes them,
+  and an empty library may hold zero categories (CATDEL).
 - Icon auto-derived from the name (substring rules, `bookmark` fallback); an
   explicit pick wins.
 

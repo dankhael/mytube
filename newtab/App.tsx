@@ -15,8 +15,7 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Eye, EyeOff, AlertTriangle, Search, Sparkles, Hourglass } from 'lucide-react'
 import Logo from './components/Logo'
-import { categoryLabel } from '../src/category-label'
-import { Category, StorageData, UNCATEGORIZED, Video } from '../src/types'
+import { Category, StorageData, Video } from '../src/types'
 import { IconKey } from '../src/category-icon'
 import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
@@ -26,6 +25,7 @@ import LoadError from './components/LoadError'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
+import { askCategoryDelete } from './category-delete'
 import { selectGatheringDust, selectRecentlyAdded } from './smart-sections'
 import { filterVideos } from './search'
 import { bindingQuotaLimit, shouldWarnQuota } from './quota'
@@ -140,23 +140,9 @@ export default function App() {
   const deleteCategory = (cat: Category) => {
     const lang = data?.settings.language ?? DEFAULT_LANGUAGE
     const count = data?.videos.filter((v) => v.category === cat.name).length ?? 0
-    let deleteVideos = false
-    if (count > 0) {
-      // Two-step confirm: keep videos (move to the uncategorized bucket) or
-      // delete them too. {uncategorized} is the real category the reducer moves
-      // orphans into (UNCATEGORIZED), so the dialog names the actual destination.
-      const alsoDelete = window.confirm(
-        t('cat.confirmDeleteWithVideos', lang, {
-          name: cat.name,
-          count,
-          uncategorized: categoryLabel(UNCATEGORIZED, lang),
-        }),
-      )
-      deleteVideos = alsoDelete
-    } else if (!window.confirm(t('cat.confirmDelete', lang, { name: cat.name }))) {
-      return
-    }
-    apply(mutate({ action: 'DELETE_CATEGORY', name: cat.name, deleteVideos }))
+    const choice = askCategoryDelete(cat, count, lang, (message) => window.confirm(message))
+    if (!choice) return
+    apply(mutate({ action: 'DELETE_CATEGORY', name: cat.name, deleteVideos: choice.deleteVideos }))
   }
 
   const onCategoryDragEnd = (event: DragEndEvent) => {
@@ -275,55 +261,53 @@ export default function App() {
           </div>
         </div>
 
-        {isEmpty ? (
-          <WelcomeScreen />
-        ) : (
-          <>
-            <CategoryChips categories={chipCategories} />
+        {/* The welcome screen sits above the sections, not instead of them: the
+            section's menu is the only way to rename or delete a category (CATDEL-1).
+            SmartSection hides itself with no videos (SMART-6). */}
+        {isEmpty && <WelcomeScreen />}
+        {!isEmpty && <CategoryChips categories={chipCategories} />}
 
-            <SmartSection
-              icon={Sparkles}
-              title={tr('home.recentlyAdded')}
-              videos={recentlyAdded}
-              onOpenVideo={openVideo}
-              onMoveVideo={setMoving}
-              onToggleWatched={toggleWatched}
-              onDeleteVideo={deleteVideo}
-            />
+        <SmartSection
+          icon={Sparkles}
+          title={tr('home.recentlyAdded')}
+          videos={recentlyAdded}
+          onOpenVideo={openVideo}
+          onMoveVideo={setMoving}
+          onToggleWatched={toggleWatched}
+          onDeleteVideo={deleteVideo}
+        />
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onCategoryDragEnd}>
-              <SortableContext
-                items={data.categories.map((c) => `cat:${c.name}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                {data.categories.map((cat) => (
-                  <CategorySection
-                    key={cat.name}
-                    category={cat}
-                    videos={videosByCategory.get(cat.name) ?? []}
-                    onOpenVideo={openVideo}
-                    onMoveVideo={setMoving}
-                    onToggleWatched={toggleWatched}
-                    onDeleteVideo={deleteVideo}
-                    onReorderVideos={reorderVideos}
-                    onEditCategory={setEditing}
-                    onDeleteCategory={deleteCategory}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onCategoryDragEnd}>
+          <SortableContext
+            items={data.categories.map((c) => `cat:${c.name}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            {data.categories.map((cat) => (
+              <CategorySection
+                key={cat.name}
+                category={cat}
+                videos={videosByCategory.get(cat.name) ?? []}
+                onOpenVideo={openVideo}
+                onMoveVideo={setMoving}
+                onToggleWatched={toggleWatched}
+                onDeleteVideo={deleteVideo}
+                onReorderVideos={reorderVideos}
+                onEditCategory={setEditing}
+                onDeleteCategory={deleteCategory}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
-            <SmartSection
-              icon={Hourglass}
-              title={tr('home.gatheringDust')}
-              videos={gatheringDust}
-              onOpenVideo={openVideo}
-              onMoveVideo={setMoving}
-              onToggleWatched={toggleWatched}
-              onDeleteVideo={deleteVideo}
-            />
-          </>
-        )}
+        <SmartSection
+          icon={Hourglass}
+          title={tr('home.gatheringDust')}
+          videos={gatheringDust}
+          onOpenVideo={openVideo}
+          onMoveVideo={setMoving}
+          onToggleWatched={toggleWatched}
+          onDeleteVideo={deleteVideo}
+        />
       </div>
 
       {showAdd && <AddCategoryModal onClose={() => setShowAdd(false)} onSubmit={addCategory} />}
