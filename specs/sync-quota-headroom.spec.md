@@ -8,7 +8,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Freeing space in a nearly full library
 
-- **Status:** Draft  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved by the owner 2026-11-04 (not implemented yet).
 - **Owner:** dankhael
 - **Contract:** no new `Message` variant, no `StorageData` change. Layout only:
   `writeSharded` in [src/storage-backend.ts](../src/storage-backend.ts).

@@ -8,7 +8,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Recovering a blocked library
 
-- **Status:** Draft  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved by the owner 2026-11-04 (not implemented yet).
 - **Owner:** dankhael
 - **Contract:** new `Message` variants in [src/types.ts](../src/types.ts), one per step:
   export, preview and apply. Names are settled at implementation.
