@@ -44,8 +44,9 @@ Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transp
   with room, and the quota check counts bytes as Chrome does (`syncItemBytes`; HEADROOM-1..6).
 - A blocked library offers a backup export and a per-chunk check next to Retry; both only
   read ([src/sync-recovery.ts](../src/sync-recovery.ts); RECOVER-1..4).
-- _Pending (Approved, not implemented, `sync-recovery` RECOVER-5..10): confirmed repair.
-  Nothing is repaired automatically._
+- _Pending (Approved, not implemented, `sync-recovery` RECOVER-5..11): confirmed repair
+  from verified chunks after a matching backup and fresh snapshot check. Nothing is
+  repaired automatically._
 
 ## Save from YouTube
 

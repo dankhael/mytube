@@ -8,8 +8,9 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Recovering a blocked library
 
-- **Status:** Approved by the owner 2026-11-04. Slice 1 implemented, RECOVER-1..4 green.
-  Slice 2 not started: it waits for its own review.
+- **Status:** Approved. The owner approved slice 1 and authorized Codex to approve
+  the revised slice 2 criteria on 2026-11-04. RECOVER-1..4 are implemented;
+  RECOVER-5..11 are approved but not implemented.
 - **Owner:** dankhael
 - **Contract:** new `Message` variants in [src/types.ts](../src/types.ts), one per step.
   Slice 1: `EXPORT_SYNC_KEYS`, `PREVIEW_SYNC_RECOVERY`. Apply arrives with slice 2.
@@ -43,12 +44,13 @@ today. The question is what happens the first time one is, after this ships.
 
 | ID | Given | When | Then |
 |---|---|---|---|
-| **RECOVER-5** | a preview, and no export in this flow | the user tries to repair | repair is unavailable until the export is done |
-| **RECOVER-6** | a preview with mismatching or missing chunks | the user confirms | the confirmation names how many videos are kept and how many chunks are lost; dismissing it writes nothing |
-| **RECOVER-7** | a confirmed preview, and storage that this device can see changed since it was taken | applying | rejected with no write, asking for a new preview |
-| **RECOVER-8** | a confirmed, current preview | applying | recoverable videos are written through the normal path with fresh fingerprints and pass the quota check; the library loads afterwards |
-| **RECOVER-9** | an apply that fails at `set` | it fails | the original keys are untouched and the library stays blocked, not partially repaired |
+| **RECOVER-5** | a preview | the user tries to repair | repair remains unavailable until this flow has exported the same snapshot the preview read (matching snapshot ID) and the user has confirmed that the backup file was saved |
+| **RECOVER-6** | a preview with verified videos and unverified or unavailable chunks | the user confirms | the confirmation names the verified videos to keep, the present but unverified videos to exclude, and the missing or malformed chunks whose video counts are unknown; dismissing it writes nothing |
+| **RECOVER-7** | a confirmed preview, and the MyTube keys visible to this device differ from the previewed snapshot | applying | compare every MyTube key with the snapshot ID immediately before writing; reject with no write and request a new preview if anything differs |
+| **RECOVER-8** | a confirmed, current preview with usable metadata and at least one verified video | applying | a separate repair write restores only videos from intact chunks, preserves categories and settings from the usable metadata, and uses the normal write's normalization, chunk packing, fingerprint rule and quota check; the library loads afterwards, and mismatching chunks are excluded from the new committed snapshot while the backup retains them |
+| **RECOVER-9** | an apply whose storage `set` fails after preflight | the write fails | report that the stored state is uncertain, never retry automatically, keep the previously exported backup available, and require a fresh read and preview before another attempt |
 | **RECOVER-10** | a blocked library with no user action, however many reads have failed | time passes | nothing is repaired, discarded or rewritten automatically |
+| **RECOVER-11** | a preview with no verified videos and with unverified or unavailable chunks | the user considers repair | repair is unavailable; starting over with an empty library requires its own spec |
 
 ## Decisions
 
@@ -61,12 +63,28 @@ today. The question is what happens the first time one is, after this ships.
   is all a repair may keep by default. Mismatching chunks are counted apart as present but
   not verified, so "0 verified" can't suggest a backup holding videos is empty. With no
   usable metadata nothing can be verified, so stored chunks all report as mismatching.
-- **Keeping mismatching content is slice 2's call.** Whether a repair may offer it, and what
-  RECOVER-6 then names as kept and lost, must be decided explicitly in that review.
+- **Slice 2 excludes mismatching content.** The backup preserves it, but this repair writes
+  only intact chunks. Offering a way to keep mismatching videos would require a per-video
+  preview and a separate explicit confirmation.
+- **Export and preview identify the same snapshot.** Each returns an ID derived from all
+  MyTube keys and values, including the legacy key and stray chunks. A matching ID and the
+  user's confirmation that the backup was saved are both required before repair. The worker
+  recomputes the ID from storage immediately before writing (RECOVER-5, RECOVER-7).
+- **A repair has its own guarded write.** `SyncStorageBackend.write()` rejects a blocked
+  snapshot before writing; the repair must bypass that check only after the backup, preview,
+  confirmation and current-snapshot checks. It reuses normal normalization, packing,
+  fingerprint and quota rules. Near the quota, first-time hashes may wait under HEADROOM.
+- **A failed `set` has an uncertain outcome.** Chrome quota failures tested so far were
+  atomic, but `SyncArea` does not promise atomicity for every failure. The exported file
+  remains available; the extension must inspect storage again before offering another repair.
+- **Zero verified videos is not an empty-library repair.** Missing or malformed chunks have
+  unknown video counts, and mismatching chunks can still hold videos. RECOVER-11 prevents a
+  confirmation that would silently clear them.
 - **Recovery reads skip `SyncStorageBackend.read()`.** That read is what fails, and it can
   also write (legacy migration and removal), which would break RECOVER-1.
 - **Slices ship separately.** Slice 1 can't lose data and already removes the worst case,
-  being locked out of your own library. Slice 2 overwrites storage, so it earns its own review.
+  being locked out of your own library. Slice 2 overwrites storage and is scheduled after
+  the browser foundation refactor PR.
 - **Export is a local file.** Nothing leaves the machine, so `docs/PRIVACY.md` and the
   manifest permissions stay as they are.
 - **The fail-closed behavior stays.** This adds a way out; it doesn't weaken the block.
