@@ -5,7 +5,7 @@
 import { StorageData } from './types'
 import { browserPlatform } from './browser-platform'
 import { SYNC_STORAGE_LIMITS } from './storage-limits'
-import { canonicalJson, chunkDigest, checkSyncQuota } from './sync-integrity'
+import { canonicalJson, chunkDigest, checkSyncQuota, storedForm } from './sync-integrity'
 
 export interface StorageBackend {
   // Returns undefined when nothing has been persisted yet.
@@ -169,14 +169,17 @@ export class SyncStorageBackend implements StorageBackend {
   private async writeSharded(data: StorageData, current: Record<string, unknown>): Promise<void> {
     const oldMeta = current[META_KEY]
     const generation = isShardedMeta(oldMeta) ? oldMeta.generation + 1 : 1
-    const chunks = chunkVideos(data.videos)
+    // Before chunking, hashing and the quota check, so all three see what storage
+    // will really hold; every write path (save, import, backfill, migration) lands here.
+    const stored = storedForm(data)
+    const chunks = chunkVideos(stored.videos)
 
     const meta: ShardedMeta = {
       generation,
       chunkCount: chunks.length,
       chunkHashes: await Promise.all(chunks.map((videos) => chunkDigest({ videos }))),
-      categories: data.categories,
-      settings: data.settings,
+      categories: stored.categories,
+      settings: stored.settings,
     }
 
     const toSet: Record<string, unknown> = { [META_KEY]: meta }

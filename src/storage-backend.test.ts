@@ -9,6 +9,7 @@ import { FakeSyncArea, SyncOp } from '../test/fake-sync-area'
 import { SyncStorageBackend, LEGACY_KEY, META_KEY } from './storage-backend'
 import { DEFAULT_SETTINGS, StorageData, Video } from './types'
 import { MyTubeStore } from './storage'
+import { clampText } from './validate-message'
 
 function video(id: string): Video {
   return {
@@ -215,5 +216,41 @@ describe('storage-robustness.spec — sharded backend', () => {
     const chunkKeysAfterSmall = area.storedKeys().filter((k) => k.startsWith('mytube:videos:'))
     expect(chunkKeysAfterSmall.length).toBeLessThan(chunkKeysAfterLarge.length)
     expect(await backend.read()).toEqual(library(2))
+  })
+})
+
+describe('text that storage rewrites (lone surrogates)', () => {
+  const saved = (title: string) => ({ id: 'aaaaaaaaaaa', title, thumbnail: 't', channelName: 'C' })
+
+  async function saveThenReopen(title: string): Promise<MyTubeStore> {
+    const area = new FakeSyncArea()
+    await new MyTubeStore(new SyncStorageBackend(area)).saveVideo(saved(title), 'A')
+    return new MyTubeStore(new SyncStorageBackend(area))
+  }
+
+  it('regression: a saved lone surrogate leaves the library readable and editable', async () => {
+    const store = await saveThenReopen('bad \ud83d end')
+    expect((await store.getData()).videos[0].title).toBe('bad \ufffd end')
+    const after = await store.deleteVideo('aaaaaaaaaaa')
+    expect(after.videos).toEqual([])
+  })
+
+  it('regression: a title clamped through an emoji at the 300 limit stays readable', async () => {
+    const store = await saveThenReopen(clampText(`${'x'.repeat(299)}😀`))
+    const { videos } = await store.getData()
+    expect(videos[0].title).toBe(`${'x'.repeat(299)}\ufffd`)
+  })
+
+  it('regression: a lone surrogate in a category name stays readable', async () => {
+    const area = new FakeSyncArea()
+    await new MyTubeStore(new SyncStorageBackend(area)).saveVideo(saved('T'), 'cat \ud83d')
+    const { categories, videos } = await new MyTubeStore(new SyncStorageBackend(area)).getData()
+    expect(categories.map((c) => c.name)).toContain('cat \ufffd')
+    expect(videos[0].category).toBe('cat \ufffd')
+  })
+
+  it('keeps valid emoji byte-for-byte', async () => {
+    const store = await saveThenReopen('ok 😀 título')
+    expect((await store.getData()).videos[0].title).toBe('ok 😀 título')
   })
 })

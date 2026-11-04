@@ -69,6 +69,28 @@ test('ARCH-7: saves survive reload and acknowledged edits/deletes persist', asyn
   await page.close()
 })
 
+// FakeSyncArea only imitates this; the bug lived in what real chrome.storage does
+// to a lone surrogate, so the proof has to run against it too.
+test('regression: text storage rewrites never locks the library', async () => {
+  const id = await extensionId()
+  const page = await context.newPage()
+  await page.goto(`chrome-extension://${id}/newtab/index.html`)
+  const titles = [`${'x'.repeat(299)}😀`, 'bad \ud83d end']
+  for (const title of titles) {
+    await request(page, {
+      action: 'SAVE_VIDEO', category: 'Surrogate \ud83d smoke',
+      video: { id: 'testVideo02', title, channelName: 'Test channel', thumbnail: '' },
+    })
+    await page.reload()
+    const saved = await request(page, { action: 'GET_ALL' })
+    expect(saved).toMatchObject({ ok: true, data: { videos: [{ id: 'testVideo02' }] } })
+    await request(page, { action: 'DELETE_VIDEO', id: 'testVideo02' })
+    await page.reload()
+    expect(await request(page, { action: 'GET_ALL' })).toMatchObject({ ok: true, data: { videos: [] } })
+  }
+  await page.close()
+})
+
 test.afterEach(async () => {
   await context?.close()
 })

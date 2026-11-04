@@ -36,6 +36,10 @@ function renderUnwatchedTotal(target: HTMLElement, label: string): void {
 }
 
 async function init(): Promise<void> {
+  // Before the load check: the home is where a failed read gets its retry, so
+  // the button has to work most of all when the library can't be read.
+  document.getElementById('open')!.addEventListener('click', openHome)
+
   const res = await send({ action: 'GET_ALL' })
   if (!res.ok || !('data' in res) || !res.data) {
     showPopupError(() => location.reload())
@@ -70,12 +74,14 @@ async function init(): Promise<void> {
   }
 
   async function persistSettings(patch: Partial<Settings>): Promise<void> {
-    // Prevent a second optimistic edit from racing a failed first one.
-    modal?.setAttribute('inert', '')
+    // Prevent a second optimistic edit from racing a failed first one. Held in a
+    // local because `modal` may point at a newer dialog by the time this settles.
+    const saving = modal
+    saving?.setBusy(true)
     const result = await send({ action: 'UPDATE_SETTINGS', settings: patch })
     if (result.ok && 'data' in result && result.data) {
       persistedSettings = result.data.settings
-      modal?.removeAttribute('inert')
+      saving?.setBusy(false)
       return
     }
     // Restore the last acknowledged values, never leave failed previews looking
@@ -84,11 +90,9 @@ async function init(): Promise<void> {
     applyAccent(document.documentElement, settings.accent)
     applyThemePreset(document.documentElement, settings.theme)
     paint()
-    modal?.dismiss()
+    saving?.dismiss()
     showPopupError(() => location.reload(), settings.language, 'save')
   }
-
-  document.getElementById('open')!.addEventListener('click', openHome)
 
   document.getElementById('config')!.addEventListener('click', async () => {
     click()

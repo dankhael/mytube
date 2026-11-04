@@ -4,13 +4,15 @@
 
 import { sendMessage as sendRuntimeMessage } from '../src/messages'
 import { browserPlatform } from '../src/browser-platform'
-import { Category, Message, MessageResponse, SavedIdInfo } from '../src/types'
+import { Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
 import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
 import { CardData, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
-import { pickerCategoryItem } from './picker-item'
+import { CategoryPickerDeps, openCategoryPicker } from './category-picker'
+import { saveCardVideo } from './save-flow'
+import { createToast } from './toast'
 import { categoryLabel } from '../src/category-label'
 import { scanPlaylistPage, PlaylistImportDeps } from './playlist-import'
 import { isCollectionCard, isPreviewOfCollection } from './collection-card'
@@ -57,12 +59,6 @@ function teardown(): void {
   document
     .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast, #mytube-import-btn, #mytube-nudge')
     .forEach((node) => node.remove())
-}
-
-async function getCategories(): Promise<Category[]> {
-  const res = await sendMessage({ action: 'GET_ALL' })
-  if (res.ok && 'data' in res && res.data) return res.data.categories
-  return []
 }
 
 interface LabelSpans {
@@ -122,22 +118,7 @@ function setSavedState(btn: HTMLElement, category: string | null) {
   }
 }
 
-// Transient, non-blocking confirmation toast. A single reused element is
-// appended lazily; re-firing resets the auto-dismiss timer (spec SALVAR-TOAST).
-let toastTimer: number | undefined
-function showToast(text: string) {
-  let toast = document.getElementById('mytube-toast')
-  if (!toast) {
-    toast = document.createElement('div')
-    toast.id = 'mytube-toast'
-    toast.className = 'mytube-toast'
-    document.documentElement.appendChild(toast)
-  }
-  toast.textContent = text
-  requestAnimationFrame(() => toast?.classList.add('mytube-toast--show'))
-  window.clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => toast?.classList.remove('mytube-toast--show'), 2500)
-}
+const showToast = createToast(() => torndown)
 
 // Detaches the scroll/resize tracking of the currently open dropdown; set by
 // trackDropdown(), cleared here so listeners never outlive the menu.
@@ -186,61 +167,15 @@ function trackDropdown(dropdown: HTMLElement, btn: HTMLElement) {
   }
 }
 
-// Headers the generic picker can show — both are catalog keys (i18n).
-type PickerHeaderKey = 'content.saveTo' | 'content.import.pickCategory'
+const pickerDeps: CategoryPickerDeps = {
+  send: sendMessage,
+  isTornDown: () => torndown,
+  language: () => lang,
+  closeDropdowns: closeAllDropdowns,
+  mount: mountDropdown,
+}
 
-// Generic category chooser: builds the themed dropdown, lists categories plus an
-// inline "+ Nova categoria", and hands the chosen name to `onPick`. Both the
-// per-card save and the playlist import (content/playlist-import.ts) drive it —
-// the action is injected, not baked in.
-async function openCategoryPicker(
-  btn: HTMLElement,
-  onPick: (category: string) => void,
-  headerKey: PickerHeaderKey = 'content.saveTo',
-) {
-  closeAllDropdowns()
-  const categories = await getCategories()
-
-  const dropdown = document.createElement('div')
-  dropdown.className = 'mytube-dropdown'
-
-  const header = document.createElement('div')
-  header.className = 'mytube-dropdown-header'
-  header.textContent = t(headerKey, lang)
-  dropdown.appendChild(header)
-
-  const choose = (category: string) => {
-    closeAllDropdowns()
-    onPick(category)
-  }
-
-  categories.forEach((cat) => {
-    dropdown.appendChild(pickerCategoryItem(cat, choose, lang))
-  })
-
-  // "Nova categoria" — expands into an inline input.
-  const newItem = document.createElement('button')
-  newItem.className = 'mytube-dropdown-item mytube-dropdown-new'
-  newItem.textContent = t('content.newCategory', lang)
-  newItem.addEventListener('click', (e) => {
-    e.stopPropagation()
-    const input = document.createElement('input')
-    input.className = 'mytube-dropdown-input'
-    input.placeholder = t('content.categoryNamePlaceholder', lang)
-    input.addEventListener('click', (ev) => ev.stopPropagation())
-    input.addEventListener('keydown', (ev) => {
-      ev.stopPropagation()
-      if (ev.key === 'Enter' && input.value.trim()) {
-        choose(input.value.trim())
-      } else if (ev.key === 'Escape') {
-        closeAllDropdowns()
-      }
-    })
-    newItem.replaceWith(input)
-    input.focus()
-  })
-  dropdown.appendChild(newItem)
-
+function mountDropdown(dropdown: HTMLElement, btn: HTMLElement) {
   // Portal to <html> with fixed positioning so the menu can't be clipped by
   // YouTube's overflow:hidden action-bar / menu-renderer ancestors (the watch
   // pill lives deep inside #top-level-buttons-computed).
@@ -251,29 +186,22 @@ async function openCategoryPicker(
 
 // Saves a single card into the chosen category and reflects it on the button.
 async function saveCardToCategory(btn: HTMLElement, card: CardData, category: string) {
-  const res = await sendMessage({
-    action: 'SAVE_VIDEO',
-    video: {
-      id: card.id,
-      title: card.title,
-      thumbnail: card.thumbnail,
-      channelName: card.channelName,
-      channelThumbnail: card.channelThumbnail,
-      duration: card.duration,
+  await saveCardVideo(card, category, sendMessage, {
+    onSaved: () => {
+      savedIds.set(card.id, category)
+      setSavedState(btn, category)
+      btn.classList.add('mytube-flash')
+      setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
+      showToast(t('content.savedToast', lang, { category: categoryLabel(category, lang) }))
     },
-    category,
+    // The button keeps its Save state, so clicking it again is the retry.
+    onFailed: () => showToast(t('content.saveFailed', lang)),
   })
-  if (res.ok) {
-    savedIds.set(card.id, category)
-    setSavedState(btn, category)
-    btn.classList.add('mytube-flash')
-    setTimeout(() => btn.classList.remove('mytube-flash'), 2000)
-    showToast(t('content.savedToast', lang, { category: categoryLabel(category, lang) }))
-  }
 }
 
 function openSaveDropdown(btn: HTMLElement, card: CardData) {
-  void openCategoryPicker(btn, (category) => void saveCardToCategory(btn, card, category))
+  const onPick = (category: string) => void saveCardToCategory(btn, card, category)
+  void openCategoryPicker(btn, onPick, 'content.saveTo', pickerDeps)
 }
 
 function injectButton(card: HTMLElement) {
@@ -512,7 +440,7 @@ function injectPreviewButton() {
 const playlistImportDeps: PlaylistImportDeps = {
   sendMessage,
   openCategoryPicker: (anchor, onPick) =>
-    void openCategoryPicker(anchor, onPick, 'content.import.pickCategory'),
+    void openCategoryPicker(anchor, onPick, 'content.import.pickCategory', pickerDeps),
   showToast,
   getLang: () => lang,
 }

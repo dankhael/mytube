@@ -38,6 +38,8 @@ Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transp
   popup failures offer a page reload and roll back unacknowledged previews.
 - Approved fail-closed tradeoff: integrity wins over availability; a future
   recovery flow needs its own spec (backup, preview, explicit confirmation).
+- Snapshots are normalized to their stored form before chunking, hashing and the
+  quota check, so text storage rewrites (lone surrogates) can't break a fingerprint.
 
 ## Save from YouTube
 
@@ -67,6 +69,10 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   leaves the viewport on either side (narrow windows included), and stays pinned
   to it on scroll/resize, so a save is always reachable
   (`content/dropdown-position.ts`; SALVAR-MENU-1..5, SALVAR-MENU-TRACK).
+- A failed read shows an error and a retry in the menu instead of an empty list, and
+  a failed save shows a toast with the button left ready to retry
+  ([content/category-picker.ts](../content/category-picker.ts),
+  [content/save-flow.ts](../content/save-flow.ts)). An orphaned script shows neither (M4).
 
 ## Playlist import
 

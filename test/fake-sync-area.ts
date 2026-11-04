@@ -16,6 +16,15 @@ function byteLength(value: string): number {
   return new TextEncoder().encode(value).length
 }
 
+// chrome.storage keeps strings as UTF-8, so what comes back isn't always what went
+// in: a lone surrogate returns as U+FFFD. structuredClone hid that from the tests
+// while it bricked real libraries. Encoder-based on purpose, so this stays an
+// independent check of the regex production normalizes with (storedForm).
+function asChromeStores(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value), (_key, entry: unknown) =>
+    typeof entry === 'string' ? new TextDecoder().decode(new TextEncoder().encode(entry)) : entry)
+}
+
 export class FakeSyncArea implements SyncArea {
   private store = new Map<string, unknown>()
   readonly ops: SyncOp[] = []
@@ -41,7 +50,7 @@ export class FakeSyncArea implements SyncArea {
       if (bytes > SYNC_STORAGE_LIMITS.perItemBytes) {
         throw new Error(`QUOTA_BYTES_PER_ITEM quota exceeded for "${key}": ${bytes} > ${SYNC_STORAGE_LIMITS.perItemBytes}`)
       }
-      this.store.set(key, structuredClone(value))
+      this.store.set(key, asChromeStores(value))
     }
   }
 

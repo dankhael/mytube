@@ -242,6 +242,10 @@ footer {
 }
 
 /* ---- Config modal ---- */
+.cfg-backdrop:focus {
+  outline: none; /* focused by script while a save is in flight, never by Tab */
+}
+
 .cfg-backdrop {
   position: fixed;
   inset: 0;

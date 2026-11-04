@@ -12,6 +12,22 @@ export function canonicalJson(value: unknown): string | undefined {
   })
 }
 
+// Unicode "Cs": with the u flag this matches only unpaired surrogates, because a
+// valid pair reads as a single astral code point.
+const LONE_SURROGATE = /\p{Cs}/gu
+
+/**
+ * `value` as storage will hand it back: UTF-8 can't hold a lone surrogate, so it
+ * returns as U+FFFD, and undefined fields are dropped. Hashes must be computed on
+ * this form. Hashing the raw text made a confirmed save unreadable forever, since
+ * the stored chunk could never match its fingerprint again.
+ * @example storedForm({ title: 'a\ud83d' }) // { title: 'a\ufffd' }
+ */
+export function storedForm<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value), (_key, entry: unknown) =>
+    typeof entry === 'string' ? entry.replace(LONE_SURROGATE, '\ufffd') : entry) as T
+}
+
 export async function chunkDigest(value: unknown): Promise<string> {
   const bytes = new TextEncoder().encode(canonicalJson(value))
   const hash = await crypto.subtle.digest('SHA-256', bytes)
