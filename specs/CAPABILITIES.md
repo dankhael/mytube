@@ -40,6 +40,10 @@ Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transp
   recovery flow needs its own spec (backup, preview, explicit confirmation).
 - Snapshots are normalized to their stored form before chunking, hashing and the
   quota check, so text storage rewrites (lone surrogates) can't break a fingerprint.
+- _Pending (Draft, `sync-quota-headroom` HEADROOM): a nearly full library can still
+  free space, by skipping first-time fingerprints when they don't fit._
+- _Pending (Draft, `sync-recovery` RECOVER): export, preview and confirmed repair for
+  a blocked library; nothing is repaired automatically._
 
 ## Save from YouTube
 
