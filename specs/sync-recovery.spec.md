@@ -55,6 +55,8 @@ today. The question is what happens the first time one is, after this ships.
 - **A mismatching hash is never accepted on its own.** It can mean rewritten text, a torn
   sync or a chunk that simply hasn't arrived yet, and the extension can't tell them apart.
   Only a person with the preview and a backup in hand decides (RECOVER-6, RECOVER-10).
+- **RECOVER-3 reworded, approved by the owner 2026-11-04.** It said "total recoverable" and
+  counted mismatching chunks as unavailable; the two decisions below replaced that.
 - **Verified and present are separate numbers.** Only intact chunks are verified, and that
   is all a repair may keep by default. Mismatching chunks are counted apart as present but
   not verified, so "0 verified" can't suggest a backup holding videos is empty. With no
