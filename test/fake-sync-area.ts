@@ -5,7 +5,7 @@
 
 import { SyncArea } from '../src/storage-backend'
 
-export const QUOTA_BYTES_PER_ITEM = 8_192
+import { SYNC_STORAGE_LIMITS } from '../src/storage-limits'
 
 export interface SyncOp {
   method: 'get' | 'set' | 'remove'
@@ -14,6 +14,15 @@ export interface SyncOp {
 
 function byteLength(value: string): number {
   return new TextEncoder().encode(value).length
+}
+
+// chrome.storage keeps strings as UTF-8, so what comes back isn't always what went
+// in: a lone surrogate returns as U+FFFD. structuredClone hid that from the tests
+// while it bricked real libraries. Encoder-based on purpose, so this stays an
+// independent check of the regex production normalizes with (storedForm).
+function asChromeStores(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value), (_key, entry: unknown) =>
+    typeof entry === 'string' ? new TextDecoder().decode(new TextEncoder().encode(entry)) : entry)
 }
 
 export class FakeSyncArea implements SyncArea {
@@ -38,10 +47,10 @@ export class FakeSyncArea implements SyncArea {
     this.ops.push({ method: 'set', keys: Object.keys(items) })
     for (const [key, value] of Object.entries(items)) {
       const bytes = byteLength(key) + byteLength(JSON.stringify(value))
-      if (bytes > QUOTA_BYTES_PER_ITEM) {
-        throw new Error(`QUOTA_BYTES_PER_ITEM quota exceeded for "${key}": ${bytes} > ${QUOTA_BYTES_PER_ITEM}`)
+      if (bytes > SYNC_STORAGE_LIMITS.perItemBytes) {
+        throw new Error(`QUOTA_BYTES_PER_ITEM quota exceeded for "${key}": ${bytes} > ${SYNC_STORAGE_LIMITS.perItemBytes}`)
       }
-      this.store.set(key, structuredClone(value))
+      this.store.set(key, asChromeStores(value))
     }
   }
 
@@ -75,5 +84,15 @@ export class FakeSyncArea implements SyncArea {
       .filter((op) => op.method === 'set')
       .flatMap((op) => op.keys)
       .filter((key) => key.startsWith(prefix))
+  }
+}
+
+// A set can commit while the cleanup right after it fails (HEADROOM-5).
+export class RemoveFailingSyncArea extends FakeSyncArea {
+  failRemoves = true
+
+  async remove(keys: string[]): Promise<void> {
+    if (this.failRemoves) throw new Error(`Simulated remove failure for ${keys.join(', ')}`)
+    await super.remove(keys)
   }
 }

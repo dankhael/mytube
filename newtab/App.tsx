@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { browserPlatform, type StorageChange } from '../src/browser-platform'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -20,6 +21,7 @@ import { MutationOutcome, getBytesInUse, mutate, send } from './api'
 import CategorySection from './components/CategorySection'
 import CategoryChips from './components/CategoryChips'
 import ErrorToast from './components/ErrorToast'
+import LoadError from './components/LoadError'
 import SmartSection from './components/SmartSection'
 import AddCategoryModal from './components/AddCategoryModal'
 import SaveToModal from './components/SaveToModal'
@@ -31,7 +33,7 @@ import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
 import { applyAccentFavicon } from './favicon'
-import { DEFAULT_LANGUAGE, t } from '../src/i18n'
+import { DEFAULT_LANGUAGE, detectLanguage, t } from '../src/i18n'
 import { LanguageProvider, useT } from './i18n-context'
 
 // The lower of the total quota and any per-item ceiling the layout imposes (R1).
@@ -67,28 +69,41 @@ export default function App() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [moving, setMoving] = useState<Video | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const refreshBytes = useCallback(() => {
-    getBytesInUse().then(setBytes)
+    // Quota telemetry must not prevent the library from rendering.
+    void getBytesInUse().then(setBytes).catch(() => undefined)
   }, [])
 
+  // Remote chunks arrive as several storage events, each firing a load, and replies
+  // can land out of order. Only the newest counts: a late failure would otherwise
+  // leave the error up over a healthy library, with no further event to clear it.
+  const latestLoad = useRef(0)
   const load = useCallback(async () => {
+    const ticket = ++latestLoad.current
     const res = await send({ action: 'GET_ALL' })
-    if (res.ok && 'data' in res && res.data) setData(res.data)
+    if (ticket !== latestLoad.current) return
+    if (res.ok && 'data' in res && res.data) {
+      setData(res.data)
+      setLoadFailed(false)
+    } else {
+      setLoadFailed(true)
+    }
     refreshBytes()
   }, [refreshBytes])
 
   useEffect(() => {
     load()
-    const listener = (changes: { [k: string]: chrome.storage.StorageChange }, area: string) => {
+    const listener = (changes: { [k: string]: StorageChange }, area: string) => {
       // The snapshot spans many mytube:* keys now (finding R1); re-read the whole
       // thing through the worker (which sanitizes, S6) on any of them changing.
       if (area === 'sync' && Object.keys(changes).some(isMyTubeKey)) void load()
     }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
+    browserPlatform().storageChanges.addListener(listener)
+    return () => browserPlatform().storageChanges.removeListener(listener)
   }, [load, refreshBytes])
 
   const apply = useCallback(async (next: Promise<MutationOutcome>) => {
@@ -178,9 +193,13 @@ export default function App() {
   const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
 
   if (!data) {
+    // No settings yet, and on a failed read there may never be: use the browser's.
+    const browserLanguage = detectLanguage(navigator.language)
     return (
       <div className="flex h-full items-center justify-center text-yt-muted">
-        {t('home.loading', DEFAULT_LANGUAGE)}
+        {loadFailed ? (
+          <LoadError language={browserLanguage} onRetry={() => void load()} />
+        ) : t('home.loading', browserLanguage)}
       </div>
     )
   }
@@ -199,6 +218,9 @@ export default function App() {
         <ErrorToast message={mutationError} onDismiss={() => setMutationError(null)} />
       )}
       <div className="home-inner">
+        {loadFailed && (
+          <LoadError language={lang} onRetry={() => void load()} />
+        )}
         {overQuota && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-400">
             <AlertTriangle className="h-4 w-4" />

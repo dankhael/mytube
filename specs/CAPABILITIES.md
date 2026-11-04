@@ -22,8 +22,33 @@ here in the same PR that lands the spec.
 | [Persistence & sync](#persistence--sync) | Sharded `chrome.storage.sync` store via the reducer; live cross-surface updates | `watched-quota` (QUOTA-1), `storage-robustness` (ROB), `security-hardening` (SEC-14..17) |
 | [Extension security](#extension-security) | Least-privilege manifest, CSP, message validation, no HTML sinks / 3rd-party fetches | `security-hardening` (SEC) |
 | [Tab identity](#tab-identity) | Home tab shows the "MyTube" title and favicon | `newtab-tab-identity` (TAB) |
+| [Browser foundation](#browser-foundation) | Shared message transport, native API boundary, total quota reporting and incomplete/mixed sync rejection | `browser-foundation` (ARCH-1..8) |
 
 ---
+
+## Browser foundation
+
+Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transport
+[src/messages.ts](../src/messages.ts), and [browser-foundation](browser-foundation.spec.md) (ARCH).
+
+- Chrome API access is centralized; Firefox runtime support remains future work.
+- Missing/mixed sync chunks block reads and mutations instead of silently losing
+  videos. This can block the library indefinitely; retry is not data recovery.
+- The home measures total sync usage; load failures offer a read retry, while
+  popup failures offer a page reload and roll back unacknowledged previews.
+- Only the newest read counts in the home, and load errors before settings exist follow
+  the browser language.
+- Approved fail-closed tradeoff: integrity wins over availability; the way out is
+  `sync-recovery` (backup, preview, explicit confirmation).
+- Snapshots are normalized to their stored form before chunking, hashing and the
+  quota check, so text storage rewrites (lone surrogates) can't break a fingerprint.
+- A nearly full library can still free space: first-time fingerprints wait for a write
+  with room, and the quota check counts bytes as Chrome does (`syncItemBytes`; HEADROOM-1..6).
+- A blocked library offers a backup export and a per-chunk check next to Retry; both only
+  read ([src/sync-recovery.ts](../src/sync-recovery.ts); RECOVER-1..4).
+- _Pending (Approved, not implemented, `sync-recovery` RECOVER-5..11): confirmed repair
+  from verified chunks after a matching backup and fresh snapshot check. Nothing is
+  repaired automatically._
 
 ## Save from YouTube
 
@@ -53,6 +78,10 @@ Content script [content/content.ts](../content/content.ts) ↔ service worker ov
   leaves the viewport on either side (narrow windows included), and stays pinned
   to it on scroll/resize, so a save is always reachable
   (`content/dropdown-position.ts`; SALVAR-MENU-1..5, SALVAR-MENU-TRACK).
+- A failed read shows an error and a retry in the menu instead of an empty list, and
+  a failed save shows a toast with the button left ready to retry
+  ([content/category-picker.ts](../content/category-picker.ts),
+  [content/save-flow.ts](../content/save-flow.ts)). An orphaned script shows neither (M4).
 
 ## Playlist import
 

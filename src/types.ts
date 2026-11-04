@@ -99,6 +99,32 @@ export type Message =
   // (content script), which can't navigate the page to a chrome-extension:// URL
   // itself; the worker opens it via openHomeTab (spec watch-reminders, D3).
   | { action: 'OPEN_HOME' }
+  // Read-only ways out of a blocked library (spec sync-recovery, slice 1). They skip
+  // the store on purpose: its reads fail there, and they may write.
+  | { action: 'EXPORT_SYNC_KEYS' }
+  | { action: 'PREVIEW_SYNC_RECOVERY' }
+
+export type SyncChunkState = 'intact' | 'mismatching' | 'malformed' | 'missing'
+
+export interface SyncChunkReport {
+  key: string
+  state: SyncChunkState
+  videoCount: number
+  // Information only: a mismatching chunk holding U+FFFD (RECOVER-4).
+  possiblyRewritten: boolean
+}
+
+export interface SyncRecoveryPreview {
+  metadata: 'valid' | 'invalid' | 'missing'
+  chunks: SyncChunkReport[]
+  // Videos in intact chunks: the only ones a repair may keep by default.
+  verifiedVideos: number
+  // Videos in chunks that are there but failed verification. Counted apart so that
+  // "0 verified" can't read as an empty library.
+  unverifiedVideos: number
+  // Declared chunks with nothing readable: missing or malformed.
+  unavailableChunks: number
+}
 
 export interface SavedIdInfo {
   id: string
@@ -108,4 +134,6 @@ export interface SavedIdInfo {
 export type MessageResponse =
   | { ok: true; data?: StorageData }
   | { ok: true; ids: SavedIdInfo[] }
+  | { ok: true; syncKeys: Record<string, unknown> }
+  | { ok: true; recoveryPreview: SyncRecoveryPreview }
   | { ok: false; error: string }

@@ -44,6 +44,12 @@ function soundRowEl(): HTMLElement {
 afterEach(() => document.body.replaceChildren())
 
 describe('popup-config.spec (modal)', () => {
+  it('dismiss closes the modal and releases the body state after a failed save', () => {
+    const { modal } = open()
+    modal.dismiss()
+    expect(document.querySelector('.cfg-backdrop')).toBeNull()
+    expect(document.body.classList.contains('config-open')).toBe(false)
+  })
   it('CFG-2: the sound toggle reflects the persisted value', () => {
     open({ soundEffects: true })
     const toggle = document.querySelector('.cfg-toggle')!
@@ -247,5 +253,70 @@ describe('popup-config.spec (modal)', () => {
     expect(document.querySelector('.cfg-backdrop')).not.toBeNull()
     modal.click() // the backdrop itself
     expect(document.querySelector('.cfg-backdrop')).toBeNull()
+  })
+})
+
+describe('settings modal while a save is in flight', () => {
+  function openFrom(opener: HTMLElement) {
+    document.body.appendChild(opener)
+    opener.focus()
+    return open().modal
+  }
+
+  it('regression: locks the controls, not the backdrop', () => {
+    const { modal } = open()
+    modal.setBusy(true)
+    expect(modal.hasAttribute('inert')).toBe(false)
+    expect(modal.querySelector('.cfg-modal')!.hasAttribute('inert')).toBe(true)
+    modal.setBusy(false)
+    expect(modal.querySelector('.cfg-modal')!.hasAttribute('inert')).toBe(false)
+  })
+
+  it('regression: a click on the backdrop while locked does not close the dialog', () => {
+    const { modal } = open()
+    modal.setBusy(true)
+    modal.click()
+    expect(modal.isConnected).toBe(true)
+    modal.setBusy(false)
+    modal.click()
+    expect(modal.isConnected).toBe(false)
+  })
+
+  it('regression: Escape does not close the dialog while locked', () => {
+    const { modal } = open()
+    modal.setBusy(true)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(modal.isConnected).toBe(true)
+    modal.setBusy(false)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(modal.isConnected).toBe(false)
+  })
+
+  it('regression: keeps focus in the dialog during the save and restores it after', () => {
+    const { modal } = open()
+    const swatch = modal.querySelector<HTMLElement>('.cfg-theme-swatch')!
+    swatch.focus()
+    modal.setBusy(true)
+    expect(document.activeElement).toBe(modal)
+    modal.setBusy(false)
+    expect(document.activeElement).toBe(swatch)
+  })
+
+  it('falls back to the checked radio when a re-render detached the focused control', () => {
+    const { modal } = open()
+    const swatch = modal.querySelector<HTMLElement>('.cfg-theme-swatch')!
+    swatch.focus()
+    modal.setBusy(true)
+    swatch.remove()
+    modal.setBusy(false)
+    expect(document.activeElement).toBe(modal.querySelector('[aria-checked="true"]'))
+  })
+
+  it('returns focus to the control that opened it on close', () => {
+    const gear = document.createElement('button')
+    const modal = openFrom(gear)
+    modal.querySelector<HTMLElement>('.cfg-theme-swatch')!.focus()
+    modal.dismiss()
+    expect(document.activeElement).toBe(gear)
   })
 })

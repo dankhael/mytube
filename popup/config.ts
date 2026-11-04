@@ -24,6 +24,8 @@ export interface ConfigModalCallbacks {
   onFeedback: () => void
 }
 
+export type ConfigModal = HTMLElement & { dismiss(): void; setBusy(busy: boolean): void }
+
 // `homeShortcut` is the current open-home binding (e.g. "Ctrl+Shift+Y"), '' when
 // unset. The caller reads it from chrome.commands and passes it in so this modal
 // stays a pure DOM unit (no chrome dependency, jsdom-testable).
@@ -32,8 +34,11 @@ export function createConfigModal(
   settings: Settings,
   cb: ConfigModalCallbacks,
   homeShortcut = '',
-): HTMLElement {
+): ConfigModal {
+  // Captured before the dialog exists, so closing can hand focus back (usually the gear).
+  const opener = document.activeElement
   const backdrop = el('div', 'cfg-backdrop')
+  backdrop.tabIndex = -1 // holds focus while the controls are locked (setBusy)
   const modal = el('div', 'cfg-modal')
   modal.addEventListener('click', (e) => e.stopPropagation())
   backdrop.appendChild(modal)
@@ -44,14 +49,40 @@ export function createConfigModal(
   // new language the moment the user switches (Decisions §2) — without a reopen
   // and without dropping the sound/accent they changed earlier in the session.
   const shown: Settings = { ...settings }
+  let busy = false
+  let focusBeforeBusy: Element | null = null
 
+  // Not while saving: a reopened dialog would meet the old save's late reply, which
+  // would close it and roll back values the user just chose.
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') destroy()
+    if (e.key === 'Escape' && !busy) destroy()
   }
   function destroy(): void {
     document.body.classList.remove('config-open')
     document.removeEventListener('keydown', onKey)
     backdrop.remove()
+    if (opener instanceof HTMLElement) opener.focus()
+  }
+
+  // Locks the controls during a save, never the backdrop: an inert backdrop stops
+  // catching clicks, so a double-click fell through to the video list underneath.
+  function setBusy(next: boolean): void {
+    if (next === busy) return
+    busy = next
+    if (next) focusBeforeBusy = document.activeElement // inert blurs it, so read first
+    modal.toggleAttribute('inert', next)
+    modal.setAttribute('aria-busy', String(next))
+    if (next) backdrop.focus()
+    else if (backdrop.isConnected) restoreFocusAfterBusy()
+  }
+
+  // A language pick re-renders the modal, detaching the focused radio; its
+  // replacement is the first checked radio, since the language row comes first.
+  function restoreFocusAfterBusy(): void {
+    const previous = focusBeforeBusy
+    const stillThere = previous instanceof HTMLElement && previous.isConnected
+    const target = stillThere ? previous : modal.querySelector<HTMLElement>('[aria-checked="true"]')
+    target?.focus()
   }
 
   function render(): void {
@@ -96,10 +127,13 @@ export function createConfigModal(
   }
 
   document.addEventListener('keydown', onKey)
-  backdrop.addEventListener('click', destroy)
+  // The second click of a double-click lands here while the controls are locked.
+  backdrop.addEventListener('click', () => {
+    if (!busy) destroy()
+  })
 
   render()
-  return backdrop
+  return Object.assign(backdrop, { dismiss: destroy, setBusy })
 }
 
 function header(lang: Language, onClose: () => void): HTMLElement {

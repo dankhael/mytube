@@ -40,9 +40,21 @@ describe('home-page — handleOpenHome (OPEN_HOME message)', () => {
 })
 
 describe('home-page — open-home shortcut', () => {
+  it('uses injected tabs and shortcut URL without a native browser global', () => {
+    vi.stubGlobal('chrome', undefined)
+    try {
+      const create = vi.fn()
+      const shortcutSettingsUrl = 'https://example.test/shortcut-help'
+      openShortcutSettings({ tabs: { create }, shortcutSettingsUrl })
+      expect(create).toHaveBeenCalledWith({ url: shortcutSettingsUrl })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('SHORTCUT-6: openShortcutSettings opens Chrome’s shortcut page', () => {
     const create = vi.fn()
-    openShortcutSettings({ create })
+    openShortcutSettings({ tabs: { create }, shortcutSettingsUrl: SHORTCUTS_PAGE })
     expect(create).toHaveBeenCalledWith({ url: SHORTCUTS_PAGE })
     expect(SHORTCUTS_PAGE).toBe('chrome://extensions/shortcuts')
   })

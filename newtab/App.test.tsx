@@ -170,6 +170,22 @@ describe('home-icon-tiles.spec (home)', () => {
 })
 
 describe('storage-robustness.spec (home)', () => {
+  it('ARCH-8: shows a retryable load error and recovers without presenting an empty library', async () => {
+    const reply = vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
+      ((_msg: unknown, cb: (r: unknown) => void) => cb({ ok: false, error: 'Incomplete sync chunk' })) as never,
+    )
+    render(<App />)
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not load')
+    expect(screen.queryByText(/curated by you/i)).toBeNull()
+    reply.mockImplementation(
+      ((_msg: unknown, cb: (r: unknown) => void) => cb({
+        ok: true, data: { categories: [], videos: [], settings: { ...DEFAULT_SETTINGS } },
+      })) as never,
+    )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByText(/curated by you/i)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
   const LIBRARY = {
     categories: [{ name: 'Tutoriais', emoji: '🎓' }],
     videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],
