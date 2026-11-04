@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest'
 import { SYNC_STORAGE_LIMITS } from './storage-limits'
-import { FakeSyncArea, SyncOp } from '../test/fake-sync-area'
+import { FakeSyncArea, RemoveFailingSyncArea, SyncOp } from '../test/fake-sync-area'
+import { nearQuotaItems } from '../test/near-quota-library'
 import { SyncStorageBackend, LEGACY_KEY, META_KEY } from './storage-backend'
 import { DEFAULT_SETTINGS, StorageData, Video } from './types'
 import { MyTubeStore } from './storage'
@@ -252,5 +253,161 @@ describe('text that storage rewrites (lone surrogates)', () => {
   it('keeps valid emoji byte-for-byte', async () => {
     const store = await saveThenReopen('ok 😀 título')
     expect((await store.getData()).videos[0].title).toBe('ok 😀 título')
+  })
+})
+
+describe('sync-quota-headroom.spec — first fingerprints near the quota', () => {
+  const NEAR_FULL_VIDEOS = 358
+
+  async function readSnapshot(backend: SyncStorageBackend): Promise<StorageData> {
+    const data = await backend.read()
+    if (!data) throw new Error('Expected a stored library, got nothing')
+    return data
+  }
+
+  function withoutFirst(data: StorageData, count = 1): StorageData {
+    return { ...data, videos: data.videos.slice(count) }
+  }
+
+  function setOrRemoveOps(area: FakeSyncArea, after: number): SyncOp[] {
+    return area.ops.slice(after).filter((op) => op.method !== 'get')
+  }
+
+  it('HEADROOM-1: a delete that only fits without hashes succeeds without them', async () => {
+    const area = new FakeSyncArea(nearQuotaItems(NEAR_FULL_VIDEOS, 950))
+    const backend = new SyncStorageBackend(area)
+    const next = withoutFirst(await readSnapshot(backend))
+
+    await backend.write(next)
+
+    expect(await backend.read()).toEqual(next)
+    expect(area.peek(META_KEY)).not.toHaveProperty('chunkHashes')
+  })
+
+  it('HEADROOM-2: hashes are added by the first later write that fits them', async () => {
+    const area = new FakeSyncArea(nearQuotaItems(NEAR_FULL_VIDEOS, 950))
+    const backend = new SyncStorageBackend(area)
+    await backend.write(withoutFirst(await readSnapshot(backend)))
+    const roomy = withoutFirst(await readSnapshot(backend), 30)
+
+    await backend.write(roomy)
+
+    const meta = area.peek(META_KEY) as { chunkCount: number; chunkHashes?: string[] }
+    expect(meta.chunkHashes).toHaveLength(meta.chunkCount)
+    expect(await backend.read()).toEqual(roomy)
+  })
+
+  it('HEADROOM-3: a fingerprinted library is rejected rather than written without hashes', async () => {
+    const area = new FakeSyncArea(nearQuotaItems(NEAR_FULL_VIDEOS, 1300))
+    const backend = new SyncStorageBackend(area)
+    await backend.write(withoutFirst(await readSnapshot(backend)))
+    expect(area.peek(META_KEY)).toHaveProperty('chunkHashes')
+    const before = await readSnapshot(backend)
+    const opsBefore = area.ops.length
+    const grown = { ...before, videos: [...before.videos, { ...video('grownVideo1'), title: 'x'.repeat(300) }] }
+
+    await expect(backend.write(grown)).rejects.toThrow(/quota/i)
+
+    expect(setOrRemoveOps(area, opsBefore)).toEqual([])
+    expect(area.peek(META_KEY)).toHaveProperty('chunkHashes')
+    expect(await backend.read()).toEqual(before)
+  })
+
+  it('HEADROOM-4: a write over the quota even without hashes changes nothing', async () => {
+    const area = new FakeSyncArea(nearQuotaItems(NEAR_FULL_VIDEOS, 100))
+    const backend = new SyncStorageBackend(area)
+    const before = await readSnapshot(backend)
+    const opsBefore = area.ops.length
+    const extra = Array.from({ length: 5 }, (_, index) => video(`extraVideo${index}`))
+
+    await expect(backend.write({ ...before, videos: [...before.videos, ...extra] })).rejects.toThrow(/quota/i)
+
+    expect(setOrRemoveOps(area, opsBefore)).toEqual([])
+    expect(await backend.read()).toEqual(before)
+  })
+
+  it('HEADROOM-5: a committed write succeeds when stale cleanup fails, and the next write retries it', async () => {
+    const area = new RemoveFailingSyncArea()
+    area.failRemoves = false
+    const backend = new SyncStorageBackend(area)
+    await backend.write(library(80))
+    area.failRemoves = true
+
+    await expect(backend.write(library(1))).resolves.toBeUndefined()
+
+    expect(await backend.read()).toEqual(library(1))
+    expect(area.storedKeys()).toContain('mytube:videos:1')
+    area.failRemoves = false
+    await backend.write(library(1))
+    expect(area.storedKeys()).toEqual([META_KEY, 'mytube:videos:0'])
+  })
+
+  // A cleanup that failed, leaving chunks outside the committed snapshot, and a
+  // next write that only fits once those are gone.
+  async function leftoverChunksBlockingAWrite() {
+    const area = new RemoveFailingSyncArea(nearQuotaItems(NEAR_FULL_VIDEOS, 950))
+    const backend = new SyncStorageBackend(area)
+    const full = await readSnapshot(backend)
+    await backend.write({ ...full, videos: full.videos.slice(0, 200) })
+    const committed = await readSnapshot(backend)
+    const leftovers = area.storedKeys().filter((key) => {
+      const { chunkCount } = area.peek(META_KEY) as { chunkCount: number }
+      return key !== META_KEY && Number(key.split(':').pop()) >= chunkCount
+    })
+    expect(leftovers.length).toBeGreaterThan(0)
+    // Metadata grows, not chunks: a write that adds chunks overwrites the leftovers
+    // instead, and the slack in the last chunk absorbs most video edits.
+    const categories = Array.from({ length: 40 }, (_, index) => ({ name: `${'c'.repeat(100)}${index}`, emoji: '📁' }))
+    return { area, backend, full, committed, leftovers, next: { ...committed, categories } }
+  }
+
+  it('HEADROOM-5: leftovers that would keep the next write over the quota are removed first', async () => {
+    const { area, backend, next, leftovers } = await leftoverChunksBlockingAWrite()
+    area.failRemoves = false
+    const opsBefore = area.ops.length
+
+    await backend.write(next)
+
+    expect(await backend.read()).toEqual(next)
+    const { chunkCount } = area.peek(META_KEY) as { chunkCount: number }
+    expect(area.storedKeys()).toHaveLength(chunkCount + 1)
+    const [first, second] = setOrRemoveOps(area, opsBefore)
+    expect(first).toEqual({ method: 'remove', keys: leftovers })
+    expect(second.method).toBe('set')
+  })
+
+  it('HEADROOM-5: if those leftovers still cannot go, the write fails and the snapshot stays', async () => {
+    const { area, backend, next, committed } = await leftoverChunksBlockingAWrite()
+    const opsBefore = area.ops.length
+
+    await expect(backend.write(next)).rejects.toThrow(/remove failure/i)
+
+    expect(setOrRemoveOps(area, opsBefore)).toEqual([])
+    expect(await backend.read()).toEqual(committed)
+  })
+
+  it('HEADROOM-5: a write too big even without leftovers removes nothing', async () => {
+    const { area, backend, full, committed, leftovers } = await leftoverChunksBlockingAWrite()
+    area.failRemoves = false
+    const opsBefore = area.ops.length
+    const extra = Array.from({ length: 30 }, (_, index) => video(`extraVideo${index}`))
+
+    await expect(backend.write({ ...full, videos: [...full.videos, ...extra] })).rejects.toThrow(/quota/i)
+
+    expect(setOrRemoveOps(area, opsBefore)).toEqual([])
+    expect(area.storedKeys()).toEqual(expect.arrayContaining(leftovers))
+    expect(await backend.read()).toEqual(committed)
+  })
+
+  it('HEADROOM-5: chunks of the committed snapshot are never removed before the set', async () => {
+    const area = new FakeSyncArea()
+    const backend = new SyncStorageBackend(area)
+    await backend.write(library(80))
+    const opsBefore = area.ops.length
+
+    await backend.write(library(1))
+
+    const ops = setOrRemoveOps(area, opsBefore)
+    expect(ops.map((op) => op.method)).toEqual(['set', 'remove'])
   })
 })

@@ -22,7 +22,7 @@ and approved the criteria afterwards. Existing Approved criteria are unchanged.
 | ARCH-2 | Runtime callback error, synchronous throw, or missing/invalid reply | Any surface sends a message | A structured error is returned; only a synchronous runtime throw invokes the orphan callback |
 | ARCH-3 | Declared chunk missing or malformed | Reading or mutating | Reject; never return/save a partial library |
 | ARCH-4 | Chunks from different snapshots | Reading a fingerprinted snapshot | Reject mismatching content; accept once matching chunks arrive |
-| ARCH-5 | Valid legacy shards without fingerprints | Read then mutate | Preserve data, add fingerprints on write, retain unchanged chunk optimization |
+| ARCH-5 | Valid legacy shards without fingerprints | Read then mutate | Preserve data, add fingerprints on write (unless they don't fit: HEADROOM-1, approved 2026-11-04), retain unchanged chunk optimization |
 | ARCH-6 | Oversized item or total | Write | Reject before any set/remove operation |
 | ARCH-7 | Real packaged Chrome extension | Save, reload, edit and delete | State survives reload and reflects each acknowledged mutation |
 | ARCH-8 | Initial read or settings save fails | Home/popup handles the response | A retry is offered; failed popup previews restore the last acknowledged preferences |

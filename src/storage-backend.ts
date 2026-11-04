@@ -5,7 +5,7 @@
 import { StorageData } from './types'
 import { browserPlatform } from './browser-platform'
 import { SYNC_STORAGE_LIMITS } from './storage-limits'
-import { canonicalJson, chunkDigest, checkSyncQuota, storedForm } from './sync-integrity'
+import { canonicalJson, chunkDigest, checkSyncQuota, storedForm, syncQuotaViolation } from './sync-integrity'
 
 export interface StorageBackend {
   // Returns undefined when nothing has been persisted yet.
@@ -53,7 +53,7 @@ export class BrowserSyncArea implements SyncArea {
 
 export const LEGACY_KEY = 'mytube'
 export const META_KEY = 'mytube:meta'
-const CHUNK_PREFIX = 'mytube:videos:'
+export const CHUNK_PREFIX = 'mytube:videos:'
 
 // Target serialized size per video chunk. Comfortably under the 8,192-byte
 // per-item quota so re-serialization variance can't push a chunk over (R1).
@@ -63,7 +63,7 @@ export function isMyTubeKey(key: string): boolean {
   return key === LEGACY_KEY || key === META_KEY || key.startsWith(CHUNK_PREFIX)
 }
 
-interface ShardedMeta {
+export interface ShardedMeta {
   generation: number
   chunkCount: number
   chunkHashes?: string[]
@@ -71,11 +71,13 @@ interface ShardedMeta {
   settings: StorageData['settings']
 }
 
-function chunkKey(index: number): string {
+/** Storage key of one chunk. @example chunkKey(2) // 'mytube:videos:2' */
+export function chunkKey(index: number): string {
   return `${CHUNK_PREFIX}${index}`
 }
 
-function chunkIndex(key: string): number {
+/** Position of a chunk from its key. @example chunkIndex('mytube:videos:2') // 2 */
+export function chunkIndex(key: string): number {
   return Number(key.slice(CHUNK_PREFIX.length))
 }
 
@@ -83,7 +85,8 @@ function byteLength(value: string): number {
   return new TextEncoder().encode(value).length
 }
 
-function isShardedMeta(value: unknown): value is ShardedMeta {
+/** Whether a stored value has the metadata shape. @example isShardedMeta(all[META_KEY]) */
+export function isShardedMeta(value: unknown): value is ShardedMeta {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -99,7 +102,8 @@ function isShardedMeta(value: unknown): value is ShardedMeta {
 // Greedy pack videos into chunks under the target size. A single oversized video
 // still gets its own chunk (the length guard guarantees progress), and an empty
 // library produces zero chunks — meta is still written.
-function chunkVideos(videos: StorageData['videos']): StorageData['videos'][] {
+/** @example chunkVideos(data.videos).length // how many chunk keys this library needs */
+export function chunkVideos(videos: StorageData['videos']): StorageData['videos'][] {
   const chunks: StorageData['videos'][] = []
   let current: StorageData['videos'] = []
   let currentBytes = 2 // for the enclosing []
@@ -115,6 +119,77 @@ function chunkVideos(videos: StorageData['videos']): StorageData['videos'][] {
   }
   if (current.length > 0) chunks.push(current)
   return chunks
+}
+
+// Only chunks that changed go in the write (ROB-15).
+function snapshotItems(
+  meta: ShardedMeta, chunks: StorageData['videos'][], current: Record<string, unknown>,
+): Record<string, unknown> {
+  const toSet: Record<string, unknown> = { [META_KEY]: meta }
+  chunks.forEach((videos, index) => {
+    const key = chunkKey(index)
+    const next = { videos }
+    if (canonicalJson(current[key]) !== canonicalJson(next)) toSet[key] = next
+  })
+  return toSet
+}
+
+// A shard layout written before fingerprints existed (1.0.x). A library with no
+// meta at all isn't one: it has nothing to be near the quota with.
+function neverFingerprinted(oldMeta: unknown): boolean {
+  return isShardedMeta(oldMeta) && oldMeta.chunkHashes === undefined
+}
+
+// The keys of the next snapshot. A library's first hashes cost about 67 bytes per
+// chunk, more than a delete frees within ~1.1 KB of the quota, so they wait for a
+// write that has room instead of blocking the delete that would make room
+// (HEADROOM-1). A library that has hashes never loses them (HEADROOM-3).
+async function snapshotToSet(
+  stored: StorageData, chunks: StorageData['videos'][], current: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const oldMeta = current[META_KEY]
+  const meta: ShardedMeta = {
+    generation: isShardedMeta(oldMeta) ? oldMeta.generation + 1 : 1,
+    chunkCount: chunks.length,
+    categories: stored.categories,
+    settings: stored.settings,
+  }
+  const chunkHashes = await Promise.all(chunks.map((videos) => chunkDigest({ videos })))
+  const fingerprinted = snapshotItems({ ...meta, chunkHashes }, chunks, current)
+  const fits = syncQuotaViolation({ ...current, ...fingerprinted }) === undefined
+  return fits || !neverFingerprinted(oldMeta) ? fingerprinted : snapshotItems(meta, chunks, current)
+}
+
+// Chunks outside the committed snapshot: a cleanup that failed (HEADROOM-5) or a
+// stray from another device. Reads ignore them (ROB-16), so unlike the chunks the
+// snapshot declares, they can go before the set without tearing anything.
+function orphanedChunks(current: Record<string, unknown>): string[] {
+  const oldMeta = current[META_KEY]
+  if (!isShardedMeta(oldMeta)) return []
+  return Object.keys(current).filter(
+    (key) => key.startsWith(CHUNK_PREFIX) && chunkIndex(key) >= oldMeta.chunkCount,
+  )
+}
+
+interface WritePlan {
+  current: Record<string, unknown>
+  toSet: Record<string, unknown>
+  orphans: string[]
+}
+
+// Orphans only go first when they are what's keeping the write over the quota.
+// Otherwise the cleanup after the set takes them, and a rejected write has touched
+// nothing (ARCH-6): the caller checks the quota on this plan before removing.
+async function planWrite(
+  stored: StorageData, chunks: StorageData['videos'][], current: Record<string, unknown>,
+): Promise<WritePlan> {
+  const toSet = await snapshotToSet(stored, chunks, current)
+  const orphans = orphanedChunks(current)
+  if (orphans.length === 0 || !syncQuotaViolation({ ...current, ...toSet })) {
+    return { current, toSet, orphans: [] }
+  }
+  const settled = Object.fromEntries(Object.entries(current).filter(([key]) => !orphans.includes(key)))
+  return { current: settled, toSet: await snapshotToSet(stored, chunks, settled), orphans }
 }
 
 // Persists one StorageData snapshot sharded across many sync keys so the binding
@@ -167,38 +242,36 @@ export class SyncStorageBackend implements StorageBackend {
   }
 
   private async writeSharded(data: StorageData, current: Record<string, unknown>): Promise<void> {
-    const oldMeta = current[META_KEY]
-    const generation = isShardedMeta(oldMeta) ? oldMeta.generation + 1 : 1
     // Before chunking, hashing and the quota check, so all three see what storage
     // will really hold; every write path (save, import, backfill, migration) lands here.
     const stored = storedForm(data)
     const chunks = chunkVideos(stored.videos)
-
-    const meta: ShardedMeta = {
-      generation,
-      chunkCount: chunks.length,
-      chunkHashes: await Promise.all(chunks.map((videos) => chunkDigest({ videos }))),
-      categories: stored.categories,
-      settings: stored.settings,
-    }
-
-    const toSet: Record<string, unknown> = { [META_KEY]: meta }
-    chunks.forEach((videos, index) => {
-      const key = chunkKey(index)
-      const next = { videos }
-      // Skip chunks whose serialized content is unchanged (ROB-15).
-      if (canonicalJson(current[key]) !== canonicalJson(next)) toSet[key] = next
-    })
+    const plan = await planWrite(stored, chunks, current)
     // Include stale/legacy keys until removal actually succeeds. A quota error
     // must not partially mutate the snapshot even with a non-atomic backend.
-    checkSyncQuota({ ...current, ...toSet })
-    await this.area.set(toSet)
+    checkSyncQuota({ ...plan.current, ...plan.toSet })
+    if (plan.orphans.length > 0) await this.area.remove(plan.orphans)
+    await this.area.set(plan.toSet)
+    await this.removeStaleChunks(plan.current, chunks.length)
+  }
 
-    // Remove chunk keys left over from a previously larger library (ROB-17).
+  // Remove chunk keys left over from a previously larger library (ROB-17). By now
+  // the new snapshot is committed and stale chunks are ignored on read (ROB-16), so
+  // a failure here isn't a failed write: the next write finds them again and retries,
+  // and reporting it would say a delete didn't happen when it did (HEADROOM-5).
+  private async removeStaleChunks(current: Record<string, unknown>, chunkCount: number): Promise<void> {
     const stale = Object.keys(current).filter(
-      (key) => key.startsWith(CHUNK_PREFIX) && chunkIndex(key) >= chunks.length,
+      (key) => key.startsWith(CHUNK_PREFIX) && chunkIndex(key) >= chunkCount,
     )
-    if (stale.length > 0) await this.area.remove(stale)
+    if (stale.length === 0) return
+    try {
+      await this.area.remove(stale)
+    } catch (error) {
+      console.error(JSON.stringify({
+        source: 'mytube.storage', task: 'removeStaleChunks', keys: stale,
+        error: error instanceof Error ? error.message : String(error),
+      }))
+    }
   }
 
   async bytesInUse(): Promise<number> {
@@ -206,14 +279,24 @@ export class SyncStorageBackend implements StorageBackend {
   }
 }
 
+/**
+ * Absent hashes are fine (HEADROOM, 1.0.x layouts); present ones must all be digests.
+ * @example hasValidChunkHashes({ ...meta, chunkHashes: ['short'] }) // false
+ */
+export function hasValidChunkHashes(meta: ShardedMeta): boolean {
+  const hashes: unknown = meta.chunkHashes
+  if (hashes === undefined) return true
+  return Array.isArray(hashes) && hashes.length === meta.chunkCount &&
+    hashes.every((hash) => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash))
+}
+
 // Assemble exactly the chunks meta declares; a stray chunk beyond chunkCount
 // (older generation, torn cross-device sync) is ignored and never rewritten
 // during the read (ROB-16).
 async function assembleSnapshot(meta: ShardedMeta, all: Record<string, unknown>): Promise<StorageData> {
-  if (meta.chunkHashes !== undefined && (
-    !Array.isArray(meta.chunkHashes) || meta.chunkHashes.length !== meta.chunkCount ||
-    !meta.chunkHashes.every((hash) => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash))
-  )) throw new Error(`Invalid chunk hashes at ${META_KEY}: expected ${meta.chunkCount} SHA-256 digests`)
+  if (!hasValidChunkHashes(meta)) {
+    throw new Error(`Invalid chunk hashes at ${META_KEY}: expected ${meta.chunkCount} SHA-256 digests`)
+  }
   const videos: StorageData['videos'] = []
   for (let index = 0; index < meta.chunkCount; index++) {
     const key = chunkKey(index)

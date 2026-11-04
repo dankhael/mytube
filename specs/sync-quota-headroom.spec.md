@@ -8,10 +8,11 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Freeing space in a nearly full library
 
-- **Status:** Approved by the owner 2026-11-04 (not implemented yet).
+- **Status:** Approved by the owner 2026-11-04. Implemented; HEADROOM-1..6 green.
 - **Owner:** dankhael
-- **Contract:** no new `Message` variant, no `StorageData` change. Layout only:
-  `writeSharded` in [src/storage-backend.ts](../src/storage-backend.ts).
+- **Contract:** no new `Message` variant, no `StorageData` change. Layout and quota math only:
+  `writeSharded` in [src/storage-backend.ts](../src/storage-backend.ts),
+  `syncItemBytes` in [src/sync-integrity.ts](../src/sync-integrity.ts).
 - **Amends:** `ARCH-5` in [browser-foundation](./browser-foundation.spec.md) ("add
   fingerprints on write"). Approving this spec approves that exception; `ARCH-6` is unchanged.
 - **Tests:** `src/storage-backend.test.ts`; `e2e/smoke.spec.ts` for HEADROOM-6.
@@ -43,6 +44,13 @@ videos): 1,261 bytes free still passes, 952 bytes free rejects with `102603 byte
   free space, but an interruption between the two steps would leave a torn snapshot, which
   is exactly the state the integrity check blocks forever. The write stays one `set`,
   followed by removing stale keys, so the old snapshot survives until the new one exists.
+  The one exception can't tear anything: chunks outside the committed snapshot.
+- **Leftovers go first only when they are the problem.** After a failed cleanup, stale keys
+  count against the quota, and a write that fits only without them would be rejected before
+  the cleanup ever ran, so "the next write retries" would be false right at the limit. Reads
+  ignore those chunks (ROB-16), so they can go before the `set`. That happens only if they
+  are what keeps the write over the quota and it fits without them; a write that doesn't fit
+  either way removes nothing (ARCH-6). If this removal fails, the write fails, unchanged.
 - **Cost, stated plainly:** a library at this edge has no mixed-sync detection until it
   frees space. That is the same protection it had on 1.0.x, so nothing regresses.
 - **Only for libraries that never had hashes.** Dropping them from a fingerprinted library
@@ -53,6 +61,13 @@ videos): 1,261 bytes free still passes, 952 bytes free rejects with `102603 byte
   applies its quota to `set` before stale keys go, so a repack that drops a chunk near the
   limit can still be rejected, with or without hashes. It stays rejected on purpose, with
   the library intact and an error shown; removing a category gets out of it.
+- **The quota check counts bytes the way Chrome does.** HEADROOM-6 showed Chrome charges
+  more than `JSON.stringify` suggests: it prints a timestamp as `1.730000000123e+12`, 5 bytes
+  longer, and writes `<` as `\u003C`. Counting plain JSON, the check said the hashes fit, the
+  browser refused the `set`, and the delete still failed while every unit test passed. So
+  `syncItemBytes` matches `getBytesInUse`, and an e2e compares the two. The figures in Why
+  predate this and use plain JSON; the criteria don't depend on them. Chunk packing still
+  uses plain JSON, because changing it would repack every library.
 - **A failed cleanup is not a failed write.** Once `set` resolves, the new snapshot is the
   library. Reporting a failure there would tell the user a delete didn't happen when it did,
   and the UI would re-read and show it gone anyway (HEADROOM-5).

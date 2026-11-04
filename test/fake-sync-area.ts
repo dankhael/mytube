@@ -86,3 +86,13 @@ export class FakeSyncArea implements SyncArea {
       .filter((key) => key.startsWith(prefix))
   }
 }
+
+// A set can commit while the cleanup right after it fails (HEADROOM-5).
+export class RemoveFailingSyncArea extends FakeSyncArea {
+  failRemoves = true
+
+  async remove(keys: string[]): Promise<void> {
+    if (this.failRemoves) throw new Error(`Simulated remove failure for ${keys.join(', ')}`)
+    await super.remove(keys)
+  }
+}
