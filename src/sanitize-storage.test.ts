@@ -46,6 +46,16 @@ describe('security-hardening.spec — sanitize-storage', () => {
     expect(JSON.stringify(sanitizeStorageData(snapshot))).toBe(JSON.stringify(snapshot))
   })
 
+  it('SEC-14: an empty category list is well-formed and stays empty (CATDEL-5)', () => {
+    const snapshot = { categories: [], videos: [], settings: { ...DEFAULT_SETTINGS } }
+    expect(sanitizeStorageData(snapshot).categories).toEqual([])
+  })
+
+  it('SEC-15: a category list with only malformed entries falls back to the defaults', () => {
+    const snapshot = { categories: [null, 42], videos: [], settings: { ...DEFAULT_SETTINGS } }
+    expect(sanitizeStorageData(snapshot).categories).toEqual(DEFAULT_DATA.categories)
+  })
+
   it('SEC-15: garbage roots yield a valid default-built StorageData without throwing', () => {
     const garbage: unknown[] = [undefined, null, 42, {}, { videos: 'nope' }]
     for (const raw of garbage) {

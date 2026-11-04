@@ -106,6 +106,7 @@ const EN = {
   'cat.emptyTitle': 'Nothing here yet',
   'cat.emptyHint': 'Click “+ Save” on any video to drop it into {name}.',
   'cat.confirmDelete': 'Delete the category "{name}"?',
+  'cat.confirmDeleteBucket': 'Delete "{name}" and its {count} videos?',
   'cat.confirmDeleteWithVideos':
     'Delete "{name}"?\n\nOK = delete the category AND its {count} videos.\nCancel = keep the videos (move them to "{uncategorized}").',
 
@@ -224,6 +225,7 @@ const PT_BR: Record<MessageKey, string> = {
   'cat.emptyTitle': 'Nada aqui ainda',
   'cat.emptyHint': 'Clique em “+ Salvar” em qualquer vídeo para jogá-lo em {name}.',
   'cat.confirmDelete': 'Deletar a categoria "{name}"?',
+  'cat.confirmDeleteBucket': 'Deletar "{name}" e seus {count} vídeos?',
   'cat.confirmDeleteWithVideos':
     'Deletar "{name}"?\n\nOK = apagar a categoria E seus {count} vídeos.\nCancelar = manter os vídeos (movê-los para "{uncategorized}").',
 

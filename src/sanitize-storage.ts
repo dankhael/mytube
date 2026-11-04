@@ -75,7 +75,11 @@ function withGatedIcon(category: Category): Category {
 function sanitizedCategories(value: unknown): Category[] {
   if (!Array.isArray(value)) return structuredClone(DEFAULT_DATA.categories)
   const kept = value.filter(isStoredCategory).map(withGatedIcon)
-  return kept.length > 0 ? kept : structuredClone(DEFAULT_DATA.categories)
+  // [] is a real state: the user deleted every category, and restoring the
+  // defaults would bring them all back (CATDEL-5). Only a list that lost every
+  // entry to malformation falls back.
+  const lostEveryEntry = value.length > 0 && kept.length === 0
+  return lostEveryEntry ? structuredClone(DEFAULT_DATA.categories) : kept
 }
 
 // Merge over defaults so options added after this snapshot was saved fall back

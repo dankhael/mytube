@@ -164,18 +164,16 @@ export class MyTubeStore {
   async deleteCategory(name: string, deleteVideos: boolean): Promise<StorageData> {
     return this.enqueue(async () => {
       const data = await this.getData()
+      const hasVideos = data.videos.some((v) => v.category === name)
+      // The bucket has nowhere to move its own videos, so keeping them means
+      // keeping it (CATDEL-6).
+      if (name === UNCATEGORIZED && hasVideos && !deleteVideos) return data
       data.categories = data.categories.filter((c) => c.name !== name)
 
       if (deleteVideos) {
         data.videos = data.videos.filter((v) => v.category !== name)
-      } else {
-        // Move orphaned videos to "Sem categoria", recreating it if needed.
-        if (!data.categories.some((c) => c.name === UNCATEGORIZED)) {
-          data.categories.push({ name: UNCATEGORIZED, emoji: '📁' })
-        }
-        data.videos.forEach((v) => {
-          if (v.category === name) v.category = UNCATEGORIZED
-        })
+      } else if (hasVideos) {
+        moveVideosToUncategorized(data, name)
       }
 
       return this.commit(data)
@@ -238,6 +236,18 @@ export class MyTubeStore {
       return this.commit(data)
     })
   }
+}
+
+// Move orphaned videos to "Sem categoria", recreating it if needed. Only called
+// when something actually moves: the bucket is a destination for orphans, not a
+// mandatory category (CATDEL-4, spec D2).
+function moveVideosToUncategorized(data: StorageData, fromCategory: string): void {
+  if (!data.categories.some((c) => c.name === UNCATEGORIZED)) {
+    data.categories.push({ name: UNCATEGORIZED, emoji: '📁' })
+  }
+  data.videos.forEach((v) => {
+    if (v.category === fromCategory) v.category = UNCATEGORIZED
+  })
 }
 
 export function unwatchedCount(data: StorageData): number {
