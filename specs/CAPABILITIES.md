@@ -36,14 +36,16 @@ Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transp
   videos. This can block the library indefinitely; retry is not data recovery.
 - The home measures total sync usage; load failures offer a read retry, while
   popup failures offer a page reload and roll back unacknowledged previews.
-- Approved fail-closed tradeoff: integrity wins over availability; a future
-  recovery flow needs its own spec (backup, preview, explicit confirmation).
+- Approved fail-closed tradeoff: integrity wins over availability; the way out is
+  `sync-recovery` (backup, preview, explicit confirmation).
 - Snapshots are normalized to their stored form before chunking, hashing and the
   quota check, so text storage rewrites (lone surrogates) can't break a fingerprint.
 - A nearly full library can still free space: first-time fingerprints wait for a write
   with room, and the quota check counts bytes as Chrome does (`syncItemBytes`; HEADROOM-1..6).
-- _Pending (Approved, not implemented, `sync-recovery` RECOVER): export, preview and confirmed repair for
-  a blocked library; nothing is repaired automatically._
+- A blocked library offers a backup export and a per-chunk check next to Retry; both only
+  read ([src/sync-recovery.ts](../src/sync-recovery.ts); RECOVER-1..4).
+- _Pending (Approved, not implemented, `sync-recovery` RECOVER-5..10): confirmed repair.
+  Nothing is repaired automatically._
 
 ## Save from YouTube
 

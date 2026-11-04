@@ -8,14 +8,16 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Recovering a blocked library
 
-- **Status:** Approved by the owner 2026-11-04 (not implemented yet).
+- **Status:** Approved by the owner 2026-11-04. Slice 1 implemented, RECOVER-1..4 green.
+  Slice 2 not started: it waits for its own review.
 - **Owner:** dankhael
-- **Contract:** new `Message` variants in [src/types.ts](../src/types.ts), one per step:
-  export, preview and apply. Names are settled at implementation.
+- **Contract:** new `Message` variants in [src/types.ts](../src/types.ts), one per step.
+  Slice 1: `EXPORT_SYNC_KEYS`, `PREVIEW_SYNC_RECOVERY`. Apply arrives with slice 2.
 - **Builds on:** the fail-closed decision in
   [browser-foundation](./browser-foundation.spec.md), which requires this flow to have its
   own criteria, a backup of the original keys, a preview and explicit confirmation.
-- **Tests:** new `src/sync-recovery.test.ts`; home in `newtab/App.test.tsx`.
+- **Tests:** `src/sync-recovery.test.ts`, `newtab/components/RecoveryTools.test.tsx`;
+  home in `newtab/App.test.tsx`; real Chrome in `e2e/smoke.spec.ts`.
 
 ## Why
 
@@ -34,7 +36,7 @@ today. The question is what happens the first time one is, after this ships.
 |---|---|---|---|
 | **RECOVER-1** | a blocked library | the user exports | they get a file with every MyTube key, the legacy `mytube` key included as well as `mytube:*`, each key and value unaltered from what storage returned, and no stored key changes |
 | **RECOVER-2** | a blocked library | the home shows its load error | export is offered next to Retry; a library that loads doesn't offer it |
-| **RECOVER-3** | chunks that are intact, mismatching, malformed and missing | previewing | each chunk is reported with its state and video count, plus the total recoverable and the total of declared chunks unavailable; no key changes |
+| **RECOVER-3** | chunks that are intact, mismatching, malformed and missing | previewing | each chunk is reported with its state and video count, plus the videos verified (intact chunks), the videos present but not verified (mismatching chunks) and the declared chunks unavailable (malformed or missing); no key changes |
 | **RECOVER-4** | a mismatching chunk holding U+FFFD | previewing | it is flagged as possibly rewritten text, as information only; it changes no state and enables no repair by itself |
 
 **Slice 2: writes to storage.**
@@ -53,6 +55,14 @@ today. The question is what happens the first time one is, after this ships.
 - **A mismatching hash is never accepted on its own.** It can mean rewritten text, a torn
   sync or a chunk that simply hasn't arrived yet, and the extension can't tell them apart.
   Only a person with the preview and a backup in hand decides (RECOVER-6, RECOVER-10).
+- **Verified and present are separate numbers.** Only intact chunks are verified, and that
+  is all a repair may keep by default. Mismatching chunks are counted apart as present but
+  not verified, so "0 verified" can't suggest a backup holding videos is empty. With no
+  usable metadata nothing can be verified, so stored chunks all report as mismatching.
+- **Keeping mismatching content is slice 2's call.** Whether a repair may offer it, and what
+  RECOVER-6 then names as kept and lost, must be decided explicitly in that review.
+- **Recovery reads skip `SyncStorageBackend.read()`.** That read is what fails, and it can
+  also write (legacy migration and removal), which would break RECOVER-1.
 - **Slices ship separately.** Slice 1 can't lose data and already removes the worst case,
   being locked out of your own library. Slice 2 overwrites storage, so it earns its own review.
 - **Export is a local file.** Nothing leaves the machine, so `docs/PRIVACY.md` and the
@@ -72,5 +82,6 @@ today. The question is what happens the first time one is, after this ships.
 
 ## Manual acceptance (not unit-tested)
 
-- [ ] With a tampered chunk in real Chrome, the export file holds the tampered value unaltered.
+- [x] With a tampered chunk in real Chrome, the export file holds the tampered value unaltered
+  (automated: `RECOVER-1` in `e2e/smoke.spec.ts`).
 - [ ] Two synced profiles: a preview taken on one is rejected after the other writes (RECOVER-7).

@@ -10,6 +10,7 @@ import type { Message, MessageResponse, StorageData } from '../src/types'
 import { META_KEY } from '../src/storage-backend'
 import { SYNC_STORAGE_LIMITS } from '../src/storage-limits'
 import { hashlessItems, nearQuotaItems, syncBytes } from '../test/near-quota-library'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -168,6 +169,39 @@ test('HEADROOM-5: leftover chunks stop blocking writes in real Chrome', async ()
   expect(keys).not.toContain('mytube:videos:10')
   await page.reload()
   expect(await storedVideoCount(page)).toBe(committedVideos)
+  await page.close()
+})
+
+test('RECOVER-1: a blocked library exports every key unaltered and can be checked', async () => {
+  const id = await extensionId()
+  const page = await context.newPage()
+  await page.goto(`chrome-extension://${id}/newtab/index.html`)
+  await request(page, {
+    action: 'SAVE_VIDEO', category: 'Recovery smoke',
+    video: { id: 'testVideo03', title: 'Original title', channelName: 'Test channel', thumbnail: '' },
+  })
+  const stored = await page.evaluate(async () => {
+    const chunk = (await chrome.storage.sync.get('mytube:videos:0'))['mytube:videos:0']
+    chunk.videos[0].title = 'Tampered \ufffd title'
+    await chrome.storage.sync.set({ 'mytube:videos:0': chunk })
+    return chrome.storage.sync.get(null)
+  })
+
+  await page.reload()
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Could not load')
+  const download = page.waitForEvent('download')
+  await alert.getByRole('button', { name: 'Export backup' }).click()
+  const file = await download
+  expect(file.suggestedFilename()).toMatch(/^mytube-backup-\d{4}-\d{2}-\d{2}\.json$/)
+  const exported: unknown = JSON.parse(readFileSync(await file.path(), 'utf8'))
+  expect(exported).toEqual(stored)
+
+  await alert.getByRole('button', { name: 'Check library' }).click()
+  await expect(alert).toContainText('Part 1: not verified, 1 video')
+  await expect(alert).toContainText('may have been rewritten')
+  await expect(alert).toContainText('Verified: 0 videos. Present but not verified: 1 video. Unavailable: 0 of 1 parts.')
+  expect(await page.evaluate(() => chrome.storage.sync.get(null))).toEqual(stored)
   await page.close()
 })
 

@@ -6,6 +6,19 @@ interface MessageOptions {
   onUnavailable?: () => void
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isRecoveryPreview(value: unknown): boolean {
+  return isObject(value) && typeof value.metadata === 'string'
+    && typeof value.verifiedVideos === 'number' && typeof value.unverifiedVideos === 'number'
+    && typeof value.unavailableChunks === 'number'
+    && Array.isArray(value.chunks) && value.chunks.every((chunk: unknown) =>
+      isObject(chunk) && typeof chunk.key === 'string' && typeof chunk.state === 'string'
+      && typeof chunk.videoCount === 'number')
+}
+
 function responseEnvelope(value: unknown): value is MessageResponse {
   if (!value || typeof value !== 'object' || !('ok' in value)) return false
   if (value.ok === false) return 'error' in value && typeof value.error === 'string'
@@ -16,6 +29,8 @@ function responseEnvelope(value: unknown): value is MessageResponse {
       && 'categories' in data && Array.isArray(data.categories)
       && 'settings' in data && !!data.settings && typeof data.settings === 'object'
   }
+  if ('syncKeys' in value) return isObject(value.syncKeys)
+  if ('recoveryPreview' in value) return isRecoveryPreview(value.recoveryPreview)
   return !('ids' in value) || (Array.isArray(value.ids) && value.ids.every((entry: unknown) =>
     !!entry && typeof entry === 'object' && 'id' in entry && typeof entry.id === 'string'
     && 'category' in entry && typeof entry.category === 'string'))

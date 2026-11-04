@@ -41,6 +41,28 @@ describe('shared message transport', () => {
     expect(calls).toBe(1)
   })
 
+  it('RECOVER-1: passes an export through and rejects a malformed one', async () => {
+    const runtime = new FakeRuntime()
+    runtime.reply = { ok: true, syncKeys: { 'mytube:meta': 'anything at all' } }
+    expect(await sendMessage({ action: 'EXPORT_SYNC_KEYS' }, { runtime })).toEqual(runtime.reply)
+    runtime.reply = { ok: true, syncKeys: null }
+    expect(await sendMessage({ action: 'EXPORT_SYNC_KEYS' }, { runtime })).toMatchObject({ ok: false })
+  })
+
+  it('RECOVER-3: passes a preview through and rejects malformed ones', async () => {
+    const runtime = new FakeRuntime()
+    const preview = {
+      metadata: 'valid', verifiedVideos: 1, unverifiedVideos: 0, unavailableChunks: 0,
+      chunks: [{ key: 'mytube:videos:0', state: 'intact', videoCount: 1, possiblyRewritten: false }],
+    }
+    runtime.reply = { ok: true, recoveryPreview: preview }
+    expect(await sendMessage({ action: 'PREVIEW_SYNC_RECOVERY' }, { runtime })).toEqual(runtime.reply)
+    for (const recoveryPreview of [null, {}, { ...preview, chunks: [null] }, { ...preview, verifiedVideos: '1' }, { ...preview, unverifiedVideos: undefined }]) {
+      runtime.reply = { ok: true, recoveryPreview }
+      expect(await sendMessage({ action: 'PREVIEW_SYNC_RECOVERY' }, { runtime })).toMatchObject({ ok: false })
+    }
+  })
+
   it('ARCH-2: rejects absent and malformed envelopes instead of crashing callers', async () => {
     const runtime = new FakeRuntime()
     for (const reply of [undefined, null, {}, { ok: 'yes' }, { ok: false }, { ok: true, data: null }, { ok: true, ids: [null] }]) {

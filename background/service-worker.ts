@@ -2,7 +2,8 @@
 
 import { backgroundTask } from '../src/background-task'
 import { browserPlatform } from '../src/browser-platform'
-import { SyncStorageBackend, isMyTubeKey } from '../src/storage-backend'
+import { BrowserSyncArea, SyncStorageBackend, isMyTubeKey } from '../src/storage-backend'
+import { exportSyncKeys, previewSyncRecovery } from '../src/sync-recovery'
 import { MyTubeStore, unwatchedCount } from '../src/storage'
 import { createBackfillRunner } from '../src/backfill'
 import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
@@ -17,7 +18,8 @@ import { Message, MessageResponse, StorageData, Video } from '../src/types'
 
 const platform = browserPlatform()
 
-const store = new MyTubeStore(new SyncStorageBackend())
+const syncArea = new BrowserSyncArea()
+const store = new MyTubeStore(new SyncStorageBackend(syncArea))
 
 // Module scope == one runner per service-worker session: its failure cache
 // dies with the worker, so dead videos stop being re-fetched forever (M1)
@@ -195,6 +197,10 @@ async function handle(incoming: Message): Promise<MessageResponse> {
         const data = await store.getData()
         return { ok: true, ids: data.videos.map((v) => ({ id: v.id, category: v.category })) }
       }
+      case 'EXPORT_SYNC_KEYS':
+        return { ok: true, syncKeys: await exportSyncKeys(syncArea) }
+      case 'PREVIEW_SYNC_RECOVERY':
+        return { ok: true, recoveryPreview: await previewSyncRecovery(syncArea) }
       default:
         return { ok: false, error: 'Unknown action' }
     }
