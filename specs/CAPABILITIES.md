@@ -36,6 +36,8 @@ Integration [src/browser-platform.ts](../src/browser-platform.ts), shared transp
   videos. This can block the library indefinitely; retry is not data recovery.
 - The home measures total sync usage; load failures offer a read retry, while
   popup failures offer a page reload and roll back unacknowledged previews.
+- Only the newest read counts in the home, and load errors before settings exist follow
+  the browser language.
 - Approved fail-closed tradeoff: integrity wins over availability; the way out is
   `sync-recovery` (backup, preview, explicit confirmation).
 - Snapshots are normalized to their stored form before chunking, hashing and the

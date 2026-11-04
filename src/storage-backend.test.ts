@@ -411,3 +411,68 @@ describe('sync-quota-headroom.spec — first fingerprints near the quota', () =>
     expect(ops.map((op) => op.method)).toEqual(['set', 'remove'])
   })
 })
+
+// CLAUDE.md: exception messages carry the offending value and the expected shape.
+// A blocked library logs nothing else that says what broke.
+describe('errors from a blocked library', () => {
+  async function storedLibrary(): Promise<FakeSyncArea> {
+    const area = new FakeSyncArea()
+    await new SyncStorageBackend(area).write(library(2))
+    return area
+  }
+
+  it('invalid metadata shows the value found and the shape expected', async () => {
+    const area = new FakeSyncArea({ [META_KEY]: { generation: -1 } })
+    const backend = new SyncStorageBackend(area)
+    for (const attempt of [backend.read(), backend.write(library(1))]) {
+      await expect(attempt).rejects.toThrow(/got \{"generation":-1\}; expected \{ generation, chunkCount/)
+    }
+  })
+
+  it('orphan chunks name the keys that have no metadata', async () => {
+    const area = new FakeSyncArea({ 'mytube:videos:3': { videos: [] } })
+    await expect(new SyncStorageBackend(area).write(library(1))).rejects.toThrow(/found mytube:videos:3; expected/)
+  })
+
+  it('many orphan chunks are listed briefly, with the total', async () => {
+    const orphans = Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`mytube:videos:${index}`, { videos: [] }]))
+    const failure = await new SyncStorageBackend(new FakeSyncArea(orphans)).write(library(1))
+      .catch((error: Error) => error.message)
+    expect(String(failure)).toContain('300 keys')
+    expect(String(failure)).toContain('mytube:videos:0')
+    expect(String(failure).length).toBeLessThan(200)
+  })
+
+  it('bad hash metadata shows what was stored and how many digests it needs', async () => {
+    const area = await storedLibrary()
+    await area.set({ [META_KEY]: { ...(area.peek(META_KEY) as object), chunkHashes: ['short'] } })
+    await expect(new SyncStorageBackend(area).read()).rejects.toThrow(/got \["short"\]; expected 1 SHA-256/)
+  })
+
+  it('a malformed chunk shows what it holds instead of videos', async () => {
+    const area = await storedLibrary()
+    await area.set({ 'mytube:videos:0': { videos: 'broken' } })
+    await expect(new SyncStorageBackend(area).read()).rejects.toThrow(/mytube:videos:0: got \{"videos":"broken"\}; expected \{ videos: \[/)
+  })
+
+  it('a missing chunk says so', async () => {
+    const area = await storedLibrary()
+    await area.remove(['mytube:videos:0'])
+    await expect(new SyncStorageBackend(area).read()).rejects.toThrow(/mytube:videos:0: got undefined; expected/)
+  })
+
+  it('a fingerprint mismatch shows both digests', async () => {
+    const area = await storedLibrary()
+    const { chunkHashes } = area.peek(META_KEY) as { chunkHashes: string[] }
+    await area.set({ 'mytube:videos:0': { videos: [] } })
+    await expect(new SyncStorageBackend(area).read()).rejects.toThrow(
+      new RegExp(`fingerprint mismatch: got [a-f0-9]{12}…, expected ${chunkHashes[0].slice(0, 12)}…`))
+  })
+
+  it('a long stored value is cut so the message stays readable', async () => {
+    const area = await storedLibrary()
+    await area.set({ 'mytube:videos:0': { other: 'x'.repeat(5000) } })
+    const failure = await new SyncStorageBackend(area).read().catch((error: Error) => error.message)
+    expect(String(failure).length).toBeLessThan(200)
+  })
+})

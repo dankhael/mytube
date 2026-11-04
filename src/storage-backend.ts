@@ -99,6 +99,29 @@ export function isShardedMeta(value: unknown): value is ShardedMeta {
   )
 }
 
+const STORED_VALUE_PREVIEW = 80
+const DIGEST_PREVIEW = 12
+const KEY_PREVIEW = 3
+
+// These errors reach the home's toast as well as the logs, so stored values are cut.
+function describeStored(value: unknown): string {
+  const text = JSON.stringify(value) ?? String(value)
+  return text.length > STORED_VALUE_PREVIEW ? `${text.slice(0, STORED_VALUE_PREVIEW)}…` : text
+}
+
+function describeKeys(keys: string[]): string {
+  if (keys.length <= KEY_PREVIEW) return keys.join(', ')
+  return `${keys.slice(0, KEY_PREVIEW).join(', ')}… (${keys.length} keys)`
+}
+
+function shortDigest(digest: string): string {
+  return `${digest.slice(0, DIGEST_PREVIEW)}…`
+}
+
+function invalidMetaError(value: unknown): Error {
+  return new Error(`Invalid sync metadata at ${META_KEY}: got ${describeStored(value)}; expected { generation, chunkCount, categories, settings }`)
+}
+
 // Greedy pack videos into chunks under the target size. A single oversized video
 // still gets its own chunk (the length guard guarantees progress), and an empty
 // library produces zero chunks — meta is still written.
@@ -212,7 +235,7 @@ export class SyncStorageBackend implements StorageBackend {
     }
 
     if (meta !== undefined || Object.keys(all).some((key) => key.startsWith(CHUNK_PREFIX))) {
-      throw new Error(`Invalid sync metadata at ${META_KEY}: expected a complete snapshot`)
+      throw invalidMetaError(meta)
     }
 
     const legacy = all[LEGACY_KEY]
@@ -233,10 +256,13 @@ export class SyncStorageBackend implements StorageBackend {
     // A background read may race with incoming remote chunks. Never overwrite
     // an incomplete snapshot merely because an earlier reducer read succeeded.
     if (all[META_KEY] !== undefined) {
-      if (!isShardedMeta(all[META_KEY])) throw new Error(`Invalid sync metadata at ${META_KEY}`)
+      if (!isShardedMeta(all[META_KEY])) throw invalidMetaError(all[META_KEY])
       await assembleSnapshot(all[META_KEY], all)
-    } else if (Object.keys(all).some((key) => key.startsWith(CHUNK_PREFIX))) {
-      throw new Error(`Missing sync metadata at ${META_KEY}: refusing to overwrite orphan chunks`)
+    } else {
+      const orphans = Object.keys(all).filter((key) => key.startsWith(CHUNK_PREFIX))
+      if (orphans.length > 0) {
+        throw new Error(`Missing sync metadata at ${META_KEY}: found ${describeKeys(orphans)}; expected metadata before overwriting chunks`)
+      }
     }
     await this.writeSharded(data, all)
   }
@@ -290,23 +316,27 @@ export function hasValidChunkHashes(meta: ShardedMeta): boolean {
     hashes.every((hash) => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash))
 }
 
+async function verifyChunk(key: string, videos: StorageData['videos'], expected: string): Promise<void> {
+  const actual = await chunkDigest({ videos })
+  if (actual === expected) return
+  throw new Error(`Inconsistent sync chunk ${key}: fingerprint mismatch: got ${shortDigest(actual)}, expected ${shortDigest(expected)}; retry after synchronization`)
+}
+
 // Assemble exactly the chunks meta declares; a stray chunk beyond chunkCount
 // (older generation, torn cross-device sync) is ignored and never rewritten
 // during the read (ROB-16).
 async function assembleSnapshot(meta: ShardedMeta, all: Record<string, unknown>): Promise<StorageData> {
   if (!hasValidChunkHashes(meta)) {
-    throw new Error(`Invalid chunk hashes at ${META_KEY}: expected ${meta.chunkCount} SHA-256 digests`)
+    throw new Error(`Invalid chunk hashes at ${META_KEY}: got ${describeStored(meta.chunkHashes)}; expected ${meta.chunkCount} SHA-256 digests`)
   }
   const videos: StorageData['videos'] = []
   for (let index = 0; index < meta.chunkCount; index++) {
     const key = chunkKey(index)
     const chunk = all[key] as { videos?: StorageData['videos'] } | undefined
     if (!chunk || !Array.isArray(chunk.videos)) {
-      throw new Error(`Incomplete sync chunk ${key}: expected videos array; retry after synchronization`)
+      throw new Error(`Incomplete sync chunk ${key}: got ${describeStored(chunk)}; expected { videos: [...] }; retry after synchronization`)
     }
-    if (meta.chunkHashes && await chunkDigest({ videos: chunk.videos }) !== meta.chunkHashes[index]) {
-      throw new Error(`Inconsistent sync chunk ${key}: fingerprint mismatch; retry after synchronization`)
-    }
+    if (meta.chunkHashes) await verifyChunk(key, chunk.videos, meta.chunkHashes[index])
     videos.push(...chunk.videos)
   }
   return { categories: meta.categories, videos, settings: meta.settings }

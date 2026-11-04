@@ -9,6 +9,7 @@ import { renderPopup } from './render'
 import { unwatchedLabel, watchUrl } from './groups'
 import { createConfigModal, type ConfigModal } from './config'
 import { showPopupError } from './status'
+import { detectLanguage } from '../src/i18n'
 import { createClickPlayer, playClick } from './sound'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
@@ -42,7 +43,8 @@ async function init(): Promise<void> {
 
   const res = await send({ action: 'GET_ALL' })
   if (!res.ok || !('data' in res) || !res.data) {
-    showPopupError(() => location.reload())
+    // The saved language is in the library that just failed to load.
+    showPopupError(() => location.reload(), detectLanguage(navigator.language))
     return
   }
   let data = res.data

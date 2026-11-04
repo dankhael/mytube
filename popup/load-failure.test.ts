@@ -22,6 +22,8 @@ class RecordingTabs {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  vi.resetModules()
   document.body.replaceChildren()
 })
 
@@ -33,4 +35,13 @@ it('regression: Open home still works when the library cannot be read', async ()
   await screen.findByRole('alert')
   await userEvent.setup().click(screen.getByRole('button', { name: 'Open' }))
   expect(tabs.opened).toEqual(['chrome-extension://test/newtab/index.html'])
+})
+
+it('regression: the load error follows the browser language, since settings are unreadable', async () => {
+  vi.spyOn(navigator, 'language', 'get').mockReturnValue('pt-BR')
+  vi.stubGlobal('chrome', { ...chrome, runtime: new UnreadableLibraryRuntime(), tabs: new RecordingTabs() })
+  document.body.innerHTML = '<span id="total"></span><ul id="list"></ul><button id="config"></button><button id="open">Open</button>'
+  await import('./popup')
+  expect((await screen.findByRole('alert')).textContent).toContain('Não foi possível carregar')
+  expect(screen.getByRole('button', { name: 'Recarregar' })).toBeTruthy()
 })

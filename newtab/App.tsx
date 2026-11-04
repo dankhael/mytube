@@ -1,5 +1,5 @@
 import { browserPlatform, type StorageChange } from '../src/browser-platform'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -33,7 +33,7 @@ import { SYNC_QUOTA_LIMITS, isMyTubeKey } from '../src/storage-backend'
 import { applyAccent } from '../src/theme'
 import { applyThemePreset } from '../src/theme-preset'
 import { applyAccentFavicon } from './favicon'
-import { DEFAULT_LANGUAGE, t } from '../src/i18n'
+import { DEFAULT_LANGUAGE, detectLanguage, t } from '../src/i18n'
 import { LanguageProvider, useT } from './i18n-context'
 
 // The lower of the total quota and any per-item ceiling the layout imposes (R1).
@@ -78,8 +78,14 @@ export default function App() {
     void getBytesInUse().then(setBytes).catch(() => undefined)
   }, [])
 
+  // Remote chunks arrive as several storage events, each firing a load, and replies
+  // can land out of order. Only the newest counts: a late failure would otherwise
+  // leave the error up over a healthy library, with no further event to clear it.
+  const latestLoad = useRef(0)
   const load = useCallback(async () => {
+    const ticket = ++latestLoad.current
     const res = await send({ action: 'GET_ALL' })
+    if (ticket !== latestLoad.current) return
     if (res.ok && 'data' in res && res.data) {
       setData(res.data)
       setLoadFailed(false)
@@ -187,11 +193,13 @@ export default function App() {
   const gatheringDust = useMemo(() => selectGatheringDust(searched), [searched])
 
   if (!data) {
+    // No settings yet, and on a failed read there may never be: use the browser's.
+    const browserLanguage = detectLanguage(navigator.language)
     return (
       <div className="flex h-full items-center justify-center text-yt-muted">
         {loadFailed ? (
-          <LoadError onRetry={() => void load()} />
-        ) : t('home.loading', DEFAULT_LANGUAGE)}
+          <LoadError language={browserLanguage} onRetry={() => void load()} />
+        ) : t('home.loading', browserLanguage)}
       </div>
     )
   }

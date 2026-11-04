@@ -186,23 +186,6 @@ describe('storage-robustness.spec (home)', () => {
     await screen.findByText(/curated by you/i)
     expect(screen.queryByRole('alert')).toBeNull()
   })
-  it('RECOVER-2: a blocked library offers export next to Retry', async () => {
-    vi.spyOn(chrome.runtime, 'sendMessage').mockImplementation(
-      ((_msg: unknown, cb: (r: unknown) => void) => cb({ ok: false, error: 'Incomplete sync chunk' })) as never,
-    )
-    render(<App />)
-    const alert = await screen.findByRole('alert')
-    expect(within(alert).getByRole('button', { name: 'Try again' })).toBeTruthy()
-    expect(within(alert).getByRole('button', { name: 'Export backup' })).toBeTruthy()
-  })
-
-  it('RECOVER-2: a library that loads does not offer export', async () => {
-    scriptStore({ categories: [], videos: [] })
-    render(<App />)
-    await screen.findByText(/curated by you/i)
-    expect(screen.queryByRole('button', { name: 'Export backup' })).toBeNull()
-  })
-
   const LIBRARY = {
     categories: [{ name: 'Tutoriais', emoji: '🎓' }],
     videos: [video('aaaaaaaaaaa', 'Tutoriais', 'Aprenda React')],

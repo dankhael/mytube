@@ -18,7 +18,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
   [browser-foundation](./browser-foundation.spec.md), which requires this flow to have its
   own criteria, a backup of the original keys, a preview and explicit confirmation.
 - **Tests:** `src/sync-recovery.test.ts`, `newtab/components/RecoveryTools.test.tsx`;
-  home in `newtab/App.test.tsx`; real Chrome in `e2e/smoke.spec.ts`.
+  home in `newtab/App.loading.test.tsx`; real Chrome in `e2e/smoke.spec.ts`.
 
 ## Why
 

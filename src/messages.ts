@@ -36,17 +36,19 @@ function responseEnvelope(value: unknown): value is MessageResponse {
     && 'category' in entry && typeof entry.category === 'string'))
 }
 
+// lastError is only available during the callback; never read it later.
+function settledReply(runtime: MessageRuntime, response: unknown): MessageResponse {
+  const error = runtime.lastError
+  if (error) return { ok: false, error: error.message || 'Runtime message failed' }
+  return responseEnvelope(response) ? response : { ok: false, error: 'Invalid background response' }
+}
+
 /** Shared transport for popup/home/content; sendMessage({ action: 'GET_ALL' }). */
 export function sendMessage(message: Message, options: MessageOptions = {}): Promise<MessageResponse> {
   return new Promise((resolve) => {
     try {
       const runtime = options.runtime ?? browserPlatform().runtime
-      runtime.sendMessage(message, (response: unknown) => {
-        // lastError is only available during the callback; never read it later.
-        const error = runtime.lastError
-        if (error) return resolve({ ok: false, error: error.message || 'Runtime message failed' })
-        resolve(responseEnvelope(response) ? response : { ok: false, error: 'Invalid background response' })
-      })
+      runtime.sendMessage(message, (response: unknown) => resolve(settledReply(runtime, response)))
     } catch (error) {
       resolve({ ok: false, error: error instanceof Error ? error.message : String(error) })
       options.onUnavailable?.()
