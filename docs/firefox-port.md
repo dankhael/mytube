@@ -234,7 +234,7 @@ avaliação antes da submissão.
 
 ## Verificação da base Chrome nesta branch
 
-Baseline do commit `40282ac`, executado em 13/10/2026 com Node 24.21.0:
+Baseline da branch do PR #26, antes do squash, executado em 13/10/2026 com Node 24.21.0:
 
 - `npm test`: 321 testes em 54 arquivos passaram.
 - `npm run build`: TypeScript e build de produção passaram. CRXJS/Vite emite um

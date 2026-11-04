@@ -1,6 +1,6 @@
 # Spec: Browser integration and storage integrity
 
-- **Status:** Approved by the owner 2026-10-20 (implemented in 40282ac + 36b8334;
+- **Status:** Approved by the owner 2026-10-20 (implemented in #26;
   ARCH-1..ARCH-8 green, including the fail-closed tradeoff below).
 - **Owner:** dankhael
 - **Contract:** existing `Message`, `MessageResponse`, `StorageData`, `StorageBackend`.
