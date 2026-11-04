@@ -201,6 +201,8 @@ Reducer [src/storage.ts](../src/storage.ts) over [src/storage-backend.ts](../src
   `sanitizeStorageData` (SEC-14..17). Live updates fan out via `storage.onChanged`.
 - Quota warning fires on the binding limit; write failures propagate as
   `{ ok: false }` and surface a toast on the home (ROB-1/2/10/11).
+- _Pending (Draft, `tv-library-export` TVLIB): versioned JSON export of the library
+  for a read-only Samsung TV client; format only, nothing pushed yet._
 
 ## Extension security
 
