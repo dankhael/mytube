@@ -266,6 +266,54 @@ describe('categories.spec', () => {
     expect(data.videos).toHaveLength(0)
   })
 
+  it('CATDEL-4: deleting an empty category does not create "Uncategorized"', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'A', emoji: '📁' }, { name: 'B', emoji: '📁' }], [])),
+    )
+    const data = await store.deleteCategory('A', false)
+    expect(data.categories.map((c) => c.name)).toEqual(['B'])
+  })
+
+  it('CATDEL-5: an empty "Uncategorized" is removed and stays removed', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(
+        seed([{ name: UNCATEGORIZED, emoji: '📁' }, { name: 'B', emoji: '📁' }], []),
+      ),
+    )
+    await store.deleteCategory(UNCATEGORIZED, false)
+    const reloaded = await store.getData()
+    expect(reloaded.categories.map((c) => c.name)).toEqual(['B'])
+  })
+
+  it('CATDEL-5: it stays removed even as the last category (no defaults restored)', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: UNCATEGORIZED, emoji: '📁' }], [])),
+    )
+    await store.deleteCategory(UNCATEGORIZED, false)
+    const reloaded = await store.getData()
+    expect(reloaded.categories).toEqual([])
+  })
+
+  it('CATDEL-6: "Uncategorized" holding videos is kept when asked to keep them', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(
+        seed([{ name: UNCATEGORIZED, emoji: '📁' }], [vid('x', UNCATEGORIZED)]),
+      ),
+    )
+    const data = await store.deleteCategory(UNCATEGORIZED, false)
+    expect(data.categories.map((c) => c.name)).toEqual([UNCATEGORIZED])
+    expect(data.videos.map((v) => v.category)).toEqual([UNCATEGORIZED])
+  })
+
+  it('CATDEL-8: videos still move to a recreated "Uncategorized"', async () => {
+    const store = new MyTubeStore(
+      new FakeStorageBackend(seed([{ name: 'X', emoji: '📁' }], [vid('x', 'X')])),
+    )
+    const data = await store.deleteCategory('X', false)
+    expect(data.categories.map((c) => c.name)).toEqual([UNCATEGORIZED])
+    expect(data.videos[0].category).toBe(UNCATEGORIZED)
+  })
+
   it('REORDER-CAT-1: omitted categories are kept at the end', async () => {
     const store = new MyTubeStore(
       new FakeStorageBackend(

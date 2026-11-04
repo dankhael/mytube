@@ -2,11 +2,11 @@
 // Component specs for the curated home. Each test names the acceptance-criterion
 // ID it proves (see specs/newtab-ui.spec.md).
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
-import { DEFAULT_SETTINGS, StorageData, Video } from '../src/types'
+import { DEFAULT_SETTINGS, StorageData, UNCATEGORIZED, Video } from '../src/types'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -161,7 +161,7 @@ describe('home-icon-tiles.spec (home)', () => {
     render(<App />)
     await screen.findByText(/curated by you/i)
 
-    await user.click(screen.getByRole('button', { name: /category/i }))
+    await user.click(screen.getByRole('button', { name: 'Category' }))
     // Icon picker buttons are labelled by their IconKey; the old emoji chars are gone.
     expect(screen.getByRole('button', { name: 'gamepad' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'trophy' })).toBeTruthy()
@@ -310,6 +310,95 @@ describe('home-category-chips.spec', () => {
       const nav = screen.getByRole('navigation', { name: 'Jump to category' })
       expect(within(nav).getAllByRole('button').map((c) => c.textContent)).toEqual(['Jogos', 'Música'])
     })
+  })
+})
+
+describe('category-delete.spec (home)', () => {
+  // sendMessage is a shared vi.fn() (test/setup.ts) that restoreAllMocks leaves
+  // populated, and these tests count the messages sent.
+  beforeEach(() => {
+    vi.mocked(chrome.runtime.sendMessage).mockClear()
+  })
+
+  // Opens the section's ⋯ menu and picks Delete; the section must be the only one.
+  async function pickDeleteFromMenu() {
+    const user = userEvent.setup()
+    await user.click(await screen.findByTitle('Category options'))
+    await user.click(screen.getByRole('button', { name: 'Delete category' }))
+  }
+
+  function sentDeletes(spy: ReturnType<typeof vi.spyOn>): unknown[] {
+    return spy.mock.calls
+      .map((args: unknown[]) => args[0] as { action: string })
+      .filter((msg: { action: string }) => msg.action === 'DELETE_CATEGORY')
+  }
+
+  it('CATDEL-1: with no videos, every category renders under the welcome screen', async () => {
+    scriptStore({
+      categories: [
+        { name: 'Jogos', emoji: '🎮' },
+        { name: 'Vazia', emoji: '📁' },
+      ],
+      videos: [],
+    })
+    render(<App />)
+    expect(await screen.findByText(/curated by you/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Jogos' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Vazia' })).toBeTruthy()
+    expect(screen.getAllByTitle('Category options')).toHaveLength(2)
+  })
+
+  it('CATDEL-2: an empty category is deletable while the library has no videos', async () => {
+    const after = { categories: [], videos: [], settings: { ...DEFAULT_SETTINGS } }
+    scriptStoreWithMutationReply(
+      { categories: [{ name: 'Vazia', emoji: '📁' }], videos: [] },
+      { ok: true, data: after },
+    )
+    const sendSpy = vi.spyOn(chrome.runtime, 'sendMessage')
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<App />)
+    await pickDeleteFromMenu()
+    expect(sentDeletes(sendSpy)).toEqual([
+      { action: 'DELETE_CATEGORY', name: 'Vazia', deleteVideos: false },
+    ])
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Vazia' })).toBeNull())
+  })
+
+  it('CATDEL-3: chips and smart sections stay hidden with no videos', async () => {
+    scriptStore({ categories: [{ name: 'Jogos', emoji: '🎮' }], videos: [] })
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Jogos' })
+    expect(screen.queryByRole('navigation', { name: 'Jump to category' })).toBeNull()
+    expect(screen.queryByText('Recently added')).toBeNull()
+    expect(screen.queryByText('Gathering dust')).toBeNull()
+  })
+
+  it('CATDEL-7: deleting "Uncategorized" with videos asks once and deletes them', async () => {
+    scriptStore({
+      categories: [{ name: UNCATEGORIZED, emoji: '📁' }],
+      videos: [video('aaaaaaaaaaa', UNCATEGORIZED, 'Um'), video('bbbbbbbbbbb', UNCATEGORIZED, 'Dois')],
+    })
+    const sendSpy = vi.spyOn(chrome.runtime, 'sendMessage')
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<App />)
+    await pickDeleteFromMenu()
+    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(confirmSpy.mock.calls[0][0]).toContain('2')
+    expect(sentDeletes(sendSpy)).toEqual([
+      { action: 'DELETE_CATEGORY', name: UNCATEGORIZED, deleteVideos: true },
+    ])
+  })
+
+  it('CATDEL-7: cancelling the "Uncategorized" confirm sends nothing', async () => {
+    scriptStore({
+      categories: [{ name: UNCATEGORIZED, emoji: '📁' }],
+      videos: [video('aaaaaaaaaaa', UNCATEGORIZED, 'Um')],
+    })
+    const sendSpy = vi.spyOn(chrome.runtime, 'sendMessage')
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<App />)
+    await pickDeleteFromMenu()
+    expect(sentDeletes(sendSpy)).toEqual([])
   })
 })
 

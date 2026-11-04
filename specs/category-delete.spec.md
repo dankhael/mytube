@@ -8,7 +8,7 @@ Do not implement against a Draft. Do not edit Approved criteria without the huma
 
 # Spec: Deleting empty categories (1.0.2)
 
-- **Status:** Draft  <!-- Draft → Approved (only a human sets Approved) -->
+- **Status:** Approved  <!-- Draft → Approved (only a human sets Approved) -->
 - **Owner:** dankhael
 - **Contract:** no new `Message` variant — `DELETE_CATEGORY` and the
   `MyTubeStore.deleteCategory` reducer ([src/storage.ts](../src/storage.ts));
