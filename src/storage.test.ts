@@ -133,6 +133,24 @@ describe('save-video.spec', () => {
     expect(data.videos.filter((v) => v.category === 'A').map((v) => v.id)).toEqual(['c', 'a', 'b'])
     expect(data.videos.filter((v) => v.category === 'B').map((v) => v.id)).toEqual(['z'])
   })
+
+  // The home sends only the ids its filters show, so a drag with watched videos
+  // hidden or a search active used to delete everything else in the category.
+  it('reordering a filtered view keeps the videos the filter hid', async () => {
+    backend = new FakeStorageBackend(
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [vid('a', 'A'), vid('w1', 'A', true), vid('b', 'A'), vid('w2', 'A', true), vid('z', 'B')],
+      ),
+    )
+    store = new MyTubeStore(backend)
+    const data = await store.reorderVideos('A', ['b', 'a'])
+    expect(data.videos.filter((v) => v.category === 'A').map((v) => v.id)).toEqual(['b', 'a', 'w1', 'w2'])
+    expect(backend.snapshot()!.videos).toHaveLength(5)
+  })
 })
 
 describe('playlist-import.spec', () => {

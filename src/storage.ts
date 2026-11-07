@@ -231,8 +231,12 @@ export class MyTubeStore {
       )
       const others = data.videos.filter((v) => v.category !== category)
       const reordered = order.map((id) => inCategory.get(id)).filter(Boolean) as Video[]
+      // `order` is only what the home's filters show: a video missing from it is
+      // hidden, not deleted, so it stays at the end of the block.
+      const listed = new Set(order)
+      const unlisted = [...inCategory.values()].filter((v) => !listed.has(v.id))
       // Preserve the rest of the list around the reordered block.
-      data.videos = [...reordered, ...others]
+      data.videos = [...reordered, ...unlisted, ...others]
       return this.commit(data)
     })
   }
