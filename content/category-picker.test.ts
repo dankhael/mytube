@@ -16,6 +16,16 @@ class FakeWorker {
     this.replies.length > 1 ? this.replies.shift()! : this.replies[0]
 }
 
+// Holds every reply until the test releases it, like a worker still waking up.
+class FakeSlowWorker {
+  private pending: (() => void)[] = []
+  send = (_message: Message): Promise<MessageResponse> =>
+    new Promise((resolve) => this.pending.push(() => resolve(LOADED)))
+  release(): void {
+    this.pending.splice(0).forEach((reply) => reply())
+  }
+}
+
 // What the browser does to a script whose extension was reloaded: the call throws.
 class OrphanedRuntime {
   lastError = undefined
@@ -36,6 +46,7 @@ class FakePickerHost {
       isTornDown: () => this.tornDown,
       language: () => 'en',
       closeDropdowns: () => { this.closes++ },
+      closeCount: () => this.closes,
       mount: (dropdown) => { this.mounted.push(dropdown) },
     }
   }
@@ -122,5 +133,34 @@ describe('openCategoryPicker', () => {
     await openCategoryPicker(anchor(), vi.fn(), 'content.saveTo', host.deps(send))
     expect(host.tornDown).toBe(true)
     expect(host.mounted).toEqual([])
+  })
+})
+
+// Nothing is in the DOM while the categories load, so the pills' "already open?"
+// check sees a closed menu and a second click opens a second picker.
+describe('openCategoryPicker while loading', () => {
+  it('regression: a second open replaces the first, so one menu mounts', async () => {
+    const host = new FakePickerHost()
+    const worker = new FakeSlowWorker()
+    const first = openCategoryPicker(anchor(), vi.fn(), 'content.saveTo', host.deps(worker.send))
+    const second = openCategoryPicker(anchor(), vi.fn(), 'content.saveTo', host.deps(worker.send))
+
+    worker.release()
+    await Promise.all([first, second])
+
+    expect(host.mounted).toHaveLength(1)
+  })
+
+  it('regression: closing during the load means no menu appears afterwards', async () => {
+    const host = new FakePickerHost()
+    const worker = new FakeSlowWorker()
+    const deps = host.deps(worker.send)
+    const opening = openCategoryPicker(anchor(), vi.fn(), 'content.saveTo', deps)
+
+    deps.closeDropdowns() // the user clicked elsewhere
+    worker.release()
+    await opening
+
+    expect(host.mounted).toHaveLength(0)
   })
 })
