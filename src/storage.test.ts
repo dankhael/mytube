@@ -133,6 +133,74 @@ describe('save-video.spec', () => {
     expect(data.videos.filter((v) => v.category === 'A').map((v) => v.id)).toEqual(['c', 'a', 'b'])
     expect(data.videos.filter((v) => v.category === 'B').map((v) => v.id)).toEqual(['z'])
   })
+
+  // The home sends only the ids its filters show, so a drag with watched videos
+  // hidden or a search active used to delete everything else in the category.
+  it('reordering a filtered view keeps the videos the filter hid', async () => {
+    backend = new FakeStorageBackend(
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [vid('a', 'A'), vid('w1', 'A', true), vid('b', 'A'), vid('w2', 'A', true), vid('z', 'B')],
+      ),
+    )
+    store = new MyTubeStore(backend)
+    const data = await store.reorderVideos('A', ['b', 'a'])
+    expect(data.videos.filter((v) => v.category === 'A').map((v) => v.id)).toEqual(['b', 'a', 'w1', 'w2'])
+    expect(backend.snapshot()!.videos).toHaveLength(5)
+  })
+})
+
+describe('category invariants', () => {
+  const twoCategories = () =>
+    new FakeStorageBackend(
+      seed(
+        [
+          { name: 'A', emoji: '📁' },
+          { name: 'B', emoji: '📁' },
+        ],
+        [vid('a', 'A'), vid('b', 'B')],
+      ),
+    )
+  const names = (data: StorageData) => data.categories.map((c) => c.name)
+
+  // The Move dialog lists a snapshot, so its target can be gone by the time the
+  // user picks it. Sections render from `categories`: the video would vanish.
+  it('moving a video to a category deleted elsewhere recreates the category', async () => {
+    const data = await new MyTubeStore(twoCategories()).moveVideo('a', 'Gone')
+    expect(names(data)).toEqual(['A', 'B', 'Gone'])
+    expect(data.videos[0].category).toBe('Gone')
+  })
+
+  it('moving an unknown video creates no category', async () => {
+    const data = await new MyTubeStore(twoCategories()).moveVideo('nope', 'Gone')
+    expect(names(data)).toEqual(['A', 'B'])
+  })
+
+  it('renaming onto an existing name is rejected and changes nothing', async () => {
+    const backend = twoCategories()
+    await expect(new MyTubeStore(backend).updateCategory('A', 'B', '📁')).rejects.toThrow('"B"')
+    expect(names(backend.snapshot()!)).toEqual(['A', 'B'])
+    expect(backend.snapshot()!.videos[0].category).toBe('A')
+  })
+
+  it('editing a category without renaming it still saves', async () => {
+    const data = await new MyTubeStore(twoCategories()).updateCategory('A', 'A', '📁', 'book')
+    expect(data.categories[0].icon).toBe('book')
+  })
+})
+
+describe('hasStoredLibrary', () => {
+  it('is false when nothing was ever persisted, even though reads return defaults', async () => {
+    expect(await new MyTubeStore(new FakeStorageBackend()).hasStoredLibrary()).toBe(false)
+  })
+
+  it('is true once a library exists', async () => {
+    const backend = new FakeStorageBackend(seed([], []))
+    expect(await new MyTubeStore(backend).hasStoredLibrary()).toBe(true)
+  })
 })
 
 describe('playlist-import.spec', () => {

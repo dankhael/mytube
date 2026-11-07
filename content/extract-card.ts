@@ -103,17 +103,29 @@ function durationFromSourceCard(id: string): string | undefined {
   return undefined
 }
 
+function cardWatchLink(card: HTMLElement): HTMLAnchorElement | null {
+  return (
+    card.querySelector<HTMLAnchorElement>('a#thumbnail') ||
+    card.querySelector<HTMLAnchorElement>('a[href*="watch?v="]')
+  )
+}
+
+/**
+ * The video a card shows right now, or null while its link isn't bound yet.
+ * @example cardVideoId(card) // 'aqz-KE-bpKQ'
+ */
+export function cardVideoId(card: HTMLElement): string | null {
+  const href = cardWatchLink(card)?.getAttribute('href') || ''
+  return href.match(/[?&]v=([\w-]{11})/)?.[1] ?? null
+}
+
 // Reads a video card. Works for feed/search/sidebar renderers AND playlist rows
 // (ytd-playlist-video-renderer) — they share #thumbnail / #video-title /
 // ytd-channel-name, and the href carries ?v=<id> even with &list=…&index=….
 export function extractCard(card: HTMLElement): CardData | null {
-  const link =
-    card.querySelector<HTMLAnchorElement>('a#thumbnail') ||
-    card.querySelector<HTMLAnchorElement>('a[href*="watch?v="]')
-  const href = link?.getAttribute('href') || ''
-  const match = href.match(/[?&]v=([\w-]{11})/)
-  if (!match) return null
-  const id = match[1]
+  const id = cardVideoId(card)
+  if (!id) return null
+  const link = cardWatchLink(card)
 
   // Cover classic renderers (#video-title) and the newer lockup view-models.
   const titleEl = card.querySelector<HTMLElement>(

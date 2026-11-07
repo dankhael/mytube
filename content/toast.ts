@@ -26,8 +26,13 @@ export function createToast(isTornDown: () => boolean): (text: string) => void {
     if (isTornDown()) return
     const toast = toastElement()
     toast.textContent = text
-    requestAnimationFrame(() => toast.classList.add('mytube-toast--show'))
-    window.clearTimeout(timer)
-    timer = window.setTimeout(() => toast.classList.remove('mytube-toast--show'), VISIBLE_MS)
+    // The timer starts with the frame that shows the toast. A hidden tab holds its
+    // frames but not its timers, so a timer started here would expire first and the
+    // late frame would show a toast nothing ever hides.
+    requestAnimationFrame(() => {
+      toast.classList.add('mytube-toast--show')
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => toast.classList.remove('mytube-toast--show'), VISIBLE_MS)
+    })
   }
 }

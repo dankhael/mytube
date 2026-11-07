@@ -2,7 +2,7 @@
 // persist must be visible, not silently dropped. role="alert" so assistive
 // tech announces it; auto-dismisses but stays closable by hand.
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { useT } from '../i18n-context'
 
@@ -15,10 +15,14 @@ interface ErrorToastProps {
 
 export default function ErrorToast({ message, onDismiss }: ErrorToastProps) {
   const tr = useT()
+  // The timer belongs to the message, not to the callback: App passes a new
+  // function each render, and restarting on it kept a busy home's toast up forever.
+  const dismiss = useRef(onDismiss)
+  dismiss.current = onDismiss
   useEffect(() => {
-    const timer = setTimeout(onDismiss, AUTO_DISMISS_MS)
+    const timer = setTimeout(() => dismiss.current(), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [onDismiss])
+  }, [message])
 
   return (
     <div

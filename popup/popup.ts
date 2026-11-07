@@ -53,6 +53,9 @@ async function init(): Promise<void> {
   let settings: Settings = data.settings
   let persistedSettings = settings
   let modal: ConfigModal | undefined
+  // The modal only exists after the shortcut read below, so `modal` alone can't
+  // stop a double click on the gear from stacking two dialogs.
+  let openingConfig = false
   const player = createClickPlayer()
   const click = () => playClick(settings, player)
 
@@ -97,6 +100,8 @@ async function init(): Promise<void> {
   }
 
   document.getElementById('config')!.addEventListener('click', async () => {
+    if (openingConfig || modal?.isConnected) return
+    openingConfig = true
     click()
     // Read the live shortcut binding so the row shows the user's current key
     // (Chrome owns it; '' when unset). Fetched on open so it reflects changes
@@ -143,6 +148,7 @@ async function init(): Promise<void> {
       shortcut,
     )
     document.body.appendChild(modal)
+    openingConfig = false
   })
 
   paint()
