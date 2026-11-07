@@ -77,6 +77,17 @@ describe('popup boot', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('smpte')
   })
 
+  // The modal only exists after the shortcut read, so that gap has to be guarded.
+  it('regression: a double click on the gear opens one settings modal', async () => {
+    await bootPopup({})
+    const gear = document.getElementById('config')!
+    gear.click()
+    gear.click()
+    await vi.waitFor(() => expect(document.querySelector('.cfg-backdrop')).not.toBeNull())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.querySelectorAll('.cfg-backdrop')).toHaveLength(1)
+  })
+
   it('CFG-1: clicking the header gear opens the settings modal over the popup', async () => {
     await bootPopup({})
     expect(document.querySelector('.cfg-modal')).toBeNull()
