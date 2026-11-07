@@ -5,7 +5,7 @@
 // reducer relies on it as the fallback bucket; it is display-mapped instead
 // (categoryLabel in src/i18n.ts, DEFCAT-4).
 
-import { Language, MessageKey, t } from './i18n'
+import { DEFAULT_LANGUAGE, Language, MessageKey, t } from './i18n'
 import { MyTubeStore } from './storage'
 import { DEFAULT_DATA, StorageData } from './types'
 
@@ -42,4 +42,19 @@ export async function localizeDefaultCategories(
     if (name !== category.name)
       await store.updateCategory(category.name, name, category.emoji, category.icon)
   }
+}
+
+/**
+ * On first install, seeds the interface language from the browser locale so a pt-BR
+ * browser starts in Portuguese (Decisions §1), and names the untouched defaults in it
+ * (DEFCAT-1). Only an empty store counts as first run: a stored 'en' may be the
+ * user's pick, kept across a reinstall or synced from another device, and rewriting
+ * it would reach every synced device.
+ * @example await seedInstallLanguage(store, detectLanguage(navigator.language))
+ */
+export async function seedInstallLanguage(store: MyTubeStore, detected: Language): Promise<void> {
+  if (detected === DEFAULT_LANGUAGE) return
+  if (await store.hasStoredLibrary()) return
+  await store.updateSettings({ language: detected })
+  await localizeDefaultCategories(store, detected)
 }

@@ -4,9 +4,9 @@
 
 import { describe, expect, it } from 'vitest'
 import { FakeStorageBackend } from '../test/fake-storage'
-import { localizeDefaultCategories } from './default-categories'
+import { localizeDefaultCategories, seedInstallLanguage } from './default-categories'
 import { MyTubeStore } from './storage'
-import { DEFAULT_DATA, UNCATEGORIZED } from './types'
+import { DEFAULT_DATA, DEFAULT_SETTINGS, UNCATEGORIZED } from './types'
 
 const video = { id: 'aqz-KE-bpKQ', title: 'Big Buck Bunny', thumbnail: 't', channelName: 'Blender' }
 
@@ -70,5 +70,35 @@ describe('localized-default-categories.spec', () => {
     await store.deleteCategory('Tutoriais', false)
 
     expect((await store.getData()).videos[0].category).toBe(UNCATEGORIZED)
+  })
+})
+
+describe('seedInstallLanguage', () => {
+  it('DEFCAT-1: a first install on a pt-BR browser seeds the language and the names', async () => {
+    const { store } = await freshStore()
+    await seedInstallLanguage(store, 'pt-BR')
+
+    const data = await store.getData()
+    expect(data.settings.language).toBe('pt-BR')
+    expect(data.categories[0].name).toBe('Tutoriais')
+  })
+
+  it('DEFCAT-2: a first install on an English browser writes nothing', async () => {
+    const { backend, store } = await freshStore()
+    await seedInstallLanguage(store, 'en')
+    expect(backend.writeCount).toBe(0)
+  })
+
+  // 'en' is also the default, so a stored 'en' can be the user's own choice. It
+  // would be rewritten for every synced device.
+  it('regression: a reinstall on a pt-BR browser keeps a stored English library', async () => {
+    const backend = new FakeStorageBackend({
+      ...structuredClone(DEFAULT_DATA),
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+    })
+    await seedInstallLanguage(new MyTubeStore(backend), 'pt-BR')
+
+    expect(backend.writeCount).toBe(0)
+    expect(backend.snapshot()!.settings.language).toBe('en')
   })
 })
