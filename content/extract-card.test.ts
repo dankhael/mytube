@@ -6,7 +6,7 @@
 // fragments so the badge-shape class fix can't silently regress.
 
 import { describe, expect, it } from 'vitest'
-import { extractDuration } from './extract-card'
+import { cardVideoId, extractDuration } from './extract-card'
 
 function fragment(html: string): HTMLElement {
   const el = document.createElement('div')
@@ -49,5 +49,16 @@ describe('extract-card — extractDuration', () => {
 
   it('returns undefined when the card has no duration overlay', () => {
     expect(extractDuration(fragment('<span>no time here</span>'))).toBeUndefined()
+  })
+})
+
+describe('extract-card — cardVideoId', () => {
+  it('reads the id even with playlist parameters after it', () => {
+    const card = fragment('<a id="thumbnail" href="/watch?v=aqz-KE-bpKQ&list=PL1&index=2"></a>')
+    expect(cardVideoId(card)).toBe('aqz-KE-bpKQ')
+  })
+
+  it('is null while the link has no href yet', () => {
+    expect(cardVideoId(fragment('<a id="thumbnail"></a>'))).toBeNull()
   })
 })

@@ -9,11 +9,11 @@ describe('i18n-language.spec — catalog', () => {
   it('I18N-3: t returns the locale string for a defined key', () => {
     expect(t('config.title', 'en')).toBe('Settings')
     expect(t('config.title', 'pt-BR')).toBe('Configurações')
-    expect(t('home.welcomeBack', 'pt-BR')).toBe('Bem-vindo de volta.')
+    expect(t('home.hideWatched', 'pt-BR')).toBe('Ocultar assistidos')
   })
 
   it('I18N-3: t fills {placeholders} from vars', () => {
-    expect(t('common.seeAll', 'en', { count: 12 })).toBe('See all (12)')
+    expect(t('popup.seeAllInHome', 'en', { count: 12 })).toBe('See all in home (12)')
     expect(t('content.savedIn', 'pt-BR', { category: 'Tutoriais' })).toBe('Salvo em: Tutoriais')
   })
 

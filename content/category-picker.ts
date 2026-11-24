@@ -16,6 +16,7 @@ export interface CategoryPickerDeps {
   isTornDown: () => boolean
   language: () => Language
   closeDropdowns: () => void
+  closeCount: () => number // how many times closeDropdowns has run
   mount: (dropdown: HTMLElement, anchor: HTMLElement) => void
 }
 
@@ -107,10 +108,14 @@ export async function openCategoryPicker(
   deps: CategoryPickerDeps,
 ): Promise<void> {
   deps.closeDropdowns()
+  const openedAt = deps.closeCount()
   const categories = await loadPickerCategories(deps.send)
   // A send that found the extension gone has torn this script down by now, and an
   // orphaned script must leave no UI behind (M4).
   if (deps.isTornDown()) return
+  // No menu exists during the load, so nothing else can tell this open is pending.
+  // Any close since then, or a newer open (which closes first), replaces it.
+  if (deps.closeCount() !== openedAt) return
   const lang = deps.language()
   const dropdown = emptyDropdown(t(headerKey, lang))
   const choose = (category: string) => {

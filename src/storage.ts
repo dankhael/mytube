@@ -31,6 +31,15 @@ export class MyTubeStore {
     return sanitizeStorageData(stored)
   }
 
+  /**
+   * Whether anything was ever persisted. getData can't tell: it returns the defaults
+   * for an empty store, so a default value there may be nobody's choice or the user's.
+   * @example if (!(await store.hasStoredLibrary())) await seedFirstRun(store)
+   */
+  async hasStoredLibrary(): Promise<boolean> {
+    return (await this.backend.read()) !== undefined
+  }
+
   async getBytesInUse(): Promise<number> {
     return this.backend.bytesInUse()
   }
@@ -46,10 +55,7 @@ export class MyTubeStore {
   ): Promise<StorageData> {
     return this.enqueue(async () => {
       const data = await this.getData()
-
-      if (!data.categories.some((c) => c.name === category)) {
-        data.categories.push({ name: category, emoji: '📁' })
-      }
+      ensureCategory(data, category)
 
       const existing = data.videos.find((v) => v.id === video.id)
       if (existing) {
@@ -80,9 +86,7 @@ export class MyTubeStore {
       const unique = new Map<string, Omit<Video, 'category' | 'addedAt' | 'watched'>>()
       for (const v of videos) unique.set(v.id, { ...unique.get(v.id), ...v })
 
-      if (!data.categories.some((c) => c.name === category)) {
-        data.categories.push({ name: category, emoji: '📁' })
-      }
+      ensureCategory(data, category)
 
       const byId = new Map(data.videos.map((v) => [v.id, v]))
       const fresh: Video[] = []
@@ -111,7 +115,12 @@ export class MyTubeStore {
     return this.enqueue(async () => {
       const data = await this.getData()
       const video = data.videos.find((v) => v.id === id)
-      if (video) video.category = category
+      if (video) {
+        // The Move dialog lists a snapshot: its target may be gone by now, and the
+        // home only renders listed categories, so the video would disappear.
+        ensureCategory(data, category)
+        video.category = category
+      }
       return this.commit(data)
     })
   }
@@ -146,6 +155,11 @@ export class MyTubeStore {
   ): Promise<StorageData> {
     return this.enqueue(async () => {
       const data = await this.getData()
+      // Names are the category's identity, so two equal ones would share videos
+      // and collide as section keys. Rejected, not merged: it can't be undone.
+      if (oldName !== name && data.categories.some((c) => c.name === name)) {
+        throw new Error(`Category name "${name}" is already in use: got a rename of "${oldName}"; expected a name no other category has`)
+      }
       const category = data.categories.find((c) => c.name === oldName)
       if (category) {
         category.name = name
@@ -231,20 +245,28 @@ export class MyTubeStore {
       )
       const others = data.videos.filter((v) => v.category !== category)
       const reordered = order.map((id) => inCategory.get(id)).filter(Boolean) as Video[]
+      // `order` is only what the home's filters show: a video missing from it is
+      // hidden, not deleted, so it stays at the end of the block.
+      const listed = new Set(order)
+      const unlisted = [...inCategory.values()].filter((v) => !listed.has(v.id))
       // Preserve the rest of the list around the reordered block.
-      data.videos = [...reordered, ...others]
+      data.videos = [...reordered, ...unlisted, ...others]
       return this.commit(data)
     })
   }
+}
+
+// A video's category must be listed: sections render from `categories`.
+function ensureCategory(data: StorageData, name: string): void {
+  if (data.categories.some((c) => c.name === name)) return
+  data.categories.push({ name, emoji: '📁' })
 }
 
 // Move orphaned videos to "Sem categoria", recreating it if needed. Only called
 // when something actually moves: the bucket is a destination for orphans, not a
 // mandatory category (CATDEL-4, spec D2).
 function moveVideosToUncategorized(data: StorageData, fromCategory: string): void {
-  if (!data.categories.some((c) => c.name === UNCATEGORIZED)) {
-    data.categories.push({ name: UNCATEGORIZED, emoji: '📁' })
-  }
+  ensureCategory(data, UNCATEGORIZED)
   data.videos.forEach((v) => {
     if (v.category === fromCategory) v.category = UNCATEGORIZED
   })

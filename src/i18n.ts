@@ -38,7 +38,7 @@ const EN = {
   'common.video': 'video',
   'common.videos': 'videos',
   'common.showLess': 'Show less',
-  'common.seeAll': 'See all ({count})',
+  'common.seeAll': 'See all',
   'common.cancel': 'Cancel',
   'common.save': 'Save',
   'common.create': 'Create',
@@ -96,14 +96,11 @@ const EN = {
   'home.loading': 'Loading…',
   'home.quotaWarning':
     'Storage almost full ({percent}% of the sync limit). Remove some videos to keep syncing.',
-  'home.welcomeBack': 'Welcome back.',
   'home.greetingPre': 'You have',
   'home.greetingPost': 'waiting in your library.',
   'home.searchPlaceholder': 'Search your library…',
   'home.hideWatched': 'Hide watched',
   'home.showWatched': 'Show watched',
-  'home.watched': 'Watched',
-  'home.hidden': 'Hidden',
   'home.category': 'Category',
   'home.recentlyAdded': 'Recently added',
   'home.gatheringDust': 'Gathering dust',
@@ -112,7 +109,7 @@ const EN = {
   'welcome.title': 'Your YouTube home, curated by you.',
   'welcome.bodyPre': 'Browse YouTube and click the',
   'welcome.bodyPost':
-    'button on videos to organize them here into categories. No more Watch Later graveyard.',
+    'button on videos to organize them here into categories.',
   'welcome.savePill': '+ Save',
   'welcome.openYoutube': 'Open YouTube',
 
@@ -144,7 +141,7 @@ const EN = {
   'modal.moveVideoTo': 'Move video to…',
   'modal.current': 'current',
 
-  'toast.notSaved': 'The action was not saved —',
+  'toast.notSaved': 'The action was not saved:',
   'toast.dismiss': 'Dismiss notice',
 
   'content.saved': 'Saved',
@@ -177,7 +174,7 @@ const PT_BR: Record<MessageKey, string> = {
   'common.video': 'vídeo',
   'common.videos': 'vídeos',
   'common.showLess': 'Mostrar menos',
-  'common.seeAll': 'Ver todos ({count})',
+  'common.seeAll': 'Ver todos',
   'common.cancel': 'Cancelar',
   'common.save': 'Salvar',
   'common.create': 'Criar',
@@ -235,14 +232,11 @@ const PT_BR: Record<MessageKey, string> = {
   'home.loading': 'Carregando…',
   'home.quotaWarning':
     'Armazenamento quase cheio ({percent}% do limite de sincronização). Remova alguns vídeos para continuar sincronizando.',
-  'home.welcomeBack': 'Bem-vindo de volta.',
   'home.greetingPre': 'Você tem',
   'home.greetingPost': 'esperando na sua biblioteca.',
   'home.searchPlaceholder': 'Buscar na biblioteca…',
   'home.hideWatched': 'Ocultar assistidos',
   'home.showWatched': 'Mostrar assistidos',
-  'home.watched': 'Assistidos',
-  'home.hidden': 'Ocultos',
   'home.category': 'Categoria',
   'home.recentlyAdded': 'Recentemente adicionados',
   'home.gatheringDust': 'Pegando poeira',
@@ -251,7 +245,7 @@ const PT_BR: Record<MessageKey, string> = {
   'welcome.title': 'Sua home do YouTube, curada por você.',
   'welcome.bodyPre': 'Navegue pelo YouTube e clique no botão',
   'welcome.bodyPost':
-    'nos vídeos para organizá-los aqui em categorias. Chega de “Watch Later” virar cemitério.',
+    'nos vídeos para organizá-los aqui em categorias.',
   'welcome.savePill': '+ Salvar',
   'welcome.openYoutube': 'Abrir o YouTube',
 
@@ -283,7 +277,7 @@ const PT_BR: Record<MessageKey, string> = {
   'modal.moveVideoTo': 'Mover vídeo para…',
   'modal.current': 'atual',
 
-  'toast.notSaved': 'A ação não foi salva —',
+  'toast.notSaved': 'A ação não foi salva:',
   'toast.dismiss': 'Fechar aviso',
 
   'content.saved': 'Salvo',

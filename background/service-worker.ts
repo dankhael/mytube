@@ -10,8 +10,8 @@ import { fetchVideoMetadata, needsEnrichment } from '../src/metadata'
 import { validateIncomingMessage } from '../src/validate-message'
 import { accentLogoSvg } from '../src/logo-svg'
 import { createActionIconPainter } from '../src/action-icon'
-import { localizeDefaultCategories } from '../src/default-categories'
-import { detectLanguage, DEFAULT_LANGUAGE } from '../src/i18n'
+import { seedInstallLanguage } from '../src/default-categories'
+import { detectLanguage } from '../src/i18n'
 import { openHomeTab, handleOpenHome, OPEN_HOME_COMMAND } from '../src/home-page'
 import { openHomeOnStartup } from '../src/watch-reminders'
 import { Message, MessageResponse, StorageData, Video } from '../src/types'
@@ -80,19 +80,9 @@ async function refreshAction(): Promise<void> {
   await repaintIcon(data.settings.accent)
 }
 
-// On first install, seed the interface language from the browser locale so a
-// pt-BR browser starts in Portuguese (Decisions §1). Only runs on 'install'
-// (never on update/chrome_update) and only when the stored value is still the
-// untouched default, so it never overrides a user's explicit pick.
+// Only runs on 'install', never on update/chrome_update (see seedInstallLanguage).
 async function seedLanguageOnInstall(): Promise<void> {
-  const detected = detectLanguage(navigator.language)
-  if (detected === DEFAULT_LANGUAGE) return
-  const data = await store.getData()
-  if (data.settings.language === DEFAULT_LANGUAGE) {
-    await store.updateSettings({ language: detected })
-    // …and name the untouched default categories in that language (DEFCAT-1).
-    await localizeDefaultCategories(store, detected)
-  }
+  await seedInstallLanguage(store, detectLanguage(navigator.language))
 }
 
 platform.runtime.onInstalled.addListener((details) => {

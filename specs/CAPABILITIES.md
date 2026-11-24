@@ -107,7 +107,8 @@ Content script [content/playlist-import.ts](../content/playlist-import.ts) (+ sh
   "Recentemente adicionados" (newest unwatched) and "Pegando poeira" (unwatched
   older than 21 days, hidden when empty); both cap at 12 and exclude watched.
 - Case-insensitive search over title/channel drives every section.
-- Watched-visibility toggle; per-card open / move / toggle-watched / delete (hover
+- Header shows the unwatched count, hidden while the library is empty (HOME-2).
+- Watched-visibility toggle labelled with its action (UI-3); per-card open / move / toggle-watched / delete (hover
   + right-click menu); drag-drop reorder of categories and of videos within one.
 - Channel avatar with initial-letter fallback; quota warning banner.
 - Duration badge (bottom-right of the thumbnail, YouTube-style) when the save

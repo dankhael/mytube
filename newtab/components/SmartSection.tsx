@@ -48,7 +48,7 @@ export default function SmartSection({
         <div className="spacer" />
         {hiddenCount > 0 && (
           <button className="cat-action" style={{ opacity: 1 }} onClick={() => setExpanded((v) => !v)}>
-            {expanded ? tr('common.showLess') : tr('common.seeAll', { count: videos.length })}
+            {expanded ? tr('common.showLess') : tr('common.seeAll')}
           </button>
         )}
       </div>

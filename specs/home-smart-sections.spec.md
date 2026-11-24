@@ -28,7 +28,7 @@ still unwatched).
 | **SMART-1** | saved videos | the home loads | a **"🆕 Recentemente adicionados"** section renders showing videos by `addedAt` **descending** |
 | **SMART-2** | unwatched videos that are "old" (see Decisions §2) | the home loads | a **"Gathering dust"** section (from the catalog; pt-BR: "Pegando poeira") renders showing the **oldest unwatched** videos by `addedAt` **ascending** |
 | **SMART-3** | a smart section | rendered | each video uses the same card UI as categories (thumbnail / title / channel, hover-play, open-on-click, context menu) but **without** the category drag handle / category menu |
-| **SMART-4** | a section with more than the cap (see §3) | rendered | it caps and shows a **"See all (N)"** expander, like category sections |
+| **SMART-4** | a section with more than the cap (see §3) | rendered | it caps and shows a **"See all"** expander, like category sections; the count shows once, next to the title |
 | **SMART-5** | watched videos | always | are **excluded from both** smart sections, independent of the "Hide watched" toggle — no point recommending something already watched |
 | **SMART-6** | no videos qualify (all recent / all watched / empty) | the home loads | the section is **hidden entirely** (no empty placeholder) |
 | **SMART-7** | a video is marked watched / removed / moved | the action completes | the smart sections **re-derive** (e.g. marking watched drops it from "Pegando poeira") |
@@ -53,7 +53,7 @@ still unwatched).
    categories, then "Pegando poeira" at the **bottom** (closing nudge).
 2. **"Pegando poeira" definition:** only **unwatched** videos older than a **21-day**
    threshold (oldest first); hidden if none qualify.
-3. **Cap per section:** **4** preview cards with a **"+X" expander**, like categories.
+3. **Cap per section:** **4** preview cards with a **"See all" expander**, like categories.
 4. **Watched:** **always excluded** from both sections (overrides the hide-watched
    toggle for these views).
 5. **"Recent" bound:** by **count only** — the latest N videos by `addedAt`, no age

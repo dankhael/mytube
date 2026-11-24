@@ -10,6 +10,11 @@ class FakeToolbar {
   rendered: string[] = []
   painted: Record<number, string>[] = []
   failNextRasterize = false
+  private held = new Map<string, Promise<void>>()
+
+  holdRasterize(accent: string, gate: Promise<void>): void {
+    this.held.set(accent, gate)
+  }
 
   deps() {
     return {
@@ -22,6 +27,7 @@ class FakeToolbar {
           this.failNextRasterize = false
           throw new Error('OffscreenCanvas unavailable')
         }
+        for (const [accent, gate] of this.held) if (svg.includes(accent)) await gate
         return `${svg}@${size}`
       },
       setIcon: async ({ imageData }: { imageData: Record<number, string> }) => {
@@ -58,5 +64,38 @@ describe('theme-color.spec (toolbar icon)', () => {
     expect(toolbar.painted).toHaveLength(0)
     await paint('pink')
     expect(toolbar.painted).toHaveLength(1)
+  })
+
+  // storage.onChanged starts a paint per event and nothing orders them, so the
+  // last one to finish won even when it carried the older accent.
+  it('regression: a slow paint of an older accent does not overwrite a newer one', async () => {
+    const toolbar = new FakeToolbar()
+    let release!: () => void
+    toolbar.holdRasterize('mint', new Promise<void>((resolve) => (release = resolve)))
+    const paint = createActionIconPainter(toolbar.deps())
+
+    const older = paint('mint')
+    await paint('rose')
+    release()
+    await older
+
+    expect(toolbar.painted).toHaveLength(1)
+    expect(toolbar.painted[0][16]).toContain('rose')
+  })
+
+  it('regression: going back to the painted accent cancels a paint still in flight', async () => {
+    const toolbar = new FakeToolbar()
+    const paint = createActionIconPainter(toolbar.deps())
+    await paint('mint')
+    let release!: () => void
+    toolbar.holdRasterize('rose', new Promise<void>((resolve) => (release = resolve)))
+
+    const abandoned = paint('rose')
+    await paint('mint')
+    release()
+    await abandoned
+
+    expect(toolbar.painted).toHaveLength(1)
+    expect(toolbar.painted[0][16]).toContain('mint')
   })
 })

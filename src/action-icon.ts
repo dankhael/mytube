@@ -23,12 +23,17 @@ export function createActionIconPainter<Image>(
   deps: ActionIconDeps<Image>,
 ): (accent: string) => Promise<void> {
   let paintedAccent: string | null = null
+  let requestedAccent: string | null = null
   return async (accent) => {
+    requestedAccent = accent
     if (accent === paintedAccent) return
     try {
       const svg = deps.renderSvg(accent)
       const imageData: Record<number, Image> = {}
       for (const size of ACTION_ICON_SIZES) imageData[size] = await deps.rasterize(svg, size)
+      // Each storage event starts a paint and nothing orders them: only the newest
+      // request may reach the toolbar, or a slow old paint would land last.
+      if (accent !== requestedAccent) return
       await deps.setIcon({ imageData })
       paintedAccent = accent
     } catch {

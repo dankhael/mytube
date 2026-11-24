@@ -84,6 +84,41 @@ describe('storage-robustness.spec — backfill runner', () => {
     expect(fetch.calls).toEqual(['deadvideo11'])
   })
 
+  // Every write bumps the snapshot's generation, which fires storage.onChanged, and
+  // listeners answer with GET_ALL, which runs the backfill again. An answer that
+  // leaves the video "incomplete" therefore looped at network speed, spending the
+  // sync write quota that real saves need.
+  it('a video really named like the placeholder is fetched once and never rewritten', async () => {
+    const lookalike = { ...COMPLETE, id: 'lookalike11', title: MISSING_TITLE }
+    const backend = new FakeStorageBackend(libraryWith([lookalike]))
+    const fetch = new FakeMetadataFetch({
+      lookalike11: { title: MISSING_TITLE, channelName: lookalike.channelName },
+    })
+    const runner = createBackfillRunner({ store: new MyTubeStore(backend), fetchMetadata: fetch.lookup })
+
+    await runner.run()
+    await runner.run()
+
+    expect(fetch.calls).toEqual(['lookalike11'])
+    expect(backend.writeCount).toBe(0)
+  })
+
+  it('a partial answer is applied once and its video is not fetched again', async () => {
+    const backend = new FakeStorageBackend(libraryWith([incompleteVideo('partial1111')]))
+    const fetch = new FakeMetadataFetch({ partial1111: { title: 'Título real', channelName: '' } })
+    const runner = createBackfillRunner({ store: new MyTubeStore(backend), fetchMetadata: fetch.lookup })
+
+    await runner.run()
+    await runner.run()
+
+    expect(fetch.calls).toEqual(['partial1111'])
+    expect(backend.writeCount).toBe(1)
+    expect(backend.snapshot()!.videos[0]).toMatchObject({
+      title: 'Título real',
+      channelName: MISSING_CHANNEL,
+    })
+  })
+
   it('ROB-6: a fresh runner (new worker session) retries a previously-failed id', async () => {
     const backend = new FakeStorageBackend(libraryWith([incompleteVideo('deadvideo11')]))
     const fetch = new FakeMetadataFetch({ deadvideo11: null })

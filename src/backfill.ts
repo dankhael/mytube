@@ -23,6 +23,16 @@ interface MetadataUpdate {
   channelName: string
 }
 
+// Null when the lookup adds nothing. Writing anyway isn't harmless: every commit
+// fires storage.onChanged, and its listeners run the backfill again.
+function metadataUpdate(video: Video, meta: VideoMetadata | null): MetadataUpdate | null {
+  if (!meta) return null
+  const title = meta.title || video.title
+  const channelName = meta.channelName || video.channelName
+  if (title === video.title && channelName === video.channelName) return null
+  return { id: video.id, title, channelName }
+}
+
 export function createBackfillRunner(deps: BackfillDeps): BackfillRunner {
   // Ids whose lookup failed this session — permanently-dead videos (private,
   // deleted, region-locked) must not be re-fetched on every GET_ALL (ROB-5).
@@ -32,16 +42,12 @@ export function createBackfillRunner(deps: BackfillDeps): BackfillRunner {
   async function collectUpdates(targets: Video[]): Promise<MetadataUpdate[]> {
     const updates: MetadataUpdate[] = []
     for (const video of targets) {
-      const meta = await deps.fetchMetadata(video.id)
-      if (meta && (meta.title || meta.channelName)) {
-        updates.push({
-          id: video.id,
-          title: meta.title || video.title,
-          channelName: meta.channelName || video.channelName,
-        })
-      } else {
-        failedThisSession.add(video.id)
-      }
+      const update = metadataUpdate(video, await deps.fetchMetadata(video.id))
+      if (update) updates.push(update)
+      // Judged on the result, not on whether a lookup answered: a video that stays
+      // incomplete would come back on every GET_ALL. A real title equal to the
+      // placeholder, or an answer with one field, is as final as a dead video.
+      if (needsEnrichment(update ?? video)) failedThisSession.add(video.id)
     }
     return updates
   }

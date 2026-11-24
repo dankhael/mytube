@@ -3,12 +3,12 @@
 // try/catch since the DOM structure shifts often.
 
 import { sendMessage as sendRuntimeMessage } from '../src/messages'
-import { browserPlatform } from '../src/browser-platform'
+import { browserPlatform, type StorageChange } from '../src/browser-platform'
 import { Message, MessageResponse, SavedIdInfo } from '../src/types'
 import { isMyTubeKey } from '../src/storage-backend'
 import { DEFAULT_LANGUAGE, Language, t } from '../src/i18n'
 import { isYoutubeHomePath, shouldShowHomeNudge } from '../src/watch-reminders'
-import { CardData, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
+import { CardData, cardVideoId, extractCard, extractPreviewCard, extractWatchPage } from './extract-card'
 import { placeDropdown } from './dropdown-position'
 import { CategoryPickerDeps, openCategoryPicker } from './category-picker'
 import { saveCardVideo } from './save-flow'
@@ -27,6 +27,13 @@ const PROCESSED = 'data-mytube'
 
 let savedIds: Map<string, string> = new Map() // videoId -> category
 
+// An empty savedIds also means "not read yet". This tells the two apart, so a
+// failed first read gets retried instead of showing every video as unsaved for good.
+let savedStateKnown = false
+// Only the newest read counts: replies can land out of order (same as the home's
+// latestLoad), and a stale one would undo a newer saved state.
+let latestRefresh = 0
+
 // YouTube-home reminder state (spec watch-reminders, REMIND-8..10). Refreshed
 // from the store; the nudge shows only when opted in, with a backlog, on the
 // home, and not dismissed this session. Dismissal is in-memory (session-scoped).
@@ -36,6 +43,8 @@ let homeNudgeDismissed = false
 
 // Module-scope so teardown() (finding M4) can detach them after orphaning.
 let observer: MutationObserver | null = null
+let previewObserver: MutationObserver | null = null
+let observedPreview: HTMLElement | null = null
 let torndown = false
 
 // When the extension is reloaded/updated, already-injected scripts are orphaned
@@ -54,11 +63,24 @@ function teardown(): void {
   torndown = true
   observer?.disconnect()
   observer = null
+  previewObserver?.disconnect()
+  previewObserver = null
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  closeAllDropdowns() // an open menu's scroll tracking would outlive it otherwise
   document
     .querySelectorAll('.mytube-wrapper, .mytube-dropdown, #mytube-toast, #mytube-import-btn, #mytube-nudge')
     .forEach((node) => node.remove())
+  stopListeningToStorage()
+}
+
+// Last in teardown, and guarded: the extension APIs are the part that just died.
+function stopListeningToStorage(): void {
+  try {
+    browserPlatform().storageChanges.removeListener(onStorageChange)
+  } catch {
+    // an orphaned context delivers no storage events anyway
+  }
 }
 
 interface LabelSpans {
@@ -123,8 +145,11 @@ const showToast = createToast(() => torndown)
 // Detaches the scroll/resize tracking of the currently open dropdown; set by
 // trackDropdown(), cleared here so listeners never outlive the menu.
 let untrackDropdown: (() => void) | null = null
+// Read by the picker to notice a close while its categories are still loading.
+let dropdownCloses = 0
 
 function closeAllDropdowns() {
+  dropdownCloses++
   untrackDropdown?.()
   untrackDropdown = null
   document.querySelectorAll('.mytube-dropdown').forEach((d) => d.remove())
@@ -172,6 +197,7 @@ const pickerDeps: CategoryPickerDeps = {
   isTornDown: () => torndown,
   language: () => lang,
   closeDropdowns: closeAllDropdowns,
+  closeCount: () => dropdownCloses,
   mount: mountDropdown,
 }
 
@@ -204,15 +230,30 @@ function openSaveDropdown(btn: HTMLElement, card: CardData) {
   void openCategoryPicker(btn, onPick, 'content.saveTo', pickerDeps)
 }
 
+// YouTube recycles renderer nodes (M3): the pill stays, the video changes, so its
+// saved state has to follow the card's current link.
+function resyncRecycledCard(card: HTMLElement): void {
+  const wrapper = card.querySelector<HTMLElement>('.mytube-wrapper[data-vid]')
+  const id = cardVideoId(card)
+  if (!wrapper || !id || id === wrapper.getAttribute('data-vid')) return
+  wrapper.setAttribute('data-vid', id)
+  syncPillSavedState(wrapper)
+}
+
 function injectButton(card: HTMLElement) {
-  if (card.hasAttribute(PROCESSED)) return
-  card.setAttribute(PROCESSED, '1')
+  if (card.hasAttribute(PROCESSED)) {
+    resyncRecycledCard(card)
+    return
+  }
 
   // Skip cards nested inside another card so one renderer wrapping another
   // (e.g. a lockup inside a grid item) can't double-inject.
-  if (card.parentElement?.closest(CARD_SELECTORS.join(','))) return
+  const nested = card.parentElement?.closest(CARD_SELECTORS.join(','))
   // Playlist/Mix tiles would save their first video under the list's title.
-  if (isCollectionCard(card)) return
+  if (nested || isCollectionCard(card)) {
+    card.setAttribute(PROCESSED, '1')
+    return
+  }
 
   let data: CardData | null = null
   try {
@@ -220,10 +261,14 @@ function injectButton(card: HTMLElement) {
   } catch {
     data = null
   }
+  // Not marked: YouTube binds the link after creating the card, so the next scan
+  // tries again. Marked here, a card that started empty never got a pill.
   if (!data) return
+  card.setAttribute(PROCESSED, '1')
 
   const wrapper = document.createElement('div')
   wrapper.className = 'mytube-wrapper'
+  wrapper.setAttribute('data-vid', data.id)
 
   const btn = document.createElement('button')
   btn.className = 'mytube-btn'
@@ -366,6 +411,17 @@ function setPreviewActive(active: boolean): void {
   document.documentElement.classList.toggle('mytube-has-preview', active)
 }
 
+// The page observer only sees childList, and YouTube hides this persistent node by
+// changing an attribute. Without this, a quiet page keeps the card pills hidden
+// until something else mutates. One observer, re-pointed if the node is replaced.
+function watchPreviewVisibility(preview: HTMLElement): void {
+  if (preview === observedPreview) return
+  observedPreview = preview
+  previewObserver?.disconnect()
+  previewObserver = new MutationObserver(() => scheduleScan())
+  previewObserver.observe(preview, { attributes: true, attributeFilter: ['style', 'hidden', 'class'] })
+}
+
 // Injects a Save pill into YouTube's shared hover-preview overlay
 // (`ytd-video-preview`). Thumbnail-overlay pills are buried by the preview because
 // it paints in a separate, later `ytd-app` branch that z-index can't beat (see
@@ -376,6 +432,7 @@ function injectPreviewButton() {
   const preview = document.querySelector<HTMLElement>('ytd-video-preview')
   const container = preview?.querySelector<HTMLElement>('.ytInlinePlayerControlsControlsContainer')
   const existing = preview?.querySelector<HTMLElement>('.mytube-preview-wrapper') ?? null
+  if (preview) watchPreviewVisibility(preview)
 
   // Preview hidden/not ready (it's a persistent node YouTube toggles): drop any
   // stale button so it never lingers on top of nothing, and clear the flag that
@@ -446,6 +503,8 @@ const playlistImportDeps: PlaylistImportDeps = {
 }
 
 function scan() {
+  // Replies and frames already in flight can land here after teardown (M4).
+  if (torndown) return
   for (const card of findSaveTargets(document)) {
     try {
       injectButton(card)
@@ -475,31 +534,18 @@ function scan() {
   }
 }
 
+// Every pill carries its video in data-vid: card pills have it kept current by
+// resyncRecycledCard, and preview + watch pills have no enclosing card to read from.
+function syncPillSavedState(wrapper: HTMLElement) {
+  const btn = wrapper.querySelector<HTMLElement>('.mytube-btn')
+  const vid = wrapper.getAttribute('data-vid')
+  if (btn && vid) setSavedState(btn, savedIds.get(vid) ?? null)
+}
+
 function refreshSavedIds(ids: SavedIdInfo[]) {
   savedIds = new Map(ids.map((i) => [i.id, i.category]))
   // Re-sync any already-injected buttons.
-  document.querySelectorAll<HTMLElement>('.mytube-btn').forEach((btn) => {
-    // Preview + watch pills carry their id on the wrapper (no enclosing card to
-    // read the href from), so resolve their state from data-vid directly.
-    const previewWrap = btn.closest<HTMLElement>('.mytube-preview-wrapper')
-    if (previewWrap) {
-      const vid = previewWrap.getAttribute('data-vid')
-      if (vid) setSavedState(btn, savedIds.get(vid) ?? null)
-      return
-    }
-    const watchWrap = btn.closest<HTMLElement>('.mytube-watch-wrapper')
-    if (watchWrap) {
-      const vid = watchWrap.getAttribute('data-vid')
-      if (vid) setSavedState(btn, savedIds.get(vid) ?? null)
-      return
-    }
-    const wrapper = btn.closest('.mytube-wrapper')
-    const card = wrapper?.closest(CARD_SELECTORS.join(',')) as HTMLElement | null
-    if (!card) return
-    const link = card.querySelector<HTMLAnchorElement>('a[href*="watch?v="]')
-    const match = link?.getAttribute('href')?.match(/[?&]v=([\w-]{11})/)
-    if (match) setSavedState(btn, savedIds.get(match[1]) ?? null)
-  })
+  document.querySelectorAll<HTMLElement>('.mytube-wrapper[data-vid]').forEach(syncPillSavedState)
 }
 
 function injectStyles() {
@@ -710,7 +756,9 @@ function onDocumentClick(e: MouseEvent): void {
 // Catch up on cards added while the tab was hidden (M2): scheduleScan bails out
 // while document.hidden, so re-scan once when the tab becomes visible again.
 function onVisibilityChange(): void {
-  if (!document.hidden) scan()
+  if (document.hidden) return
+  if (savedStateKnown) scan()
+  else void refreshFromStore().then(() => scan())
 }
 
 let scanScheduled = false
@@ -718,7 +766,7 @@ function scheduleScan() {
   // Don't burn scan/allocation work on a backgrounded tab nobody can see (M2);
   // requestAnimationFrame wouldn't fire while hidden anyway, which would wedge
   // scanScheduled=true. The visibilitychange catch-up covers what we skipped.
-  if (scanScheduled || document.hidden) return
+  if (scanScheduled || document.hidden || torndown) return
   scanScheduled = true
   requestAnimationFrame(() => {
     scanScheduled = false
@@ -726,15 +774,20 @@ function scheduleScan() {
   })
 }
 
-// Pull the persisted interface language and the YouTube-home reminder state so
-// the pill/menu render localized and the nudge knows whether to show. Best-
-// effort: a failed round-trip leaves the prior values in place.
+// Pull the persisted interface language, the saved videos and the YouTube-home
+// reminder state so the pill/menu render localized and the nudge knows whether to
+// show. Best-effort: a failed round-trip leaves the prior values in place. One read
+// on purpose: with two, pills could relabel before the new language arrived.
 async function refreshFromStore() {
+  const ticket = ++latestRefresh
   const res = await sendMessage({ action: 'GET_ALL' })
+  if (ticket !== latestRefresh) return
   if (res.ok && 'data' in res && res.data) {
     lang = res.data.settings.language
     remindOnYoutubeHome = res.data.settings.remindOnYoutubeHome
     unwatchedSavedCount = res.data.videos.filter((v) => !v.watched).length
+    refreshSavedIds(res.data.videos)
+    savedStateKnown = true
   }
 }
 
@@ -795,8 +848,8 @@ function buildHomeNudge(): HTMLElement {
 async function init() {
   injectStyles()
   await refreshFromStore()
-  const res = await sendMessage({ action: 'GET_SAVED_IDS' })
-  if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
+  // The first read is often what finds the extension gone (M4).
+  if (torndown) return
 
   scan()
 
@@ -806,18 +859,18 @@ async function init() {
   observer = new MutationObserver(() => scheduleScan())
   observer.observe(document.body, { childList: true, subtree: true })
 
-  // Keep saved state fresh if the user edits things from the new tab page. The
-  // snapshot is sharded across many mytube:* keys (finding R1), so re-fetch the
-  // ids through the worker (which assembles the shards) on any of them changing.
-  browserPlatform().storageChanges.addListener((changes, area) => {
-    if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
-    // Re-localize and re-evaluate the nudge: language, the reminder toggle, or
-    // the unwatched count may have changed from the popup/new-tab.
-    void refreshFromStore().then(() => scan())
-    void sendMessage({ action: 'GET_SAVED_IDS' }).then((res) => {
-      if (res.ok && 'ids' in res) refreshSavedIds(res.ids)
-    })
-  })
+  browserPlatform().storageChanges.addListener(onStorageChange)
+}
+
+// Keep saved state fresh if the user edits things from the new tab page. The
+// snapshot is sharded across many mytube:* keys (finding R1), so re-fetch it
+// through the worker (which assembles the shards) on any of them changing.
+// Named (not inline) so teardown() can detach it after orphaning (M4).
+function onStorageChange(changes: { [key: string]: StorageChange }, area: string): void {
+  if (area !== 'sync' || !Object.keys(changes).some(isMyTubeKey)) return
+  // Re-localize and re-evaluate the nudge: language, the reminder toggle, or
+  // the unwatched count may have changed from the popup/new-tab.
+  void refreshFromStore().then(() => scan())
 }
 
 void init()

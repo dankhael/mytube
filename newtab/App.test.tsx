@@ -73,7 +73,7 @@ describe('newtab-ui.spec', () => {
     expect(screen.getAllByText('Aprenda React').length).toBeGreaterThan(0)
   })
 
-  it('UI-3: toggling "Watched" hides watched videos', async () => {
+  it('UI-3: "Hide watched" hides watched videos and turns into "Show watched"', async () => {
     scriptStore({
       categories: [{ name: 'Tutoriais', emoji: '🎓' }],
       videos: [
@@ -85,10 +85,11 @@ describe('newtab-ui.spec', () => {
     render(<App />)
 
     expect(await screen.findByText('Video Assistido')).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: 'Watched' }))
+    await user.click(screen.getByRole('button', { name: 'Hide watched' }))
 
     expect(screen.queryByText('Video Assistido')).toBeNull()
     expect(screen.getAllByText('Video Aberto').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Show watched' })).toBeTruthy()
   })
 })
 
@@ -477,12 +478,6 @@ describe('crt-theme.spec (home)', () => {
 })
 
 describe('design-rework.spec (home)', () => {
-  it('HOME-2: the greeting renders', async () => {
-    scriptStore({ categories: [{ name: 'Tutoriais', emoji: '🎓' }], videos: [] })
-    render(<App />)
-    expect(await screen.findByText('Welcome back.')).toBeTruthy()
-  })
-
   it('HOME-4: typing in search filters videos by title', async () => {
     scriptStore({
       categories: [{ name: 'Tutoriais', emoji: '🎓' }],

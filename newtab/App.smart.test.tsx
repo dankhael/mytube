@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // Home specs for the smart sections and their localized copy that had no test
 // bound to their ID (spec audit): SMART-3, SMART-4, SMART-7, SMART-8, I18N-11.
+// Also the header's count line (HOME-2).
 // Uses a stateful fake service worker so a mutation (MARK_WATCHED) round-trips
 // and the sections have to re-derive from the new snapshot.
 
@@ -89,7 +90,8 @@ describe('home-smart-sections.spec (card UI, cap, re-derive)', () => {
     const recent = sectionTitled('Recently added')
 
     expect(recent.querySelectorAll('.vcard')).toHaveLength(4)
-    await userEvent.click(within(recent).getByRole('button', { name: 'See all (6)' }))
+    expect(within(recent).getByText('6 videos')).toBeTruthy()
+    await userEvent.click(within(recent).getByRole('button', { name: 'See all' }))
     expect(recent.querySelectorAll('.vcard')).toHaveLength(6)
   })
 
@@ -112,6 +114,27 @@ describe('home-smart-sections.spec (card UI, cap, re-derive)', () => {
     expect(within(sectionTitled('Recently added')).getByText('Both places')).toBeTruthy()
     expect(within(sectionTitled('Tutorials')).getByText('Both places')).toBeTruthy()
     expect(worker.data.videos).toHaveLength(1)
+  })
+})
+
+describe('design-rework.spec (header)', () => {
+  const topHeadings = async () =>
+    (await screen.findAllByRole('heading', { level: 1 })).map((h) => h.textContent)
+
+  it('HOME-2: the unwatched-count line is the header title, with no separate greeting', async () => {
+    new FakeServiceWorker([
+      videoAt('new11111111', 'Open', 1),
+      videoAt('seen1111111', 'Seen', 1, true),
+    ]).install()
+    render(<App />)
+    expect(await topHeadings()).toEqual(['You have 1 video waiting in your library.'])
+  })
+
+  it('HOME-2: an empty library hides the count line, leaving one h1 on the page', async () => {
+    new FakeServiceWorker([]).install()
+    render(<App />)
+    expect(await topHeadings()).toEqual(['Your YouTube home, curated by you.'])
+    expect(screen.queryByText(/waiting in your library/)).toBeNull()
   })
 })
 

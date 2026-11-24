@@ -57,7 +57,7 @@ export async function seedLibrary(page) {
   for (const message of SAMPLE_VIDEOS) await sendMessage(page, message)
   await sendMessage(page, { action: 'MARK_WATCHED', id: 'jNQXAC9IVRw', watched: true })
   await page.reload()
-  await page.getByRole('heading', { name: 'Welcome back.' }).waitFor()
+  await page.getByRole('heading', { name: /waiting in your library/i }).waitFor()
 }
 
 export async function waitForImages(page) {
