@@ -132,7 +132,7 @@ export async function prepareHome(context, id) {
 
 export async function recordHomeScenes(page, clipsDir) {
   await page.reload()
-  await page.getByRole('heading', { name: 'Welcome back.' }).waitFor()
+  await page.getByRole('heading', { name: /waiting in your library/i }).waitFor()
   await waitForImages(page)
   await recordLibrary(page, clipsDir)
   await recordSearch(page, clipsDir)

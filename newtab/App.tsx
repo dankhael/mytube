@@ -236,14 +236,17 @@ export default function App() {
                 My<b>Tube</b>
               </span>
             </div>
-            <h1>{tr('home.welcomeBack')}</h1>
-            <p>
-              {tr('home.greetingPre')}{' '}
-              <b>
-                {unwatched} {tr(unwatched === 1 ? 'common.video' : 'common.videos')}
-              </b>{' '}
-              {tr('home.greetingPost')}
-            </p>
+            {/* The page's h1. With no videos the welcome screen brings its own, and
+                a count of zero would greet a fresh install with nothing (HOME-2). */}
+            {!isEmpty && (
+              <h1>
+                {tr('home.greetingPre')}{' '}
+                <b>
+                  {unwatched} {tr(unwatched === 1 ? 'common.video' : 'common.videos')}
+                </b>{' '}
+                {tr('home.greetingPost')}
+              </h1>
+            )}
           </div>
 
           <div className="head-right">
@@ -255,13 +258,9 @@ export default function App() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </label>
-            <button
-              className="ghost-btn"
-              onClick={() => setShowWatched((v) => !v)}
-              title={showWatched ? tr('home.hideWatched') : tr('home.showWatched')}
-            >
+            <button className="ghost-btn" onClick={() => setShowWatched((v) => !v)}>
               {showWatched ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {showWatched ? tr('home.watched') : tr('home.hidden')}
+              {showWatched ? tr('home.hideWatched') : tr('home.showWatched')}
             </button>
             <button className="accent-btn" onClick={() => setShowAdd(true)}>
               <Plus className="h-4 w-4" /> {tr('home.category')}

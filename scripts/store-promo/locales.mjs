@@ -14,7 +14,7 @@ export const CAPTURE_LOCALES = {
     searchUrl: `https://www.youtube.com/results?search_query=${SEARCH_QUERY}&hl=en&gl=US`,
     homeUrl: 'https://www.youtube.com/?hl=en&gl=US',
     ui: {
-      welcome: 'Welcome back.',
+      welcome: /waiting in your library/i,
       categoryButton: /^Category$/,
       create: 'Create',
       search: /search your library/i,
@@ -33,7 +33,7 @@ export const CAPTURE_LOCALES = {
     searchUrl: `https://www.youtube.com/results?search_query=${SEARCH_QUERY}&hl=pt-BR&gl=BR`,
     homeUrl: 'https://www.youtube.com/?hl=pt-BR&gl=BR',
     ui: {
-      welcome: 'Bem-vindo de volta.',
+      welcome: /esperando na sua biblioteca/i,
       categoryButton: /^Categoria$/,
       create: 'Criar',
       search: /buscar na biblioteca/i,

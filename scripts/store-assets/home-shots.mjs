@@ -71,7 +71,7 @@ async function captureSearch(page, shot) {
 async function captureSmpteTheme(page, shot) {
   await updateSettings(page, { theme: 'smpte' })
   await page.reload()
-  await page.getByRole('heading', { name: 'Welcome back.' }).waitFor()
+  await page.getByRole('heading', { name: /waiting in your library/i }).waitFor()
   await waitForImages(page)
   await shot(page, 'home-smpte-theme-1280x800')
   await updateSettings(page, { theme: 'aurora' })

@@ -39,7 +39,7 @@ the entire UI. Neutrals derive from `--hue` (warm 70).
 | **DR-THEME-2** | the tokens | read in code | the four accent presets (Mint/Red/Violet/Amber) are documented as hue values next to `--accent-h` |
 | **DR-THEME-3** | Tailwind classes already used by modals/buttons | rendered | they resolve to the new token palette (no hard-coded `#ff0000` / YouTube red remains) |
 | **HOME-1** | the new-tab home | loaded | warm-dark gradient background, centered max-width container, display-font headings (Bricolage Grotesque) |
-| **HOME-2** | the home header | loaded | brand wordmark + **"Welcome back."** greeting + an unwatched-count line |
+| **HOME-2** | the home header | loaded | brand wordmark + an unwatched-count line, with no separate greeting title; with no videos saved the line is hidden, so the page never has two `h1`s |
 | **HOME-3** | the header controls | loaded | a search field, the hide-watched toggle and **+ Category** restyled as searchbar / ghost / accent buttons |
 | **HOME-4** | text in the search field | typed | the categories and smart sections filter to videos whose **title or channel** match (live) |
 | **HOME-5** | each category section | rendered | an accent icon tile + display-font title + count, hover drag affordance, and the dashed empty state when it has no videos |

@@ -83,19 +83,11 @@ body {
   gap: 24px;
 }
 .greet h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  font-size: 30px;
-  margin: 22px 0 6px;
-  line-height: 1.08;
-}
-.greet p {
-  margin: 0;
+  margin: 22px 0 0;
   color: var(--text-2);
   font-size: 14.5px;
 }
-.greet p b {
+.greet h1 b {
   color: var(--accent);
   font-weight: 700;
 }
